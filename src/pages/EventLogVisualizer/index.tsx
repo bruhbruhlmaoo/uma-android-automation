@@ -38,11 +38,6 @@ const EventLogVisualizer: React.FC = () => {
         content: {
             padding: 12,
         },
-        title: {
-            fontSize: 20,
-            fontWeight: "bold",
-            color: colors.foreground,
-        },
         empty: {
             marginTop: 12,
             marginBottom: 12,

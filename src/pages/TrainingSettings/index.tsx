@@ -242,19 +242,6 @@ const TrainingSettings = () => {
             fontSize: 18,
             color: colors.primary,
         },
-        statItem: {
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 12,
-        },
-        statCheckbox: {
-            marginRight: 12,
-        },
-        statLabel: {
-            fontSize: 16,
-            color: colors.foreground,
-            flex: 1,
-        },
         buttonRow: {
             flexDirection: "row",
             justifyContent: "space-between",

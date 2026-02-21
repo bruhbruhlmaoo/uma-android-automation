@@ -36,12 +36,6 @@ const OCRSettings = () => {
         section: {
             marginBottom: 24,
         },
-        sectionTitle: {
-            fontSize: 18,
-            fontWeight: "600",
-            color: colors.foreground,
-            marginBottom: 12,
-        },
     })
 
     return (

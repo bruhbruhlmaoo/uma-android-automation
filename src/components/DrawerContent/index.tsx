@@ -91,9 +91,6 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
             marginLeft: 8,
             borderRadius: 4,
         },
-        chevronIcon: {
-            marginLeft: 8,
-        },
         nestedContainer: {
             overflow: "hidden",
         },

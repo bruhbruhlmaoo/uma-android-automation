@@ -188,11 +188,6 @@ const RacingPlanSettings = () => {
             marginBottom: 16,
             lineHeight: 20,
         },
-        title: {
-            fontSize: 24,
-            fontWeight: "bold",
-            color: colors.foreground,
-        },
         section: {
             marginBottom: 24,
         },

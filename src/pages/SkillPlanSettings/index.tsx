@@ -130,32 +130,12 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
             margin: 10,
             backgroundColor: colors.background,
         },
-        header: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-        },
-        headerLeft: {
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 12,
-        },
-        menuButton: {
-            padding: 8,
-            borderRadius: 8,
-        },
         description: {
             fontSize: 14,
             color: colors.foreground,
             opacity: 0.7,
             marginBottom: 16,
             lineHeight: 20,
-        },
-        title: {
-            fontSize: 24,
-            fontWeight: "bold",
-            color: colors.foreground,
         },
         section: {
             marginBottom: 24,
@@ -214,15 +194,6 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         },
         inputContainer: {
             marginBottom: 16,
-        },
-        terrainButton: {
-            padding: 12,
-            borderRadius: 8,
-            marginRight: 8,
-        },
-        terrainButtonText: {
-            fontSize: 14,
-            fontWeight: "600",
         },
     })
 
