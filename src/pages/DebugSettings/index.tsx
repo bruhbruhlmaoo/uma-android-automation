@@ -8,6 +8,7 @@ import CustomTitle from "../../components/CustomTitle"
 import CustomSelect from "../../components/CustomSelect"
 import { Separator } from "../../components/ui/separator"
 import PageHeader from "../../components/PageHeader"
+import WarningContainer from "../../components/WarningContainer"
 
 const DebugSettings = () => {
     const { colors } = useTheme()
@@ -20,19 +21,6 @@ const DebugSettings = () => {
             justifyContent: "center",
             margin: 10,
             backgroundColor: colors.background,
-        },
-        errorContainer: {
-            backgroundColor: colors.warningBg,
-            borderLeftWidth: 4,
-            borderLeftColor: colors.warningBorder,
-            padding: 12,
-            marginTop: 8,
-            borderRadius: 8,
-        },
-        errorText: {
-            fontSize: 14,
-            color: colors.warningText,
-            lineHeight: 20,
         },
     })
 
@@ -56,9 +44,7 @@ const DebugSettings = () => {
                         />
 
                         {bsc.settings.debug.enableDebugMode && (
-                            <View style={[styles.errorContainer, { marginTop: 8 }]}>
-                                <Text style={styles.errorText}>⚠️ Significantly extends the average runtime of the bot due to increased IO operations.</Text>
-                            </View>
+                            <WarningContainer style={{ marginTop: 8 }}>⚠️ Significantly extends the average runtime of the bot due to increased IO operations.</WarningContainer>
                         )}
 
                         <CustomSlider
@@ -205,11 +191,9 @@ const DebugSettings = () => {
                         <CustomTitle title="Debug Tests" description="Run diagnostic tests to verify template matching and OCR functionality. Only one test can be enabled at a time." />
 
                         {/* Warning message for debug tests */}
-                        <View style={[styles.errorContainer, { marginBottom: 16 }]}>
-                            <Text style={styles.errorText}>
-                                {"⚠️ Only one debug test can be enabled at a time. Enabling a test will automatically disable the others.\n\nHaving Debug Mode enabled will output more helpful logs."}
-                            </Text>
-                        </View>
+                        <WarningContainer style={{ marginBottom: 16 }}>
+                            {"⚠️ Only one debug test can be enabled at a time. Enabling a test will automatically disable the others.\n\nHaving Debug Mode enabled will output more helpful logs."}
+                        </WarningContainer>
 
                         <CustomCheckbox
                             checked={bsc.settings.debug.debugMode_startTemplateMatchingTest}

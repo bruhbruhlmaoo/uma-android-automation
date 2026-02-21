@@ -8,6 +8,7 @@ import CustomCheckbox from "../../components/CustomCheckbox"
 import CustomButton from "../../components/CustomButton"
 import CustomScrollView from "../../components/CustomScrollView"
 import PageHeader from "../../components/PageHeader"
+import WarningContainer from "../../components/WarningContainer"
 import { Input } from "../../components/ui/input"
 import { CircleCheckBig, Trash2 } from "lucide-react-native"
 import skillsData from "../../data/skills.json"
@@ -223,19 +224,6 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
             fontSize: 14,
             fontWeight: "600",
         },
-        warningContainer: {
-            backgroundColor: colors.warningBg,
-            borderLeftWidth: 4,
-            borderLeftColor: colors.warningBorder,
-            padding: 12,
-            marginTop: 12,
-            borderRadius: 8,
-        },
-        warningText: {
-            fontSize: 14,
-            color: colors.warningText,
-            lineHeight: 20,
-        },
     })
 
     const renderOptions = () => {
@@ -272,11 +260,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
                         onValueChange={(value) => updateSkillsSetting("strategy", value)}
                         placeholder="Select Strategy"
                     />
-                    {strategy == "optimize_rank" && (
-                        <View style={styles.warningContainer}>
-                            <Text style={styles.warningText}>⚠️ Warning: Optimize Rank ignores any of the Skill Style Overrides set in the Skill Settings page.</Text>
-                        </View>
-                    )}
+                    {strategy == "optimize_rank" && <WarningContainer>⚠️ Warning: Optimize Rank ignores any of the Skill Style Overrides set in the Skill Settings page.</WarningContainer>}
                     <Text style={styles.inputDescription}>
                         This option determines what the bot does with any remaining skill points after it has purchased all of the skills from the Planned Skills section and the other options on this
                         page.
