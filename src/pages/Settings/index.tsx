@@ -14,6 +14,7 @@ import CustomTitle from "../../components/CustomTitle"
 import CustomButton from "../../components/CustomButton"
 import PageHeader from "../../components/PageHeader"
 import { Separator } from "../../components/ui/separator"
+import WarningContainer from "../../components/WarningContainer"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../../components/ui/alert-dialog"
 import { useSettings } from "../../context/SettingsContext"
 import { useSettingsFileManager } from "../../hooks/useSettingsFileManager"
@@ -35,20 +36,6 @@ const Settings = () => {
             justifyContent: "center",
             margin: 10,
             backgroundColor: colors.background,
-        },
-        errorContainer: {
-            backgroundColor: colors.warningBg,
-            borderLeftWidth: 4,
-            borderLeftColor: colors.warningBorder,
-            padding: 12,
-            marginTop: 12,
-            marginBottom: 12,
-            borderRadius: 8,
-        },
-        errorText: {
-            fontSize: 14,
-            color: colors.warningText,
-            lineHeight: 20,
         },
     })
 
@@ -89,11 +76,7 @@ const Settings = () => {
                         bsc.setReadyStatus(newScenario !== "")
                     }}
                 />
-                {!bsc.settings.general.scenario && (
-                    <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>⚠️ A scenario must be selected before starting the bot.</Text>
-                    </View>
-                )}
+                {!bsc.settings.general.scenario && <WarningContainer>⚠️ A scenario must be selected before starting the bot.</WarningContainer>}
             </View>
         )
     }
@@ -139,13 +122,7 @@ const Settings = () => {
     }
 
     const renderSkillsLink = () => {
-        return (
-            <NavigationLink
-                title="Go to Skills Settings"
-                description="Configure skill purchasing behavior."
-                onPress={() => navigation.navigate("SkillSettings" as never)}
-            />
-        )
+        return <NavigationLink title="Go to Skills Settings" description="Configure skill purchasing behavior." onPress={() => navigation.navigate("SkillSettings" as never)} />
     }
 
     const renderEventLogVisualizerLink = () => {
@@ -302,14 +279,14 @@ const Settings = () => {
                     </CustomButton>
                 </View>
 
-                <View style={styles.errorContainer}>
+                <WarningContainer style={{ marginBottom: 12 }}>
                     <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                         <Text style={{ fontWeight: "bold", color: colors.warningText }}>⚠️ File Explorer Note:</Text>
-                        <Text style={styles.errorText}>
+                        <Text style={{ fontSize: 14, color: colors.warningText, lineHeight: 20 }}>
                             To manually access files, you need a file explorer app that can access the /Android/data folder (like CX File Explorer). Standard file managers will not work.
                         </Text>
                     </View>
-                </View>
+                </WarningContainer>
             </View>
         )
     }
