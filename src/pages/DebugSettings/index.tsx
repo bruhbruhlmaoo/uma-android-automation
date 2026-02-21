@@ -1,4 +1,4 @@
-import { useContext } from "react"
+import { useMemo,  useContext } from "react"
 import { View, Text, ScrollView, StyleSheet } from "react-native"
 import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext } from "../../context/BotStateContext"
@@ -14,7 +14,7 @@ const DebugSettings = () => {
     const { colors } = useTheme()
     const bsc = useContext(BotStateContext)
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         root: {
             flex: 1,
             flexDirection: "column",
@@ -22,7 +22,7 @@ const DebugSettings = () => {
             margin: 10,
             backgroundColor: colors.background,
         },
-    })
+    }), [colors])
 
     return (
         <View style={styles.root}>

@@ -30,7 +30,7 @@ const EventLogVisualizer: React.FC = () => {
     const [showTriggers, setShowTriggers] = useState<boolean>(false)
     const [viewMode, setViewMode] = useState<"timeline" | "years">("timeline")
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         root: {
             flex: 1,
             backgroundColor: colors.background,
@@ -86,7 +86,7 @@ const EventLogVisualizer: React.FC = () => {
         toggleButtonTextInactive: {
             color: colors.foreground,
         },
-    })
+    }), [colors])
 
     async function onPickFiles() {
         try {

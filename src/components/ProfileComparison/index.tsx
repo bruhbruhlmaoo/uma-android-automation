@@ -44,7 +44,7 @@ const ProfileComparison: React.FC<ProfileComparisonProps> = ({ comparison, onCon
      * the unified ScrollView of the ProfileManagerModal. This simplifies
      * the layout and prevents nested scroll conflicts.
      */
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         container: {
             marginTop: 16,
             padding: 16,
@@ -90,7 +90,7 @@ const ProfileComparison: React.FC<ProfileComparisonProps> = ({ comparison, onCon
             gap: 8,
             marginTop: 12,
         },
-    })
+    }), [colors])
 
     if (!hasChanges) {
         return null

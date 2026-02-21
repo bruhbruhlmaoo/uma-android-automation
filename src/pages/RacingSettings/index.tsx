@@ -1,4 +1,4 @@
-import { useContext } from "react"
+import { useMemo,  useContext } from "react"
 import { View, Text, ScrollView, StyleSheet } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { useTheme } from "../../context/ThemeContext"
@@ -56,7 +56,7 @@ const RacingSettings = () => {
         }
     }
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         root: {
             flex: 1,
             flexDirection: "column",
@@ -90,7 +90,7 @@ const RacingSettings = () => {
             opacity: 0.7,
             marginTop: 4,
         },
-    })
+    }), [colors])
 
     return (
         <View style={styles.root}>

@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "react"
+import { useMemo,  useContext, useEffect } from "react"
 import { View, Text, ScrollView, StyleSheet } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { Divider } from "react-native-paper"
@@ -45,7 +45,7 @@ const SkillSettings = () => {
         })
     }
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         root: {
             flex: 1,
             flexDirection: "column",
@@ -77,7 +77,7 @@ const SkillSettings = () => {
             opacity: 0.7,
             marginTop: 8,
         },
-    })
+    }), [colors])
 
     return (
         <View style={styles.root}>

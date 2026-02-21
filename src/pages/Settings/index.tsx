@@ -1,5 +1,5 @@
 import scenarios from "../../data/scenarios.json"
-import { useContext, useEffect, useState } from "react"
+import { useMemo,  useContext, useEffect, useState } from "react"
 import { BotStateContext } from "../../context/BotStateContext"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { Snackbar } from "react-native-paper"
@@ -29,7 +29,7 @@ const Settings = () => {
     const { openDataDirectory, resetSettings } = useSettings()
     const { handleImportSettings, handleExportSettings, showImportDialog, setShowImportDialog, showResetDialog, setShowResetDialog } = useSettingsFileManager()
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         root: {
             flex: 1,
             flexDirection: "column",
@@ -37,7 +37,7 @@ const Settings = () => {
             margin: 10,
             backgroundColor: colors.background,
         },
-    })
+    }), [colors])
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////

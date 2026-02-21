@@ -1,4 +1,4 @@
-import { ReactNode } from "react"
+import { useMemo,  ReactNode } from "react"
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from "react-native"
 import { useTheme } from "../../context/ThemeContext"
 
@@ -16,7 +16,7 @@ interface Props {
 const WarningContainer = ({ style, children }: Props) => {
     const { colors } = useTheme()
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         container: {
             backgroundColor: colors.warningBg,
             borderLeftWidth: 4,
@@ -30,7 +30,7 @@ const WarningContainer = ({ style, children }: Props) => {
             color: colors.warningText,
             lineHeight: 20,
         },
-    })
+    }), [colors])
 
     return <View style={[styles.container, style]}>{typeof children === "string" ? <Text style={styles.text}>{children}</Text> : children}</View>
 }
