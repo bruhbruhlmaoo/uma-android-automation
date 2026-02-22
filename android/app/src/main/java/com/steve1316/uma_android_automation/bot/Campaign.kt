@@ -867,7 +867,11 @@ open class Campaign(val game: Game) {
                 }
             } catch (e: InterruptedException) {
                 game.notificationMessage = "Campaign main loop exiting: ${e.message}"
-                MessageLog.e(TAG, "Campaign main loop exiting: ${e.message}")
+                if (e.message?.contains("Bot had reached end of run") == true) {
+                    MessageLog.i(TAG, "Campaign main loop exiting: ${e.message}")
+                } else {
+                    MessageLog.e(TAG, "Campaign main loop exiting: ${e.message}")
+                }
                 break
             }
 		}
