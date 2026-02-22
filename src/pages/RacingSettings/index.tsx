@@ -150,15 +150,14 @@ const RacingSettings = () => {
                             className="my-2"
                         />
                         {disableRaceRetries && (
-                            <View style={{ marginTop: 8, marginLeft: 20 }}>
-                                <CustomCheckbox
-                                    id="enable-free-race-retry"
-                                    checked={enableFreeRaceRetry}
-                                    onCheckedChange={(checked) => updateRacingSetting("enableFreeRaceRetry", checked)}
-                                    label="Allow Daily Free Race Retry"
-                                    description="When enabled, the bot will attempt to retry a failed mandatory race only if the daily free race retry is available."
-                                />
-                            </View>
+                            <CustomCheckbox
+                                id="enable-free-race-retry"
+                                checked={enableFreeRaceRetry}
+                                onCheckedChange={(checked) => updateRacingSetting("enableFreeRaceRetry", checked)}
+                                label="Allow Daily Free Race Retry"
+                                description="When enabled, the bot will attempt to retry a failed mandatory race only if the daily free race retry is available."
+                                className="my-2"
+                            />
                         )}
                         <CustomCheckbox
                             id="enable-complete-career-on-failure"

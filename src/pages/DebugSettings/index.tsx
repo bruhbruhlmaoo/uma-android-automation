@@ -114,7 +114,7 @@ const DebugSettings = () => {
                         />
 
                         {bsc.settings.debug.enableScreenRecording && (
-                            <View style={{ marginTop: 8, marginLeft: 20 }}>
+                            <View style={{ marginTop: 8 }}>
                                 <CustomSlider
                                     value={bsc.settings.debug.recordingBitRate}
                                     placeholder={bsc.defaultSettings.debug.recordingBitRate}
