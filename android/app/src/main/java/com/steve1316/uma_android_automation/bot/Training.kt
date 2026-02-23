@@ -705,36 +705,69 @@ class Training(private val game: Game) {
             StatName.WIT to IconTrainingHeaderWit,
         )
 
+        /** Returns the current active (selected) stat in the training screen.
+         *
+         * @param timeoutMs The max time (in milliseconds) for the operation to run
+         * before it times out.
+         *
+         * @return On success, the StatName of the active stat.
+         * On error or timeout, NULL is returned.
+         */
+        fun getActiveStat(timeoutMs: Int = 5000): StatName? {
+            val startTime = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startTime < timeoutMs) {
+                val bitmap: Bitmap = game.imageUtils.getSourceBitmap()
+                for ((statName, header) in iconTrainingHeaders) {
+                    // Return immediately if we get a match.
+                    if (header.check(game.imageUtils, sourceBitmap = bitmap)) {
+                        return statName
+                    }
+                }
+            }
+            MessageLog.w(TAG, "[TRAINING] getActiveStat: Timed out while trying to detect the active stat.")
+            return null
+        }
+
         /** Changes the active (selected) training stat in the training screen.
          *
          * @param statName The stat to switch to.
-         * @param retries The number of times to attempt to switch to the [statName].
+         * @param timeoutMs The max time (in milliseconds) for the operation to run
+         * before it times out.
          *
-         * @return Whether the operation was successful.
+         * @return Whether we successfully navigated to the [statName] training page.
          */
-        fun goToStat(statName: StatName, retries: Int = 3): Boolean {
+        fun goToStat(statName: StatName, timeoutMs: Int = 5000): Boolean {
+            val startTime = System.currentTimeMillis()
+
             // KeyError indicates programmer error.
             val header: ComponentInterface = iconTrainingHeaders[statName]!!
             val button: ComponentInterface = trainingButtons[statName]!!
 
+            val activeStat: StatName? = getActiveStat(timeoutMs)
+            if (activeStat == null) {
+                MessageLog.w(TAG, "[TRAINING] goToStat: getActiveStat returned NULL.")
+                return false
+            }
+
             // If we're already at the stat, return early.
-            // Otherwise we'd accidentally click the button to train the stat.
-            if (header.check(game.imageUtils)) {
+            // Otherwise we may accidentally click the button to train the stat.
+            if (activeStat == statName) {
                 return true
             }
 
-            var attempts: Int = 0
-            while (attempts < retries) {
-                button.click(game.imageUtils)
-                // Wait for screen to finish updating before proceeding.
-                game.wait(0.2, skipWaitingForLoading = true)
+            // Now click on the desired stat button.
+            button.click(game.imageUtils)
+            // Now wait for the header to be detected.
+            // In case the previous operations took too long, we still want to do
+            // at least one check for the header before we time out since it doesn't
+            // take hardly any time to check just once.
+            do {
                 if (header.check(game.imageUtils)) {
                     return true
                 }
-                attempts++
-            }
+            } while (System.currentTimeMillis() - startTime < timeoutMs)
 
-            MessageLog.w(TAG, "Failed to go to $statName on training screen after $attempts attempts.")
+            MessageLog.w(TAG, "[TRAINING] goToStat: Timed out while waiting for $statName training header.")
             return false
         }
 
