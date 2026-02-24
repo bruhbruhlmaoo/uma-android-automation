@@ -315,177 +315,181 @@ const TrainingEventSettings = () => {
 
     const keyExtractor = useCallback((item: { key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" }) => item.key, [])
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            justifyContent: "center",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-        section: {
-            marginBottom: 24,
-        },
-        overrideCard: {
-            paddingVertical: 12,
-            paddingHorizontal: 12,
-            borderRadius: 8,
-            borderWidth: 1,
-            marginBottom: 10,
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-        },
-        overrideCardHeader: {
-            flexDirection: "row",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            marginBottom: 8,
-        },
-        overrideCharacterName: {
-            fontSize: 12,
-            color: colors.lightlyMuted,
-            marginBottom: 4,
-        },
-        overrideEventName: {
-            fontSize: 16,
-            fontWeight: "600",
-            color: colors.foreground,
-        },
-        removeButton: {
-            padding: 4,
-        },
-        overrideOptionContainer: {
-            marginTop: 8,
-            paddingTop: 8,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-        },
-        overrideOptionLabel: {
-            fontSize: 12,
-            color: colors.lightlyMuted,
-            marginBottom: 4,
-        },
-        overrideOptionText: {
-            fontSize: 14,
-            color: colors.foreground,
-        },
-        modalOverlay: {
-            flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            justifyContent: "center",
-            alignItems: "center",
-        },
-        modalContent: {
-            backgroundColor: colors.background,
-            borderRadius: 16,
-            padding: 20,
-            width: Dimensions.get("window").width * 0.9,
-            maxHeight: Dimensions.get("window").height * 0.8,
-            flexDirection: "column",
-            justifyContent: "flex-start",
-        },
-        modalHeader: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-        },
-        modalTitle: {
-            fontSize: 20,
-            fontWeight: "bold",
-            color: colors.foreground,
-        },
-        closeButton: {
-            padding: 8,
-        },
-        searchContainer: {
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
-            paddingHorizontal: 12,
-            marginBottom: 20,
-        },
-        searchInput: {
-            flex: 1,
-            paddingVertical: 12,
-            color: colors.foreground,
-            fontSize: 12,
-            backgroundColor: "transparent",
-        },
-        clearSearchButton: {
-            padding: 8,
-            marginLeft: 8,
-        },
-        eventList: {
-            height: 400,
-            minHeight: 400,
-        },
-        eventItem: {
-            paddingVertical: 12,
-            paddingHorizontal: 12,
-            borderRadius: 8,
-            borderWidth: 1,
-            marginBottom: 10,
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-        },
-        eventItemHeader: {
-            flexDirection: "row",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-        },
-        eventItemCharacterName: {
-            fontSize: 12,
-            color: colors.lightlyMuted,
-            marginBottom: 4,
-        },
-        eventItemEventName: {
-            fontSize: 16,
-            fontWeight: "600",
-            color: colors.foreground,
-            flex: 1,
-        },
-        optionSelectContainer: {
-            marginTop: 12,
-            paddingTop: 12,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-        },
-        optionSelectLabel: {
-            fontSize: 14,
-            color: colors.foreground,
-            marginBottom: 8,
-            fontWeight: "600",
-        },
-        optionButton: {
-            paddingVertical: 10,
-            paddingHorizontal: 12,
-            borderRadius: 6,
-            marginBottom: 8,
-            borderWidth: 1,
-            borderColor: colors.border,
-        },
-        optionButtonSelected: {
-            backgroundColor: colors.primary,
-            borderColor: colors.primary,
-        },
-        optionButtonText: {
-            fontSize: 14,
-            color: colors.foreground,
-        },
-        optionButtonTextSelected: {
-            color: colors.primaryForeground,
-        },
-        noResults: {
-            textAlign: "center",
-            color: colors.foreground,
-            opacity: 0.6,
-            padding: 20,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+                section: {
+                    marginBottom: 24,
+                },
+                overrideCard: {
+                    paddingVertical: 12,
+                    paddingHorizontal: 12,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    marginBottom: 10,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                },
+                overrideCardHeader: {
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    marginBottom: 8,
+                },
+                overrideCharacterName: {
+                    fontSize: 12,
+                    color: colors.lightlyMuted,
+                    marginBottom: 4,
+                },
+                overrideEventName: {
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                },
+                removeButton: {
+                    padding: 4,
+                },
+                overrideOptionContainer: {
+                    marginTop: 8,
+                    paddingTop: 8,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.border,
+                },
+                overrideOptionLabel: {
+                    fontSize: 12,
+                    color: colors.lightlyMuted,
+                    marginBottom: 4,
+                },
+                overrideOptionText: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                },
+                modalOverlay: {
+                    flex: 1,
+                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                },
+                modalContent: {
+                    backgroundColor: colors.background,
+                    borderRadius: 16,
+                    padding: 20,
+                    width: Dimensions.get("window").width * 0.9,
+                    maxHeight: Dimensions.get("window").height * 0.8,
+                    flexDirection: "column",
+                    justifyContent: "flex-start",
+                },
+                modalHeader: {
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 20,
+                },
+                modalTitle: {
+                    fontSize: 20,
+                    fontWeight: "bold",
+                    color: colors.foreground,
+                },
+                closeButton: {
+                    padding: 8,
+                },
+                searchContainer: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: colors.card,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                    marginBottom: 20,
+                },
+                searchInput: {
+                    flex: 1,
+                    paddingVertical: 12,
+                    color: colors.foreground,
+                    fontSize: 12,
+                    backgroundColor: "transparent",
+                },
+                clearSearchButton: {
+                    padding: 8,
+                    marginLeft: 8,
+                },
+                eventList: {
+                    height: 400,
+                    minHeight: 400,
+                },
+                eventItem: {
+                    paddingVertical: 12,
+                    paddingHorizontal: 12,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    marginBottom: 10,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                },
+                eventItemHeader: {
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                },
+                eventItemCharacterName: {
+                    fontSize: 12,
+                    color: colors.lightlyMuted,
+                    marginBottom: 4,
+                },
+                eventItemEventName: {
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                    flex: 1,
+                },
+                optionSelectContainer: {
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.border,
+                },
+                optionSelectLabel: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    marginBottom: 8,
+                    fontWeight: "600",
+                },
+                optionButton: {
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderRadius: 6,
+                    marginBottom: 8,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                },
+                optionButtonSelected: {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary,
+                },
+                optionButtonText: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                },
+                optionButtonTextSelected: {
+                    color: colors.primaryForeground,
+                },
+                noResults: {
+                    textAlign: "center",
+                    color: colors.foreground,
+                    opacity: 0.6,
+                    padding: 20,
+                },
+            }),
+        [colors],
+    )
 
     return (
         <View style={styles.root}>

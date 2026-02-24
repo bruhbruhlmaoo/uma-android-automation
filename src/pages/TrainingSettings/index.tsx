@@ -184,70 +184,74 @@ const TrainingSettings = () => {
         })
     }
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            justifyContent: "center",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-        section: {
-            marginBottom: 24,
-        },
-        row: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-        },
-        label: {
-            fontSize: 16,
-            color: colors.foreground,
-            flex: 1,
-        },
-        pressableText: {
-            fontSize: 16,
-            color: colors.primary,
-            textDecorationLine: "underline",
-        },
-        modal: {
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "rgba(70, 70, 70, 0.5)",
-        },
-        modalContent: {
-            backgroundColor: colors.background,
-            borderRadius: 12,
-            padding: 20,
-            width: Dimensions.get("window").width * 0.85,
-            maxHeight: Dimensions.get("window").height * 0.7,
-        },
-        modalHeader: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-        },
-        modalTitle: {
-            fontSize: 20,
-            fontWeight: "bold",
-            color: colors.foreground,
-        },
-        closeButton: {
-            padding: 8,
-        },
-        closeText: {
-            fontSize: 18,
-            color: colors.primary,
-        },
-        buttonRow: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginTop: 20,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+                section: {
+                    marginBottom: 24,
+                },
+                row: {
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 16,
+                },
+                label: {
+                    fontSize: 16,
+                    color: colors.foreground,
+                    flex: 1,
+                },
+                pressableText: {
+                    fontSize: 16,
+                    color: colors.primary,
+                    textDecorationLine: "underline",
+                },
+                modal: {
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: "rgba(70, 70, 70, 0.5)",
+                },
+                modalContent: {
+                    backgroundColor: colors.background,
+                    borderRadius: 12,
+                    padding: 20,
+                    width: Dimensions.get("window").width * 0.85,
+                    maxHeight: Dimensions.get("window").height * 0.7,
+                },
+                modalHeader: {
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 20,
+                },
+                modalTitle: {
+                    fontSize: 20,
+                    fontWeight: "bold",
+                    color: colors.foreground,
+                },
+                closeButton: {
+                    padding: 8,
+                },
+                closeText: {
+                    fontSize: 18,
+                    color: colors.primary,
+                },
+                buttonRow: {
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginTop: 20,
+                },
+            }),
+        [colors],
+    )
 
     const toggleStat = (stat: string, list: string[], setList: (value: string[]) => void) => {
         if (list.includes(stat)) {

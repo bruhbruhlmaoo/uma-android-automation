@@ -41,7 +41,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
         (id: number): Profile | undefined => {
             return profiles.find((p) => p.id === id)
         },
-        [profiles]
+        [profiles],
     )
 
     /**
@@ -54,7 +54,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
         (name: string): Profile | undefined => {
             return profiles.find((p) => p.name === name)
         },
-        [profiles]
+        [profiles],
     )
 
     /**
@@ -68,7 +68,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
         (name: string, excludeId?: number): boolean => {
             return profiles.some((p) => p.id !== excludeId && p.name.toLowerCase() === name.toLowerCase())
         },
-        [profiles]
+        [profiles],
     )
 
     /**
@@ -205,7 +205,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
                 return 0
             }
         },
-        [loadProfiles, profiles, hasNameConflict, onError]
+        [loadProfiles, profiles, hasNameConflict, onError],
     )
 
     /**
@@ -221,7 +221,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
             updates: {
                 name?: string
                 settings?: Partial<Settings>
-            }
+            },
         ): Promise<void> => {
             try {
                 const existingProfile = findProfileById(id)
@@ -265,7 +265,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
                 onError?.(errorMessage)
             }
         },
-        [profiles, loadProfiles, findProfileById, hasNameConflict, onError]
+        [profiles, loadProfiles, findProfileById, hasNameConflict, onError],
     )
 
     /**
@@ -309,7 +309,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
                 onError?.(errorMessage)
             }
         },
-        [profiles, currentProfileName, loadProfiles, findProfileById, onError]
+        [profiles, currentProfileName, loadProfiles, findProfileById, onError],
     )
 
     /**
@@ -347,7 +347,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
                 return null
             }
         },
-        [profiles, findProfileByName, onError]
+        [profiles, findProfileByName, onError],
     )
 
     /**
@@ -390,7 +390,7 @@ export const useProfileManager = (onError?: (message: string) => void) => {
                 onError?.(errorMessage)
             }
         },
-        [profiles, findProfileById, onError]
+        [profiles, findProfileById, onError],
     )
 
     return {

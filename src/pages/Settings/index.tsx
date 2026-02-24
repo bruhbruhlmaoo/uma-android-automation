@@ -29,15 +29,19 @@ const Settings = () => {
     const { openDataDirectory, resetSettings } = useSettings()
     const { handleImportSettings, handleExportSettings, showImportDialog, setShowImportDialog, showResetDialog, setShowResetDialog } = useSettingsFileManager()
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            justifyContent: "center",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+            }),
+        [colors],
+    )
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////

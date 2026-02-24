@@ -156,7 +156,6 @@ export const useSettingsManager = () => {
                 }
             }
 
-
             bsc.setSettings(newSettings)
             logWithTimestamp(`[SettingsManager] Settings loaded and applied to context ${context}.`)
             logWithTimestamp(`[SettingsManager] Scenario value after load: "${newSettings.general.scenario}"`)

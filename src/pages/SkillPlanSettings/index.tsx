@@ -123,79 +123,83 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         updateSkillsSetting("plan", "")
     }
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-        description: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginBottom: 16,
-            lineHeight: 20,
-        },
-        section: {
-            marginBottom: 24,
-        },
-        sectionTitle: {
-            fontSize: 18,
-            fontWeight: "600",
-            color: colors.foreground,
-            marginBottom: 12,
-        },
-        skillItem: {
-            backgroundColor: colors.card,
-            padding: 16,
-            borderRadius: 8,
-            marginBottom: 8,
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-        },
-        skillName: {
-            fontSize: 16,
-            fontWeight: "600",
-            color: colors.foreground,
-        },
-        skillDescription: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginTop: 4,
-        },
-        skillSubtext: {
-            fontSize: 14,
-            color: colors.primary,
-            marginTop: 4,
-        },
-        input: {
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
-            padding: 12,
-            fontSize: 16,
-            color: colors.foreground,
-            backgroundColor: colors.background,
-            marginBottom: 12,
-        },
-        inputLabel: {
-            fontSize: 16,
-            color: colors.foreground,
-            marginBottom: 8,
-        },
-        inputDescription: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginTop: 8,
-        },
-        inputContainer: {
-            marginBottom: 16,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+                description: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginBottom: 16,
+                    lineHeight: 20,
+                },
+                section: {
+                    marginBottom: 24,
+                },
+                sectionTitle: {
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                    marginBottom: 12,
+                },
+                skillItem: {
+                    backgroundColor: colors.card,
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 8,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                },
+                skillName: {
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                },
+                skillDescription: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginTop: 4,
+                },
+                skillSubtext: {
+                    fontSize: 14,
+                    color: colors.primary,
+                    marginTop: 4,
+                },
+                input: {
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    color: colors.foreground,
+                    backgroundColor: colors.background,
+                    marginBottom: 12,
+                },
+                inputLabel: {
+                    fontSize: 16,
+                    color: colors.foreground,
+                    marginBottom: 8,
+                },
+                inputDescription: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginTop: 8,
+                },
+                inputContainer: {
+                    marginBottom: 16,
+                },
+            }),
+        [colors],
+    )
 
     const renderOptions = () => {
         return (

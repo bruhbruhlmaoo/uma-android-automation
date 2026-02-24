@@ -174,85 +174,89 @@ const RacingPlanSettings = () => {
         }
     }
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-        description: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginBottom: 16,
-            lineHeight: 20,
-        },
-        section: {
-            marginBottom: 24,
-        },
-        sectionTitle: {
-            fontSize: 18,
-            fontWeight: "600",
-            color: colors.foreground,
-            marginBottom: 12,
-        },
-        raceItem: {
-            backgroundColor: colors.card,
-            padding: 16,
-            borderRadius: 8,
-            marginBottom: 8,
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-        },
-        raceName: {
-            fontSize: 16,
-            fontWeight: "600",
-            color: colors.foreground,
-        },
-        raceDate: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginTop: 4,
-        },
-        raceFans: {
-            fontSize: 14,
-            color: colors.primary,
-            marginTop: 4,
-        },
-        input: {
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
-            padding: 12,
-            fontSize: 16,
-            color: colors.foreground,
-            backgroundColor: colors.background,
-            marginBottom: 12,
-        },
-        inputLabel: {
-            fontSize: 16,
-            color: colors.foreground,
-            marginBottom: 8,
-        },
-        inputDescription: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginTop: 4,
-        },
-        terrainButton: {
-            padding: 12,
-            borderRadius: 8,
-            marginRight: 8,
-        },
-        terrainButtonText: {
-            fontSize: 14,
-            fontWeight: "600",
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+                description: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginBottom: 16,
+                    lineHeight: 20,
+                },
+                section: {
+                    marginBottom: 24,
+                },
+                sectionTitle: {
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                    marginBottom: 12,
+                },
+                raceItem: {
+                    backgroundColor: colors.card,
+                    padding: 16,
+                    borderRadius: 8,
+                    marginBottom: 8,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                },
+                raceName: {
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                },
+                raceDate: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginTop: 4,
+                },
+                raceFans: {
+                    fontSize: 14,
+                    color: colors.primary,
+                    marginTop: 4,
+                },
+                input: {
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    color: colors.foreground,
+                    backgroundColor: colors.background,
+                    marginBottom: 12,
+                },
+                inputLabel: {
+                    fontSize: 16,
+                    color: colors.foreground,
+                    marginBottom: 8,
+                },
+                inputDescription: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginTop: 4,
+                },
+                terrainButton: {
+                    padding: 12,
+                    borderRadius: 8,
+                    marginRight: 8,
+                },
+                terrainButtonText: {
+                    fontSize: 14,
+                    fontWeight: "600",
+                },
+            }),
+        [colors],
+    )
 
     const renderOptions = () => {
         return (

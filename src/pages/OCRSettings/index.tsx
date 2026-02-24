@@ -25,18 +25,22 @@ const OCRSettings = () => {
         })
     }
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            justifyContent: "center",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-        section: {
-            marginBottom: 24,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+                section: {
+                    marginBottom: 24,
+                },
+            }),
+        [colors],
+    )
 
     return (
         <View style={styles.root}>

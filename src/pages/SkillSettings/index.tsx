@@ -45,39 +45,43 @@ const SkillSettings = () => {
         })
     }
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            justifyContent: "center",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-        description: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginBottom: 16,
-            lineHeight: 20,
-        },
-        section: {
-            marginBottom: 16,
-        },
-        inputContainer: {
-            marginBottom: 16,
-        },
-        inputLabel: {
-            fontSize: 16,
-            color: colors.foreground,
-            marginBottom: 8,
-        },
-        inputDescription: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginTop: 8,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+                description: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginBottom: 16,
+                    lineHeight: 20,
+                },
+                section: {
+                    marginBottom: 16,
+                },
+                inputContainer: {
+                    marginBottom: 16,
+                },
+                inputLabel: {
+                    fontSize: 16,
+                    color: colors.foreground,
+                    marginBottom: 8,
+                },
+                inputDescription: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginTop: 8,
+                },
+            }),
+        [colors],
+    )
 
     return (
         <View style={styles.root}>

@@ -56,41 +56,45 @@ const RacingSettings = () => {
         }
     }
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            flexDirection: "column",
-            justifyContent: "center",
-            margin: 10,
-            backgroundColor: colors.background,
-        },
-        section: {
-            marginBottom: 24,
-        },
-        inputContainer: {
-            marginBottom: 16,
-        },
-        inputLabel: {
-            fontSize: 16,
-            color: colors.foreground,
-            marginBottom: 8,
-        },
-        input: {
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
-            padding: 12,
-            fontSize: 16,
-            color: colors.foreground,
-            backgroundColor: colors.background,
-        },
-        inputDescription: {
-            fontSize: 14,
-            color: colors.foreground,
-            opacity: 0.7,
-            marginTop: 4,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    margin: 10,
+                    backgroundColor: colors.background,
+                },
+                section: {
+                    marginBottom: 24,
+                },
+                inputContainer: {
+                    marginBottom: 16,
+                },
+                inputLabel: {
+                    fontSize: 16,
+                    color: colors.foreground,
+                    marginBottom: 8,
+                },
+                input: {
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    color: colors.foreground,
+                    backgroundColor: colors.background,
+                },
+                inputDescription: {
+                    fontSize: 14,
+                    color: colors.foreground,
+                    opacity: 0.7,
+                    marginTop: 4,
+                },
+            }),
+        [colors],
+    )
 
     return (
         <View style={styles.root}>
