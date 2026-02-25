@@ -103,85 +103,76 @@ const TrainingSettings = () => {
     }, [settings.training?.focusOnSparkStatTarget])
 
     // Sync currentProfileName from profile manager to settings context.
-    // Also check database directly to ensure we have the latest value.
+    // This is now purely for the BotStateContext as the ProfileContext is the source of truth for the UI.
     useEffect(() => {
         const syncProfileName = async () => {
             const profileName = currentProfileName || ""
-            // Also check database to ensure we have the latest value.
-            try {
-                const dbProfileName = await databaseManager.getCurrentProfileName()
-                const finalProfileName = dbProfileName || ""
-                if (settings.misc.currentProfileName !== finalProfileName) {
-                    setSettings({
-                        ...bsc.settings,
-                        misc: {
-                            ...bsc.settings.misc,
-                            currentProfileName: finalProfileName,
-                        },
-                    })
-                }
-            } catch (error) {
-                // Fallback to hook value if database read fails.
-                if (settings.misc.currentProfileName !== profileName) {
-                    setSettings({
-                        ...bsc.settings,
-                        misc: {
-                            ...bsc.settings.misc,
-                            currentProfileName: profileName,
-                        },
-                    })
-                }
+            if (settings.misc.currentProfileName !== profileName) {
+                setSettings((prev) => ({
+                    ...prev,
+                    misc: {
+                        ...prev.misc,
+                        currentProfileName: profileName,
+                    },
+                }))
             }
         }
         syncProfileName()
     }, [currentProfileName])
 
     const updateTrainingSetting = (key: keyof typeof settings.training, value: any) => {
-        setSettings({
-            ...bsc.settings,
+        setSettings((prev) => ({
+            ...prev,
             training: {
-                ...bsc.settings.training,
+                ...prev.training,
                 [key]: value,
             },
-        })
+        }))
     }
 
     const handleOverwriteSettings = async (profileSettings: Partial<Settings>) => {
         // Get the current profile name directly from the database to ensure we have the latest value.
         const dbProfileName = await databaseManager.getCurrentProfileName()
 
-        // Merge profile settings with current settings to create a complete Settings object for migration.
-        const mergedSettings = {
-            ...bsc.settings,
-            ...profileSettings,
-        } as Settings
+        // Apply settings using a functional update to avoid stale closure issues.
+        let finalUpdatedSettings: Settings | null = null
+        setSettings((prev) => {
+            // Merge profile settings with current settings to create a complete Settings object for migration.
+            const mergedSettings = {
+                ...prev,
+                ...profileSettings,
+            } as Settings
 
-        // Apply migrations to the merged settings (this handles focusOnSparkStatTarget and any future migrations).
-        const { settings: migratedSettings } = applyMigrations(mergedSettings)
+            // Apply migrations to the merged settings.
+            const { settings: migratedSettings } = applyMigrations(mergedSettings)
 
-        // Create the updated settings object with the migrated profile settings.
-        const updatedSettings = {
-            ...migratedSettings,
-            misc: {
-                ...bsc.settings.misc,
-                ...migratedSettings.misc,
-                currentProfileName: dbProfileName || "",
-            },
-        }
-        // Apply the profile's settings to current settings.
-        setSettings(updatedSettings)
+            // Create the updated settings object with the migrated profile settings.
+            const updatedSettings = {
+                ...migratedSettings,
+                misc: {
+                    ...prev.misc,
+                    ...migratedSettings.misc,
+                    currentProfileName: dbProfileName || "",
+                },
+            }
+            finalUpdatedSettings = updatedSettings
+            return updatedSettings
+        })
+
         // Save settings immediately with the updated settings.
-        await saveSettingsImmediate(updatedSettings)
+        if (finalUpdatedSettings) {
+            await saveSettingsImmediate(finalUpdatedSettings)
+        }
     }
 
     const updateTrainingStatTarget = (key: keyof typeof settings.trainingStatTarget, value: any) => {
-        setSettings({
-            ...bsc.settings,
+        setSettings((prev) => ({
+            ...prev,
             trainingStatTarget: {
-                ...bsc.settings.trainingStatTarget,
+                ...prev.trainingStatTarget,
                 [key]: value,
             },
-        })
+        }))
     }
 
     const styles = useMemo(
