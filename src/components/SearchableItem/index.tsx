@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Animated, View, StyleProp, ViewStyle } from "react-native"
-import { useRoute } from "@react-navigation/native"
+import { useRoute, useNavigation } from "@react-navigation/native"
 import { useTheme } from "../../context/ThemeContext"
 import { useSearchRegistry } from "../../context/SearchRegistryContext"
 import { useSearchPage } from "../../context/SearchPageContext"
@@ -35,6 +35,7 @@ interface SearchableItemProps {
  */
 const SearchableItemContent = ({ id, children, scrollViewRef, style }: SearchableItemProps) => {
     const route = useRoute<any>()
+    const navigation = useNavigation<any>()
     const { colors } = useTheme()
     const highlightAnim = useRef(new Animated.Value(0)).current
     const highlightColor = useRef(colors.primary).current
@@ -42,52 +43,87 @@ const SearchableItemContent = ({ id, children, scrollViewRef, style }: Searchabl
     const viewRef = useRef<any>(null)
     const pageContext = useSearchPage()
 
+    // State-driven so that re-render updates the interpolation color before animation starts.
+    const [isFallback, setIsFallback] = useState(false)
+    const [animTrigger, setAnimTrigger] = useState(0)
+
     const finalScrollViewRef = scrollViewRef || pageContext?.scrollViewRef
 
+    /**
+     * Runs the highlight animation and scrolls to the element.
+     */
+    const runHighlight = () => {
+        // Animate the border color to indicate the selected item.
+        Animated.sequence([
+            Animated.timing(highlightAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: false,
+            }),
+            Animated.delay(1000),
+            Animated.timing(highlightAnim, {
+                toValue: 0,
+                duration: 500,
+                useNativeDriver: false,
+            }),
+        ]).start()
+
+        // Scroll to the element.
+        if (finalScrollViewRef?.current && viewRef.current) {
+            // Wait for layout to settle before measuring.
+            setTimeout(() => {
+                if (viewRef.current && finalScrollViewRef.current) {
+                    try {
+                        viewRef.current.measureLayout(
+                            finalScrollViewRef.current as any,
+                            (x: number, y: number) => {
+                                // Scroll slightly above the item so it's not hugging the top edge.
+                                finalScrollViewRef.current.scrollTo({ y: Math.max(0, y - 20), animated: true })
+                            },
+                            () => {
+                                console.warn("Failed to measure layout for scrolling from SearchableItem.")
+                            },
+                        )
+                    } catch (e) {
+                        console.warn("Error measuring layout while scrolling from SearchableItem.", e)
+                    }
+                }
+            }, 100) // Small delay to ensure render is complete.
+        }
+    }
+
+    // Primary highlight: triggers immediately when this item is the direct target.
     useEffect(() => {
         if (route.params?.targetId === id) {
-            // Animate the border color to indicate the selected item.
-            Animated.sequence([
-                Animated.timing(highlightAnim, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: false,
-                }),
-                Animated.delay(1000),
-                Animated.timing(highlightAnim, {
-                    toValue: 0,
-                    duration: 500,
-                    useNativeDriver: false,
-                }),
-            ]).start()
-
-            // Scroll to the element.
-            if (finalScrollViewRef?.current && viewRef.current) {
-                // Wait for layout to settle before measuring.
-                setTimeout(() => {
-                    if (viewRef.current && finalScrollViewRef.current) {
-                        try {
-                            viewRef.current.measureLayout(
-                                finalScrollViewRef.current as any,
-                                (x: number, y: number) => {
-                                    // Scroll slightly above the item so it's not hugging the top edge.
-                                    finalScrollViewRef.current.scrollTo({ y: Math.max(0, y - 20), animated: true })
-                                },
-                                () => {
-                                    console.warn("Failed to measure layout for scrolling from SearchableItem.")
-                                },
-                            )
-                        } catch (e) {
-                            console.warn("Error measuring layout while scrolling from SearchableItem.", e)
-                        }
-                    }
-                }, 100) // Small delay to ensure render is complete.
+            // Clear fallbackTargetId so the parent doesn't also highlight.
+            if (route.params?.fallbackTargetId) {
+                navigation.setParams({ fallbackTargetId: undefined })
             }
-        }
-    }, [route.params?.targetId, id, highlightAnim, finalScrollViewRef])
 
-    // Indicates whether this item is being highlighted as a fallback for a hidden child item.
-    const isFallback = route.params?.isFallbackHighlight && route.params?.targetId === id
+            setIsFallback(false)
+            setAnimTrigger((prev) => prev + 1)
+        }
+    }, [route.params?.targetId, id])
+
+    // Fallback highlight: triggers after a delay when this item is the fallback parent.
+    // The delay gives the primary target time to mount and clear fallbackTargetId.
+    useEffect(() => {
+        if (route.params?.fallbackTargetId === id) {
+            const timer = setTimeout(() => {
+                setIsFallback(true)
+                setAnimTrigger((prev) => prev + 1)
+            }, 300)
+
+            return () => clearTimeout(timer)
+        }
+    }, [route.params?.fallbackTargetId, id])
+
+    // Runs the animation after state has been committed so the interpolation uses the correct color.
+    useEffect(() => {
+        if (animTrigger > 0) {
+            runHighlight()
+        }
+    }, [animTrigger])
 
     // This border color animates from transparent to the highlight color (or fallback color if needed).
     const borderColor = highlightAnim.interpolate({

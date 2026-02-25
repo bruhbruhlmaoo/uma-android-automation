@@ -139,8 +139,8 @@ const PageHeader = ({ title, showHomeButton = true, titleComponent, centerCompon
         Keyboard.dismiss()
 
         const navParams = {
-            targetId: item.parentId || item.id,
-            isFallbackHighlight: !!item.parentId,
+            targetId: item.id,
+            fallbackTargetId: item.parentId || undefined,
         }
 
         // List of pages that are nested inside the "Settings" stack
