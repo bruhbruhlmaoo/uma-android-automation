@@ -1,4 +1,4 @@
-import { useMemo,  useContext, useState, useRef, FC } from "react"
+import { useMemo, useContext, useState, useRef, FC } from "react"
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from "react-native"
 import { Divider } from "react-native-paper"
 import { useTheme } from "../../context/ThemeContext"
@@ -320,26 +320,26 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         <View style={styles.root}>
             <PageHeader title={`${title} Plan`} />
             <SearchPageProvider page={name} scrollViewRef={scrollViewRef}>
-            <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
-                <View className="m-1">
-                    <Text style={styles.description}>{description}</Text>
-                    <Divider style={{ marginBottom: 16 }} />
-                    <CustomCheckbox
-                        searchId={`enable-career-complete-skill-plan-${planKey}`}
-                        checked={enabled}
-                        onCheckedChange={(checked) => updateSkillsSetting("enabled", checked)}
-                        label={`Enable ${title} Plan (Beta)`}
-                        description={"When enabled, the bot will attempt to purchase skills based on the following configuration."}
-                    />
-                    {enabled && (
-                        <>
-                            {renderOptions()}
-                            <Divider style={{ marginBottom: 16 }} />
-                            {renderSkillList()}
-                        </>
-                    )}
-                </View>
-            </ScrollView>
+                <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+                    <View className="m-1">
+                        <Text style={styles.description}>{description}</Text>
+                        <Divider style={{ marginBottom: 16 }} />
+                        <CustomCheckbox
+                            searchId={`enable-career-complete-skill-plan-${planKey}`}
+                            checked={enabled}
+                            onCheckedChange={(checked) => updateSkillsSetting("enabled", checked)}
+                            label={`Enable ${title} Plan (Beta)`}
+                            description={"When enabled, the bot will attempt to purchase skills based on the following configuration."}
+                        />
+                        {enabled && (
+                            <>
+                                {renderOptions()}
+                                <Divider style={{ marginBottom: 16 }} />
+                                {renderSkillList()}
+                            </>
+                        )}
+                    </View>
+                </ScrollView>
             </SearchPageProvider>
         </View>
     )

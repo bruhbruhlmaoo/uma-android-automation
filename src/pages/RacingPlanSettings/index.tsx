@@ -1,4 +1,4 @@
-import { useMemo,  useContext, useState, useEffect, useRef } from "react"
+import { useMemo, useContext, useState, useEffect, useRef } from "react"
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-native"
 import { Divider } from "react-native-paper"
 import { useTheme } from "../../context/ThemeContext"
@@ -264,7 +264,14 @@ const RacingPlanSettings = () => {
     const renderOptions = () => {
         return (
             <>
-                <SearchableItem id="minimum-fans-threshold" condition={enableRacingPlan} parentId="enable-racing-plan" title="Minimum Fans Threshold" description="Bot will prioritize races with at least this many fans." style={styles.section}>
+                <SearchableItem
+                    id="minimum-fans-threshold"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Minimum Fans Threshold"
+                    description="Bot will prioritize races with at least this many fans."
+                    style={styles.section}
+                >
                     <Text style={styles.inputLabel}>Minimum Fans Threshold</Text>
                     <Input
                         style={styles.input}
@@ -279,7 +286,14 @@ const RacingPlanSettings = () => {
                     <Text style={styles.inputDescription}>Bot will prioritize races with at least this many fans.</Text>
                 </SearchableItem>
 
-                <SearchableItem id="look-ahead-days" condition={enableRacingPlan} parentId="enable-racing-plan" title="Look-Ahead Days" description="Number of days to look ahead when making smart racing decisions." style={styles.section}>
+                <SearchableItem
+                    id="look-ahead-days"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Look-Ahead Days"
+                    description="Number of days to look ahead when making smart racing decisions."
+                    style={styles.section}
+                >
                     <Text style={styles.inputLabel}>Look-Ahead Days</Text>
                     <Input
                         style={styles.input}
@@ -294,7 +308,14 @@ const RacingPlanSettings = () => {
                     <Text style={styles.inputDescription}>Number of days to look ahead when making smart racing decisions.</Text>
                 </SearchableItem>
 
-                <SearchableItem id="smart-racing-check-interval" condition={enableRacingPlan} parentId="enable-racing-plan" title="Smart Racing Check Interval" description="Interval in seconds between smart racing checks." style={styles.section}>
+                <SearchableItem
+                    id="smart-racing-check-interval"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Smart Racing Check Interval"
+                    description="Interval in seconds between smart racing checks."
+                    style={styles.section}
+                >
                     <Text style={styles.inputLabel}>Smart Racing Check Interval</Text>
                     <Input
                         style={styles.input}
@@ -309,7 +330,14 @@ const RacingPlanSettings = () => {
                     <Text style={styles.inputDescription}>How often the bot checks for optimal racing opportunities. Lower values = more frequent checks.</Text>
                 </SearchableItem>
 
-                <SearchableItem id="minimum-quality-threshold" condition={enableRacingPlan} parentId="enable-racing-plan" title="Minimum Quality Threshold" description="The minimum score a race must have to be considered acceptable. Races scoring below this will be skipped even if no better options are available soon." style={styles.section}>
+                <SearchableItem
+                    id="minimum-quality-threshold"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Minimum Quality Threshold"
+                    description="The minimum score a race must have to be considered acceptable. Races scoring below this will be skipped even if no better options are available soon."
+                    style={styles.section}
+                >
                     <Text style={styles.inputLabel}>Minimum Quality Threshold</Text>
                     <Input
                         style={styles.input}
@@ -336,7 +364,14 @@ const RacingPlanSettings = () => {
                     </Text>
                 </SearchableItem>
 
-                <SearchableItem id="time-decay-factor" condition={enableRacingPlan} parentId="enable-racing-plan" title="Time Decay Factor" description="Future races are worth this percentage of their raw score. Lower values mean future races are discounted more heavily, making the bot less willing to wait." style={styles.section}>
+                <SearchableItem
+                    id="time-decay-factor"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Time Decay Factor"
+                    description="Future races are worth this percentage of their raw score. Lower values mean future races are discounted more heavily, making the bot less willing to wait."
+                    style={styles.section}
+                >
                     <Text style={styles.inputLabel}>Time Decay Factor</Text>
                     <Input
                         style={styles.input}
@@ -363,7 +398,14 @@ const RacingPlanSettings = () => {
                     </Text>
                 </SearchableItem>
 
-                <SearchableItem id="improvement-threshold" condition={enableRacingPlan} parentId="enable-racing-plan" title="Improvement Threshold" description="The minimum improvement (in points) needed from waiting for a future race to make waiting worthwhile. Only wait if the improvement exceeds this value." style={styles.section}>
+                <SearchableItem
+                    id="improvement-threshold"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Improvement Threshold"
+                    description="The minimum improvement (in points) needed from waiting for a future race to make waiting worthwhile. Only wait if the improvement exceeds this value."
+                    style={styles.section}
+                >
                     <Text style={styles.inputLabel}>Improvement Threshold</Text>
                     <Input
                         style={styles.input}
@@ -390,7 +432,14 @@ const RacingPlanSettings = () => {
                     </Text>
                 </SearchableItem>
 
-                <SearchableItem id="preferred-terrain" condition={enableRacingPlan} parentId="enable-racing-plan" title="Preferred Terrain" description="The preferred terrain for races. The bot will prioritize races with this terrain when selecting races to enter." style={styles.section}>
+                <SearchableItem
+                    id="preferred-terrain"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Preferred Terrain"
+                    description="The preferred terrain for races. The bot will prioritize races with this terrain when selecting races to enter."
+                    style={styles.section}
+                >
                     <Text style={styles.sectionTitle}>Preferred Terrain</Text>
                     <Text style={styles.inputDescription}>The preferred terrain for races. The bot will prioritize races with this terrain when selecting races to enter.</Text>
                     <View style={{ flexDirection: "row" }}>
@@ -420,7 +469,14 @@ const RacingPlanSettings = () => {
                     </View>
                 </SearchableItem>
 
-                <SearchableItem id="preferred-race-grades" condition={enableRacingPlan} parentId="enable-racing-plan" title="Preferred Race Grades" description="Select which race grades the bot should prioritize." style={styles.section}>
+                <SearchableItem
+                    id="preferred-race-grades"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Preferred Race Grades"
+                    description="Select which race grades the bot should prioritize."
+                    style={styles.section}
+                >
                     <Text style={styles.sectionTitle}>Preferred Race Grades</Text>
                     <Text style={styles.inputDescription}>Select which race grades the bot should prioritize.</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
@@ -450,7 +506,14 @@ const RacingPlanSettings = () => {
                     </View>
                 </SearchableItem>
 
-                <SearchableItem id="preferred-race-distances" condition={enableRacingPlan} parentId="enable-racing-plan" title="Preferred Race Distances" description="Select which race distances the bot should prioritize." style={styles.section}>
+                <SearchableItem
+                    id="preferred-race-distances"
+                    condition={enableRacingPlan}
+                    parentId="enable-racing-plan"
+                    title="Preferred Race Distances"
+                    description="Select which race distances the bot should prioritize."
+                    style={styles.section}
+                >
                     <Text style={styles.sectionTitle}>Preferred Race Distances</Text>
                     <Text style={styles.inputDescription}>Select which race distances the bot should prioritize.</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
@@ -494,28 +557,30 @@ const RacingPlanSettings = () => {
                     condition={enableRacingPlan}
                     parentId="enable-racing-plan"
                 >
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.sectionTitle}>Planned Races</Text>
-                        <Text style={[styles.inputDescription, { marginTop: 0 }]}>
-                            Selected {parsedRacingPlan.length} / {filteredRaces.length} races
-                        </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 12 }}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.sectionTitle}>Planned Races</Text>
+                            <Text style={[styles.inputDescription, { marginTop: 0 }]}>
+                                Selected {parsedRacingPlan.length} / {filteredRaces.length} races
+                            </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                            <CustomButton icon={<Plus size={16} />} onPress={() => addAllRacesToPlan()}>
+                                Add All
+                            </CustomButton>
+                            <CustomButton icon={<Trash2 size={16} />} onPress={() => clearAllRacesFromPlan()}>
+                                Clear
+                            </CustomButton>
+                        </View>
                     </View>
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                        <CustomButton icon={<Plus size={16} />} onPress={() => addAllRacesToPlan()}>
-                            Add All
-                        </CustomButton>
-                        <CustomButton icon={<Trash2 size={16} />} onPress={() => clearAllRacesFromPlan()}>
-                            Clear
-                        </CustomButton>
-                    </View>
-                </View>
 
-                <View style={{ flexDirection: "row" }}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.inputDescription, { marginTop: 0 }]}>Select which races the bot should prioritize using opportunity cost analysis. Be sure to double check your selected races after making changes to the filters.</Text>
+                    <View style={{ flexDirection: "row" }}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.inputDescription, { marginTop: 0 }]}>
+                                Select which races the bot should prioritize using opportunity cost analysis. Be sure to double check your selected races after making changes to the filters.
+                            </Text>
+                        </View>
                     </View>
-                </View>
                 </SearchableItem>
 
                 <View style={{ marginBottom: 16 }}>
@@ -565,43 +630,43 @@ const RacingPlanSettings = () => {
             <PageHeader title="Racing Plan" />
 
             <SearchPageProvider page="RacingPlanSettings" scrollViewRef={scrollViewRef}>
-            <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
-                <View className="m-1">
-                    <View style={styles.section}>
-                        <Text style={styles.description}>
-                            {
-                                "Uses opportunity cost analysis to optimize race selection by looking ahead N days for races matching your character's aptitudes (A/S terrain/distance). Scores races by fans, grade, and aptitude matches.\n\nUses standard settings until Classic Year, then combines both this and standard racing settings during Classic Year. Only fully activates in Senior Year. Races when current opportunities are good enough and waiting doesn't offer significantly better value, ensuring steady fan accumulation without endless waiting.\n\nNote: When Racing Plan is enabled, the \"Days to Run Extra Races\" setting in Racing Settings is ignored, as Racing Plan controls when races occur based on opportunity cost analysis or mandatory race detection."
-                            }
-                        </Text>
+                <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+                    <View className="m-1">
+                        <View style={styles.section}>
+                            <Text style={styles.description}>
+                                {
+                                    "Uses opportunity cost analysis to optimize race selection by looking ahead N days for races matching your character's aptitudes (A/S terrain/distance). Scores races by fans, grade, and aptitude matches.\n\nUses standard settings until Classic Year, then combines both this and standard racing settings during Classic Year. Only fully activates in Senior Year. Races when current opportunities are good enough and waiting doesn't offer significantly better value, ensuring steady fan accumulation without endless waiting.\n\nNote: When Racing Plan is enabled, the \"Days to Run Extra Races\" setting in Racing Settings is ignored, as Racing Plan controls when races occur based on opportunity cost analysis or mandatory race detection."
+                                }
+                            </Text>
 
-                        <Divider style={{ marginBottom: 16 }} />
+                            <Divider style={{ marginBottom: 16 }} />
 
-                        <CustomCheckbox
-                            searchId="enable-racing-plan"
-                            checked={enableRacingPlan}
-                            onCheckedChange={(checked) => updateRacingSetting("enableRacingPlan", checked)}
-                            label="Enable Racing Plan (Beta)"
-                            description={"When enabled, the bot will use smart race planning to optimize race selection."}
-                        />
+                            <CustomCheckbox
+                                searchId="enable-racing-plan"
+                                checked={enableRacingPlan}
+                                onCheckedChange={(checked) => updateRacingSetting("enableRacingPlan", checked)}
+                                label="Enable Racing Plan (Beta)"
+                                description={"When enabled, the bot will use smart race planning to optimize race selection."}
+                            />
 
-                        <CustomCheckbox
-                            searchId="enable-mandatory-racing-plan"
-                            searchCondition={enableRacingPlan}
-                            parentId="enable-racing-plan"
-                            checked={enableMandatoryRacingPlan}
-                            onCheckedChange={(checked) => updateRacingSetting("enableMandatoryRacingPlan", checked)}
-                            label="Treat Planned Races as Mandatory"
-                            description={
-                                "When enabled, the bot will prioritize the specific planned race that matches the current turn number, bypassing opportunity cost analysis. Note that it will only run the races if the racer's aptitudes are double predictions (both terrain and distance must be B or greater)."
-                            }
-                            style={{ marginTop: 16 }}
-                        />
+                            <CustomCheckbox
+                                searchId="enable-mandatory-racing-plan"
+                                searchCondition={enableRacingPlan}
+                                parentId="enable-racing-plan"
+                                checked={enableMandatoryRacingPlan}
+                                onCheckedChange={(checked) => updateRacingSetting("enableMandatoryRacingPlan", checked)}
+                                label="Treat Planned Races as Mandatory"
+                                description={
+                                    "When enabled, the bot will prioritize the specific planned race that matches the current turn number, bypassing opportunity cost analysis. Note that it will only run the races if the racer's aptitudes are double predictions (both terrain and distance must be B or greater)."
+                                }
+                                style={{ marginTop: 16 }}
+                            />
+                        </View>
+
+                        {renderOptions()}
+                        {renderRaceList()}
                     </View>
-
-                    {renderOptions()}
-                    {renderRaceList()}
-                </View>
-            </ScrollView>
+                </ScrollView>
             </SearchPageProvider>
         </View>
     )

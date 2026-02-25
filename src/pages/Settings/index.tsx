@@ -1,5 +1,5 @@
 import scenarios from "../../data/scenarios.json"
-import { useMemo,  useContext, useEffect, useState, useRef } from "react"
+import { useMemo, useContext, useEffect, useState, useRef } from "react"
 import { SearchPageProvider } from "../../context/SearchPageContext"
 import { BotStateContext } from "../../context/BotStateContext"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
@@ -273,11 +273,7 @@ const Settings = () => {
 
                 <Separator style={{ marginVertical: 16 }} />
 
-                <CustomTitle
-                    searchId="settings-management-title"
-                    title="Settings Management"
-                    description="Import and export settings from JSON file or access the app's data directory."
-                />
+                <CustomTitle searchId="settings-management-title" title="Settings Management" description="Import and export settings from JSON file or access the app's data directory." />
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <CustomButton onPress={handleImportSettings} variant="default" style={{ width: 150 }}>
@@ -319,25 +315,19 @@ const Settings = () => {
             <PageHeader title="Settings" rightComponent={<ThemeToggle />} />
 
             <SearchPageProvider page="SettingsMain" scrollViewRef={scrollViewRef}>
-                <ScrollView
-                    ref={scrollViewRef}
-                    nestedScrollEnabled={true}
-                    showsVerticalScrollIndicator={false}
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1 }}
-                >
-                <View className="m-1">
-                    {renderCampaignPicker()}
-                    {renderTrainingLink()}
-                    {renderTrainingEventLink()}
-                    {renderOCRLink()}
-                    {renderRacingLink()}
-                    {renderSkillsLink()}
-                    {renderEventLogVisualizerLink()}
-                    {renderDebugLink()}
-                    {renderMiscSettings()}
-                </View>
-            </ScrollView>
+                <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+                    <View className="m-1">
+                        {renderCampaignPicker()}
+                        {renderTrainingLink()}
+                        {renderTrainingEventLink()}
+                        {renderOCRLink()}
+                        {renderRacingLink()}
+                        {renderSkillsLink()}
+                        {renderEventLogVisualizerLink()}
+                        {renderDebugLink()}
+                        {renderMiscSettings()}
+                    </View>
+                </ScrollView>
             </SearchPageProvider>
 
             <Snackbar

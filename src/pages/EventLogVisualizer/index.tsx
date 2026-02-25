@@ -30,63 +30,67 @@ const EventLogVisualizer: React.FC = () => {
     const [showTriggers, setShowTriggers] = useState<boolean>(false)
     const [viewMode, setViewMode] = useState<"timeline" | "years">("timeline")
 
-    const styles = useMemo(() => StyleSheet.create({
-        root: {
-            flex: 1,
-            backgroundColor: colors.background,
-        },
-        content: {
-            padding: 12,
-        },
-        empty: {
-            marginTop: 12,
-            marginBottom: 12,
-            color: "white",
-            opacity: 0.8,
-        },
-        totalTimeTitle: {
-            fontSize: 18,
-            fontWeight: "bold",
-        },
-        totalTimeValue: {
-            fontSize: 18,
-            fontWeight: "600",
-        },
-        totalTimeHuman: {
-            fontSize: 14,
-        },
-        toggleContainer: {
-            flexDirection: "row",
-            backgroundColor: colors.card,
-            borderRadius: 8,
-            padding: 4,
-            gap: 4,
-        },
-        toggleButton: {
-            flex: 1,
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            borderRadius: 6,
-            alignItems: "center",
-            justifyContent: "center",
-        },
-        toggleButtonActive: {
-            backgroundColor: colors.primary,
-        },
-        toggleButtonInactive: {
-            backgroundColor: "transparent",
-        },
-        toggleButtonText: {
-            fontSize: 14,
-            fontWeight: "600",
-        },
-        toggleButtonTextActive: {
-            color: colors.primaryForeground,
-        },
-        toggleButtonTextInactive: {
-            color: colors.foreground,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                root: {
+                    flex: 1,
+                    backgroundColor: colors.background,
+                },
+                content: {
+                    padding: 12,
+                },
+                empty: {
+                    marginTop: 12,
+                    marginBottom: 12,
+                    color: "white",
+                    opacity: 0.8,
+                },
+                totalTimeTitle: {
+                    fontSize: 18,
+                    fontWeight: "bold",
+                },
+                totalTimeValue: {
+                    fontSize: 18,
+                    fontWeight: "600",
+                },
+                totalTimeHuman: {
+                    fontSize: 14,
+                },
+                toggleContainer: {
+                    flexDirection: "row",
+                    backgroundColor: colors.card,
+                    borderRadius: 8,
+                    padding: 4,
+                    gap: 4,
+                },
+                toggleButton: {
+                    flex: 1,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderRadius: 6,
+                    alignItems: "center",
+                    justifyContent: "center",
+                },
+                toggleButtonActive: {
+                    backgroundColor: colors.primary,
+                },
+                toggleButtonInactive: {
+                    backgroundColor: "transparent",
+                },
+                toggleButtonText: {
+                    fontSize: 14,
+                    fontWeight: "600",
+                },
+                toggleButtonTextActive: {
+                    color: colors.primaryForeground,
+                },
+                toggleButtonTextInactive: {
+                    color: colors.foreground,
+                },
+            }),
+        [colors],
+    )
 
     async function onPickFiles() {
         try {

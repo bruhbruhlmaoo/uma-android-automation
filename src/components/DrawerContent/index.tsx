@@ -1,4 +1,4 @@
-import React, { useMemo,  useState, useEffect, useContext, useRef } from "react"
+import React, { useMemo, useState, useEffect, useContext, useRef } from "react"
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native"
 import { DrawerContentScrollView, DrawerContentComponentProps, useDrawerStatus } from "@react-navigation/drawer"
 import { CommonActions } from "@react-navigation/native"
@@ -34,123 +34,127 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
         "DebugSettings",
     ]
 
-    const styles = useMemo(() => StyleSheet.create({
-        container: {
-            flex: 1,
-            backgroundColor: colors.card,
-        },
-        header: {
-            paddingTop: 40,
-            paddingBottom: 24,
-            paddingHorizontal: 20,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-        },
-        headerTitle: {
-            fontSize: 24,
-            fontWeight: "bold",
-            color: colors.foreground,
-            marginBottom: 4,
-        },
-        headerSubtitle: {
-            fontSize: 14,
-            color: colors.mutedForeground,
-        },
-        menuContainer: {
-            paddingTop: 8,
-        },
-        menuItem: {
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 16,
-            paddingHorizontal: 20,
-            marginHorizontal: 4,
-            marginVertical: 2,
-            borderRadius: 0,
-        },
-        menuItemActive: {
-            backgroundColor: colors.muted,
-        },
-        menuItemIcon: {
-            marginRight: 16,
-            width: 24,
-            alignItems: "center",
-        },
-        menuItemText: {
-            fontSize: 16,
-            fontWeight: "500",
-            color: colors.foreground,
-            flex: 1,
-        },
-        menuItemTextActive: {
-            color: colors.primary,
-            fontWeight: "600",
-        },
-        chevronButton: {
-            padding: 4,
-            marginLeft: 8,
-            borderRadius: 4,
-        },
-        nestedContainer: {
-            overflow: "hidden",
-        },
-        nestedItem: {
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 12,
-            paddingHorizontal: 20,
-            paddingLeft: 40,
-            marginHorizontal: 4,
-            marginVertical: 2,
-            borderRadius: 0,
-        },
-        nestedItemActive: {
-            backgroundColor: colors.muted,
-        },
-        nestedItemIcon: {
-            marginRight: 16,
-            width: 24,
-            alignItems: "center",
-        },
-        nestedItemText: {
-            fontSize: 15,
-            fontWeight: "400",
-            color: colors.foreground,
-            flex: 1,
-        },
-        nestedItemTextActive: {
-            color: colors.primary,
-            fontWeight: "500",
-        },
-        doubleNestedItem: {
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 12,
-            paddingHorizontal: 20,
-            paddingLeft: 64,
-            marginHorizontal: 4,
-            marginVertical: 2,
-            borderRadius: 0,
-        },
-        doubleNestedItemActive: {
-            backgroundColor: colors.muted,
-        },
-        doubleNestedItemIcon: {
-            marginRight: 16,
-            width: 24,
-            alignItems: "center",
-        },
-        doubleNestedItemText: {
-            fontSize: 14,
-            fontWeight: "400",
-            color: colors.foreground,
-            flex: 1,
-        },
-        doubleNestedItemTextActive: {
-            color: colors.primary,
-            fontWeight: "500",
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                container: {
+                    flex: 1,
+                    backgroundColor: colors.card,
+                },
+                header: {
+                    paddingTop: 40,
+                    paddingBottom: 24,
+                    paddingHorizontal: 20,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                },
+                headerTitle: {
+                    fontSize: 24,
+                    fontWeight: "bold",
+                    color: colors.foreground,
+                    marginBottom: 4,
+                },
+                headerSubtitle: {
+                    fontSize: 14,
+                    color: colors.mutedForeground,
+                },
+                menuContainer: {
+                    paddingTop: 8,
+                },
+                menuItem: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 16,
+                    paddingHorizontal: 20,
+                    marginHorizontal: 4,
+                    marginVertical: 2,
+                    borderRadius: 0,
+                },
+                menuItemActive: {
+                    backgroundColor: colors.muted,
+                },
+                menuItemIcon: {
+                    marginRight: 16,
+                    width: 24,
+                    alignItems: "center",
+                },
+                menuItemText: {
+                    fontSize: 16,
+                    fontWeight: "500",
+                    color: colors.foreground,
+                    flex: 1,
+                },
+                menuItemTextActive: {
+                    color: colors.primary,
+                    fontWeight: "600",
+                },
+                chevronButton: {
+                    padding: 4,
+                    marginLeft: 8,
+                    borderRadius: 4,
+                },
+                nestedContainer: {
+                    overflow: "hidden",
+                },
+                nestedItem: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 12,
+                    paddingHorizontal: 20,
+                    paddingLeft: 40,
+                    marginHorizontal: 4,
+                    marginVertical: 2,
+                    borderRadius: 0,
+                },
+                nestedItemActive: {
+                    backgroundColor: colors.muted,
+                },
+                nestedItemIcon: {
+                    marginRight: 16,
+                    width: 24,
+                    alignItems: "center",
+                },
+                nestedItemText: {
+                    fontSize: 15,
+                    fontWeight: "400",
+                    color: colors.foreground,
+                    flex: 1,
+                },
+                nestedItemTextActive: {
+                    color: colors.primary,
+                    fontWeight: "500",
+                },
+                doubleNestedItem: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 12,
+                    paddingHorizontal: 20,
+                    paddingLeft: 64,
+                    marginHorizontal: 4,
+                    marginVertical: 2,
+                    borderRadius: 0,
+                },
+                doubleNestedItemActive: {
+                    backgroundColor: colors.muted,
+                },
+                doubleNestedItemIcon: {
+                    marginRight: 16,
+                    width: 24,
+                    alignItems: "center",
+                },
+                doubleNestedItemText: {
+                    fontSize: 14,
+                    fontWeight: "400",
+                    color: colors.foreground,
+                    flex: 1,
+                },
+                doubleNestedItemTextActive: {
+                    color: colors.primary,
+                    fontWeight: "500",
+                },
+            }),
+        [colors],
+    )
 
     // Define the menu item configurations for the drawer.
     const menuItems: MenuItem[] = [
