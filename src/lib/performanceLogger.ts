@@ -43,11 +43,12 @@ export class PerformanceLogger {
 
     private metrics: PerformanceMetric[] = []
     private options: PerformanceLoggerOptions
+    private maxMetricsHistory = 100
 
     constructor(options: PerformanceLoggerOptions = {}) {
         this.options = {
             enableConsoleLogging: true,
-            maxMetricsHistory: 1000,
+            maxMetricsHistory: this.maxMetricsHistory,
             ...options,
         }
     }
@@ -94,8 +95,8 @@ export class PerformanceLogger {
         this.metrics.push(metric)
 
         // Keep only the most recent metrics to prevent memory issues.
-        if (this.metrics.length > (this.options.maxMetricsHistory || 1000)) {
-            this.metrics = this.metrics.slice(-(this.options.maxMetricsHistory || 1000))
+        if (this.metrics.length > (this.options.maxMetricsHistory || this.maxMetricsHistory)) {
+            this.metrics = this.metrics.slice(-(this.options.maxMetricsHistory || this.maxMetricsHistory))
         }
 
         this.logMetric(metric)
