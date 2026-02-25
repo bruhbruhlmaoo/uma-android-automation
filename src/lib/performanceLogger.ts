@@ -110,7 +110,7 @@ export class PerformanceLogger {
         const logMessage = `[PERF] ${metric.category.toUpperCase()} - ${metric.operation}: ${metric.duration.toFixed(2)}ms${metric.details ? ` | Details: ${JSON.stringify(metric.details)}` : ""}`
 
         if (this.options.enableConsoleLogging) {
-            if (metric.duration > 500) {
+            if (metric.duration >= 300) {
                 console.warn(logMessage) // Warn for slow operations.
             } else {
                 console.log(logMessage)
