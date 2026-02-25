@@ -78,12 +78,12 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     const content = (
         <View style={style}>
             {label && (
-                <View style={{ marginBottom: 8 }}>
+                <View style={{ marginBottom: 4 }}>
                     <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>{label}</Text>
                 </View>
             )}
             {description && (
-                <View style={{ marginBottom: 12, marginTop: -4 }}>
+                <View>
                     <Text style={{ fontSize: 14, color: colors.foreground, opacity: 0.7 }}>{description}</Text>
                 </View>
             )}
