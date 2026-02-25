@@ -341,7 +341,7 @@ export interface BotStateProviderProps {
     setReadyStatus: (readyStatus: boolean) => void
     defaultSettings: Settings
     settings: Settings
-    setSettings: (settings: Settings) => void
+    setSettings: (settings: Settings | ((prev: Settings) => Settings)) => void
     appName: string
     setAppName: (appName: string) => void
     appVersion: string
@@ -360,12 +360,20 @@ export const BotStateProvider = ({ children }: any): React.ReactElement => {
     const [settings, setSettings] = useState<Settings>(() => JSON.parse(JSON.stringify(defaultSettings)))
 
     // Wrapped setSettings with performance logging.
-    const setSettingsWithLogging = (newSettings: Settings) => {
+    const setSettingsWithLogging = (update: Settings | ((prev: Settings) => Settings)) => {
         const endTiming = startTiming("bot_state_set_settings", "state")
 
         try {
-            setSettings(newSettings)
-            endTiming({ status: "success" })
+            if (typeof update === "function") {
+                setSettings((prev) => {
+                    const newSettings = update(prev)
+                    endTiming({ status: "success" })
+                    return newSettings
+                })
+            } else {
+                setSettings(update)
+                endTiming({ status: "success" })
+            }
         } catch (error) {
             endTiming({ status: "error", error: error instanceof Error ? error.message : String(error) })
             throw error
