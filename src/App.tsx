@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react"
+import { View } from "react-native"
 import { NavigationContainer } from "@react-navigation/native"
 import { createDrawerNavigator } from "@react-navigation/drawer"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
@@ -8,6 +10,8 @@ import { BotStateProvider } from "./context/BotStateContext"
 import { MessageLogProvider } from "./context/MessageLogContext"
 import { SettingsProvider } from "./context/SettingsContext"
 import { ThemeProvider, useTheme } from "./context/ThemeContext"
+import { SearchProvider, useSearchRegistry } from "./context/SearchRegistryContext"
+import { ProfileProvider } from "./context/ProfileContext"
 import { useBootstrap } from "./hooks/useBootstrap"
 import Home from "./pages/Home"
 import Settings from "./pages/Settings"
@@ -23,7 +27,6 @@ import ImportSettingsPreview from "./pages/ImportSettingsPreview"
 import DebugSettings from "./pages/DebugSettings"
 import DrawerContent from "./components/DrawerContent"
 import { NAV_THEME } from "./lib/theme"
-import { ProfileProvider } from "./context/ProfileContext"
 
 export const Tag = "UAA"
 
@@ -98,8 +101,60 @@ function AppWithBootstrap({ theme, colors }: { theme: string; colors: any }) {
                 <StatusBar style={theme === "light" ? "dark" : "light"} />
                 <MainDrawer />
                 <PortalHost />
+                <HeadlessRenderer />
             </NavigationContainer>
         </SafeAreaView>
+    )
+}
+
+/**
+ * Renders all settings pages in an invisible view on app boot.
+ * This allows SearchableItem components to mount and register their metadata
+ * into the global search index without user interaction.
+ */
+function HeadlessRenderer() {
+    const { searchIndex, registerItem } = useSearchRegistry()
+    const [shouldRender, setShouldRender] = useState(false)
+    const [mounted, setMounted] = useState(true)
+
+    useEffect(() => {
+        let unmountTimer: NodeJS.Timeout
+        // Delay before mounting to ensure app boot and database initialization are finished.
+        const mountTimer = setTimeout(() => {
+            setShouldRender(true)
+
+            // Unmount the headless renderer after enough time for all pages to register.
+            unmountTimer = setTimeout(() => {
+                setMounted(false)
+            }, 1000)
+        }, 1500)
+
+        return () => {
+            clearTimeout(mountTimer)
+            if (unmountTimer) {
+                clearTimeout(unmountTimer)
+            }
+        }
+    }, [])
+
+    if (!shouldRender || !mounted) return null
+
+    return (
+        <View style={{ display: "none", opacity: 0, position: "absolute", width: 0, height: 0 }}>
+            <SearchProvider isHeadlessRender={true} overrideIndex={searchIndex} overrideRegister={registerItem}>
+                <Settings key="settings" />
+                <TrainingSettings key="training-settings" />
+                <TrainingEventSettings key="training-event-settings" />
+                <OCRSettings key="ocr-settings" />
+                <RacingSettings key="racing-settings" />
+                <RacingPlanSettings key="racing-plan-settings" />
+                <SkillSettings key="skill-settings" />
+                {Object.entries(skillPlanSettingsPages).map(([key, config]) => (
+                    <SkillPlanSettings key={key} planKey={(config as any).planKey} name={(config as any).name} title={(config as any).title} description={(config as any).description} />
+                ))}
+                <DebugSettings key="debug-settings" />
+            </SearchProvider>
+        </View>
     )
 }
 
@@ -107,15 +162,17 @@ function AppContent() {
     const { theme, colors } = useTheme()
 
     return (
-        <BotStateProvider>
-            <ProfileProvider>
-                <MessageLogProvider>
-                    <SettingsProvider>
-                        <AppWithBootstrap theme={theme} colors={colors} />
-                    </SettingsProvider>
-                </MessageLogProvider>
-            </ProfileProvider>
-        </BotStateProvider>
+        <SearchProvider>
+            <BotStateProvider>
+                <ProfileProvider>
+                    <MessageLogProvider>
+                        <SettingsProvider>
+                            <AppWithBootstrap theme={theme} colors={colors} />
+                        </SettingsProvider>
+                    </MessageLogProvider>
+                </ProfileProvider>
+            </BotStateProvider>
+        </SearchProvider>
     )
 }
 
