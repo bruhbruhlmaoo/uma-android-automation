@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react"
-import { Animated, View } from "react-native"
+import { Animated, View, StyleProp, ViewStyle } from "react-native"
 import { useRoute } from "@react-navigation/native"
 import { useTheme } from "../../context/ThemeContext"
 import { useSearchRegistry } from "../../context/SearchRegistryContext"
@@ -22,6 +22,8 @@ interface SearchableItemProps {
     parentId?: string
     /** If provided and false, the content will not render but the item remains searchable, falling back to its parent. */
     condition?: boolean
+    /** Optional style to apply to the item. */
+    style?: StyleProp<ViewStyle>
 }
 
 /**
@@ -29,8 +31,9 @@ interface SearchableItemProps {
  * @param id The ID of the item.
  * @param children The children of the item.
  * @param scrollViewRef The ref of the parent ScrollView.
+ * @param style Optional style to apply to the item.
  */
-const SearchableItemContent = ({ id, children, scrollViewRef }: SearchableItemProps) => {
+const SearchableItemContent = ({ id, children, scrollViewRef, style }: SearchableItemProps) => {
     const route = useRoute<any>()
     const { colors } = useTheme()
     const highlightAnim = useRef(new Animated.Value(0)).current
@@ -93,7 +96,7 @@ const SearchableItemContent = ({ id, children, scrollViewRef }: SearchableItemPr
     })
 
     return (
-        <View ref={viewRef} collapsable={false} style={{ marginVertical: 4 }}>
+        <View ref={viewRef} collapsable={false} style={style}>
             <Animated.View style={{ borderColor, borderWidth: 2, borderRadius: 8 }}>{children}</Animated.View>
         </View>
     )
@@ -111,8 +114,9 @@ const SearchableItemContent = ({ id, children, scrollViewRef }: SearchableItemPr
  * @param scrollViewRef The ref of the parent ScrollView.
  * @param parentId If provided and false, the content will not render but the item remains searchable, falling back to its parent.
  * @param condition If provided and false, the content will not render but the item remains searchable, falling back to its parent.
+ * @param style Optional style to apply to the item.
  */
-const SearchableItem = ({ id, title, description, page, children, scrollViewRef, parentId, condition }: SearchableItemProps) => {
+const SearchableItem = ({ id, title, description, page, children, scrollViewRef, parentId, condition, style }: SearchableItemProps) => {
     const { registerItem, isHeadlessRender } = useSearchRegistry()
     const pageContext = useSearchPage()
 
@@ -179,7 +183,7 @@ const SearchableItem = ({ id, title, description, page, children, scrollViewRef,
     }
 
     return (
-        <SearchableItemContent id={id} title={title} description={description} page={page} scrollViewRef={scrollViewRef}>
+        <SearchableItemContent id={id} title={title} description={description} page={page} scrollViewRef={scrollViewRef} style={style}>
             {children}
         </SearchableItemContent>
     )
