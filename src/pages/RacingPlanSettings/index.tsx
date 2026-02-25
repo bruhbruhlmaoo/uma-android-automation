@@ -11,6 +11,7 @@ import { Input } from "../../components/ui/input"
 import { CircleCheckBig, Plus, Trash2 } from "lucide-react-native"
 import racesData from "../../data/races.json"
 import PageHeader from "../../components/PageHeader"
+import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 import SearchableItem from "../../components/SearchableItem"
 
 interface Race {
@@ -32,6 +33,7 @@ interface PlannedRace {
 }
 
 const RacingPlanSettings = () => {
+    usePerformanceLogging("RacingPlanSettings")
     const { colors } = useTheme()
     const bsc = useContext(BotStateContext)
     const scrollViewRef = useRef<ScrollView>(null)

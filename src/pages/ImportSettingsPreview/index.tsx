@@ -6,6 +6,7 @@ import CustomButton from "../../components/CustomButton"
 import { SettingsChange } from "../../hooks/useSettingsFileManager"
 import { useSettings } from "../../context/SettingsContext"
 import PageHeader from "../../components/PageHeader"
+import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 
 /**
  * Route params passed from the settings file manager when navigating to this screen.
@@ -16,6 +17,7 @@ interface ImportSettingsPreviewParams {
 }
 
 const ImportSettingsPreview = () => {
+    usePerformanceLogging("ImportSettingsPreview")
     const { colors, isDark } = useTheme()
     const navigation = useNavigation()
     const route = useRoute()

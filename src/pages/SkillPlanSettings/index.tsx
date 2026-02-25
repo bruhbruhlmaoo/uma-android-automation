@@ -12,6 +12,7 @@ import WarningContainer from "../../components/WarningContainer"
 import { SearchPageProvider } from "../../context/SearchPageContext"
 import { Input } from "../../components/ui/input"
 import { CircleCheckBig, Trash2 } from "lucide-react-native"
+import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 import skillsData from "../../data/skills.json"
 import icons from "../SkillSettings/icons"
 
@@ -67,6 +68,7 @@ export const skillPlanSettingsPages: DynamicSkillPlanSettingsProps = {
 }
 
 const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, description }) => {
+    usePerformanceLogging(`SkillPlanSettings_${planKey}`)
     const { colors } = useTheme()
     const bsc = useContext(BotStateContext)
 

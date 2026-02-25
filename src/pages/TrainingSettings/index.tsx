@@ -18,8 +18,10 @@ import { databaseManager } from "../../lib/database"
 import PageHeader from "../../components/PageHeader"
 import { SearchPageProvider } from "../../context/SearchPageContext"
 import SearchableItem from "../../components/SearchableItem"
+import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 
 const TrainingSettings = () => {
+    usePerformanceLogging("TrainingSettings")
     const { colors } = useTheme()
     const bsc = useContext(BotStateContext)
     const scrollViewRef = useRef<ScrollView>(null)
