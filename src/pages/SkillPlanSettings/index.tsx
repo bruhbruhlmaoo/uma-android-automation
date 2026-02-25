@@ -1,4 +1,4 @@
-import { useMemo,  useContext, useState, FC } from "react"
+import { useMemo,  useContext, useState, useRef, FC } from "react"
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from "react-native"
 import { Divider } from "react-native-paper"
 import { useTheme } from "../../context/ThemeContext"
@@ -9,6 +9,7 @@ import CustomButton from "../../components/CustomButton"
 import CustomScrollView from "../../components/CustomScrollView"
 import PageHeader from "../../components/PageHeader"
 import WarningContainer from "../../components/WarningContainer"
+import { SearchPageProvider } from "../../context/SearchPageContext"
 import { Input } from "../../components/ui/input"
 import { CircleCheckBig, Trash2 } from "lucide-react-native"
 import skillsData from "../../data/skills.json"
@@ -77,6 +78,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
     const { enabled, strategy, enableBuyInheritedUniqueSkills, enableBuyNegativeSkills, plan } = combinedConfig[planKey]
 
     const [searchQuery, setSearchQuery] = useState("")
+    const scrollViewRef = useRef<ScrollView>(null)
 
     // Parse skill plan from CSV string.
     const planIds: number[] = plan && plan !== "" && typeof plan === "string" ? plan.split(",").map((s) => Number(s)) : []
@@ -206,7 +208,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
             <>
                 <View style={styles.inputContainer}>
                     <CustomCheckbox
-                        id={`enable-buy-inherited-unique-skills-${name}`}
+                        searchId={`enable-buy-inherited-unique-skills-${name}`}
                         checked={enableBuyInheritedUniqueSkills}
                         onCheckedChange={(checked) => updateSkillsSetting("enableBuyInheritedUniqueSkills", checked)}
                         label="Purchase All Inherited Unique Skills"
@@ -214,7 +216,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
                         style={{ marginTop: 16 }}
                     />
                     <CustomCheckbox
-                        id={`enable-buy-negative-skills-${name}`}
+                        searchId={`enable-buy-negative-skills-${name}`}
                         checked={enableBuyNegativeSkills}
                         onCheckedChange={(checked) => updateSkillsSetting("enableBuyNegativeSkills", checked)}
                         label="Purchase All Negative Skills"
@@ -317,12 +319,13 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
     return (
         <View style={styles.root}>
             <PageHeader title={`${title} Plan`} />
-            <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+            <SearchPageProvider page={name} scrollViewRef={scrollViewRef}>
+            <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
                 <View className="m-1">
                     <Text style={styles.description}>{description}</Text>
                     <Divider style={{ marginBottom: 16 }} />
                     <CustomCheckbox
-                        id={`enable-career-complete-skill-plan-${planKey}`}
+                        searchId={`enable-career-complete-skill-plan-${planKey}`}
                         checked={enabled}
                         onCheckedChange={(checked) => updateSkillsSetting("enabled", checked)}
                         label={`Enable ${title} Plan (Beta)`}
@@ -337,6 +340,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
                     )}
                 </View>
             </ScrollView>
+            </SearchPageProvider>
         </View>
     )
 }
