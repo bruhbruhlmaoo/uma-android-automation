@@ -157,18 +157,16 @@ const RacingSettings = () => {
                             description="When enabled, the bot will not retry mandatory races if they fail and will stop."
                             className="my-2"
                         />
-                        {disableRaceRetries && (
-                            <CustomCheckbox
-                                searchId="enable-free-race-retry"
-                                searchCondition={disableRaceRetries}
-                                parentId="disable-race-retries"
-                                checked={enableFreeRaceRetry}
-                                onCheckedChange={(checked) => updateRacingSetting("enableFreeRaceRetry", checked)}
-                                label="Allow Daily Free Race Retry"
-                                description="When enabled, the bot will attempt to retry a failed mandatory race only if the daily free race retry is available."
-                                className="my-2"
-                            />
-                        )}
+                        <CustomCheckbox
+                            searchId="enable-free-race-retry"
+                            searchCondition={disableRaceRetries}
+                            parentId="disable-race-retries"
+                            checked={enableFreeRaceRetry}
+                            onCheckedChange={(checked) => updateRacingSetting("enableFreeRaceRetry", checked)}
+                            label="Allow Daily Free Race Retry"
+                            description="When enabled, the bot will attempt to retry a failed mandatory race only if the daily free race retry is available."
+                            className="my-2"
+                        />
                         <CustomCheckbox
                             searchId="enable-complete-career-on-failure"
                             checked={enableCompleteCareerOnFailure}
@@ -256,31 +254,27 @@ const RacingSettings = () => {
                         style={{ marginBottom: 16 }}
                     />
 
-                    {enableUserInGameRaceAgenda && (
-                        <View style={styles.section}>
-                            <CustomSelect
-                                searchId="user-in-game-race-agenda"
-                                searchTitle="User In-Game Race Agenda"
-                                searchDescription="The in-game race agenda to use when 'Enable User In-Game Race Agenda' is enabled."
-                                searchCondition={enableUserInGameRaceAgenda}
-                                parentId="enable-user-in-game-race-agenda"
-                                placeholder="Select an Agenda"
-                                width="100%"
-                                options={[
-                                    { value: "Agenda 1", label: "Agenda 1" },
-                                    { value: "Agenda 2", label: "Agenda 2" },
-                                    { value: "Agenda 3", label: "Agenda 3" },
-                                    { value: "Agenda 4", label: "Agenda 4" },
-                                    { value: "Agenda 5", label: "Agenda 5" },
-                                    { value: "Agenda 6", label: "Agenda 6" },
-                                    { value: "Agenda 7", label: "Agenda 7" },
-                                    { value: "Agenda 8", label: "Agenda 8" },
-                                ]}
-                                value={racingSettings.selectedUserAgenda}
-                                onValueChange={(value) => updateRacingSetting("selectedUserAgenda", value)}
-                            />
-                        </View>
-                    )}
+                    <CustomSelect
+                        searchId="user-in-game-race-agenda"
+                        searchTitle="Select User In-Game Race Agenda"
+                        searchDescription="The in-game race agenda to use when 'Enable User In-Game Race Agenda' is enabled."
+                        searchCondition={enableUserInGameRaceAgenda}
+                        parentId="enable-user-in-game-race-agenda"
+                        placeholder="Select an Agenda"
+                        width="100%"
+                        options={[
+                            { value: "Agenda 1", label: "Agenda 1" },
+                            { value: "Agenda 2", label: "Agenda 2" },
+                            { value: "Agenda 3", label: "Agenda 3" },
+                            { value: "Agenda 4", label: "Agenda 4" },
+                            { value: "Agenda 5", label: "Agenda 5" },
+                            { value: "Agenda 6", label: "Agenda 6" },
+                            { value: "Agenda 7", label: "Agenda 7" },
+                            { value: "Agenda 8", label: "Agenda 8" },
+                        ]}
+                        value={racingSettings.selectedUserAgenda}
+                        onValueChange={(value) => updateRacingSetting("selectedUserAgenda", value)}
+                    />
 
                     <NavigationLink
                         title="Go to Racing Plan Settings"
