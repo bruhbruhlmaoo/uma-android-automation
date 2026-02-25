@@ -1,4 +1,4 @@
-import { useMemo,  useContext } from "react"
+import { useMemo,  useContext, useRef } from "react"
 import { View, Text, ScrollView, StyleSheet } from "react-native"
 import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext } from "../../context/BotStateContext"
@@ -9,10 +9,12 @@ import CustomSelect from "../../components/CustomSelect"
 import { Separator } from "../../components/ui/separator"
 import PageHeader from "../../components/PageHeader"
 import WarningContainer from "../../components/WarningContainer"
+import { SearchPageProvider } from "../../context/SearchPageContext"
 
 const DebugSettings = () => {
     const { colors } = useTheme()
     const bsc = useContext(BotStateContext)
+    const scrollViewRef = useRef<ScrollView>(null)
 
     const styles = useMemo(
         () =>
@@ -32,10 +34,12 @@ const DebugSettings = () => {
         <View style={styles.root}>
             <PageHeader title="Debug Settings" />
 
-            <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+            <SearchPageProvider page="DebugSettings" scrollViewRef={scrollViewRef}>
+            <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
                 <View className="m-1">
                     <View style={{ marginTop: 16 }}>
                         <CustomCheckbox
+                            searchId="enable-debug-mode"
                             checked={bsc.settings.debug.enableDebugMode}
                             onCheckedChange={(checked) => {
                                 bsc.setSettings({
@@ -52,6 +56,7 @@ const DebugSettings = () => {
                         )}
 
                         <CustomSlider
+                            searchId="template-match-confidence"
                             value={bsc.settings.debug.templateMatchConfidence}
                             placeholder={bsc.defaultSettings.debug.templateMatchConfidence}
                             onValueChange={(value) => {
@@ -77,6 +82,7 @@ const DebugSettings = () => {
                         />
 
                         <CustomSlider
+                            searchId="template-match-custom-scale"
                             value={bsc.settings.debug.templateMatchCustomScale}
                             placeholder={bsc.defaultSettings.debug.templateMatchCustomScale}
                             onValueChange={(value) => {
@@ -106,6 +112,7 @@ const DebugSettings = () => {
                         <CustomTitle title="Screen Recording Settings" description="Configure the quality settings for screen recording." />
 
                         <CustomCheckbox
+                            searchId="enable-screen-recording"
                             checked={bsc.settings.debug.enableScreenRecording}
                             onCheckedChange={(checked) => {
                                 bsc.setSettings({
@@ -117,78 +124,84 @@ const DebugSettings = () => {
                             description="Records the screen while the bot is running. The mp4 file will be saved to the /recordings folder of the app's data directory. Note that performance and battery life may be impacted while recording."
                         />
 
-                        {bsc.settings.debug.enableScreenRecording && (
-                            <View style={{ marginTop: 8 }}>
-                                <CustomSlider
-                                    value={bsc.settings.debug.recordingBitRate}
-                                    placeholder={bsc.defaultSettings.debug.recordingBitRate}
-                                    onValueChange={(value) => {
-                                        bsc.setSettings({
-                                            ...bsc.settings,
-                                            debug: { ...bsc.settings.debug, recordingBitRate: value },
-                                        })
-                                    }}
-                                    onSlidingComplete={(value) => {
-                                        bsc.setSettings({
-                                            ...bsc.settings,
-                                            debug: { ...bsc.settings.debug, recordingBitRate: value },
-                                        })
-                                    }}
-                                    min={1}
-                                    max={20}
-                                    step={1}
-                                    label="Recording Quality (Bit Rate)"
-                                    labelUnit=" Mbps"
-                                    showValue={true}
-                                    showLabels={true}
-                                    description="Sets the video bit rate for screen recording. Higher values produce better quality but larger file sizes."
-                                />
+                        <CustomSlider
+                            searchId="recording-bit-rate"
+                            searchCondition={bsc.settings.debug.enableScreenRecording}
+                            parentId="enable-screen-recording"
+                            value={bsc.settings.debug.recordingBitRate}
+                            placeholder={bsc.defaultSettings.debug.recordingBitRate}
+                            onValueChange={(value) => {
+                                bsc.setSettings({
+                                    ...bsc.settings,
+                                    debug: { ...bsc.settings.debug, recordingBitRate: value },
+                                })
+                            }}
+                            onSlidingComplete={(value) => {
+                                bsc.setSettings({
+                                    ...bsc.settings,
+                                    debug: { ...bsc.settings.debug, recordingBitRate: value },
+                                })
+                            }}
+                            min={1}
+                            max={20}
+                            step={1}
+                            label="Recording Quality (Bit Rate)"
+                            labelUnit=" Mbps"
+                            showValue={true}
+                            showLabels={true}
+                            description="Sets the video bit rate for screen recording. Higher values produce better quality but larger file sizes."
+                        />
 
-                                <CustomTitle title="Recording Frame Rate" description="Sets the frame rate for screen recording." />
-                                <CustomSelect
-                                    value={bsc.settings.debug.recordingFrameRate.toString()}
-                                    options={[
-                                        { value: "30", label: "30 FPS" },
-                                        { value: "60", label: "60 FPS" },
-                                    ]}
-                                    onValueChange={(value) => {
-                                        if (value) {
-                                            bsc.setSettings({
-                                                ...bsc.settings,
-                                                debug: { ...bsc.settings.debug, recordingFrameRate: parseInt(value, 10) },
-                                            })
-                                        }
-                                    }}
-                                    placeholder="Select Frame Rate for Recording"
-                                    style={{ marginTop: 8, marginBottom: 16 }}
-                                />
+                        <CustomSelect
+                            searchId="recording-frame-rate"
+                            searchCondition={bsc.settings.debug.enableScreenRecording}
+                            parentId="enable-screen-recording"
+                            value={bsc.settings.debug.recordingFrameRate.toString()}
+                            options={[
+                                { value: "30", label: "30 FPS" },
+                                { value: "60", label: "60 FPS" },
+                            ]}
+                            onValueChange={(value) => {
+                                if (value) {
+                                    bsc.setSettings({
+                                        ...bsc.settings,
+                                        debug: { ...bsc.settings.debug, recordingFrameRate: parseInt(value, 10) },
+                                    })
+                                }
+                            }}
+                            label="Recording Frame Rate"
+                            description="Sets the frame rate for screen recording."
+                            placeholder="Select Frame Rate for Recording"
+                            style={{ marginTop: 8, marginBottom: 16 }}
+                        />
 
-                                <CustomSlider
-                                    value={bsc.settings.debug.recordingResolutionScale}
-                                    placeholder={bsc.defaultSettings.debug.recordingResolutionScale}
-                                    onValueChange={(value) => {
-                                        bsc.setSettings({
-                                            ...bsc.settings,
-                                            debug: { ...bsc.settings.debug, recordingResolutionScale: value },
-                                        })
-                                    }}
-                                    onSlidingComplete={(value) => {
-                                        bsc.setSettings({
-                                            ...bsc.settings,
-                                            debug: { ...bsc.settings.debug, recordingResolutionScale: value },
-                                        })
-                                    }}
-                                    min={0.25}
-                                    max={1.0}
-                                    step={0.05}
-                                    label="Recording Resolution Scale"
-                                    labelUnit=""
-                                    showValue={true}
-                                    showLabels={true}
-                                    description="Scales the recording resolution. Lower values produce smaller file sizes but lower quality. 1.0 = full resolution, 0.5 = half resolution."
-                                />
-                            </View>
-                        )}
+                        <CustomSlider
+                            searchId="recording-resolution-scale"
+                            searchCondition={bsc.settings.debug.enableScreenRecording}
+                            parentId="enable-screen-recording"
+                            value={bsc.settings.debug.recordingResolutionScale}
+                            placeholder={bsc.defaultSettings.debug.recordingResolutionScale}
+                            onValueChange={(value) => {
+                                bsc.setSettings({
+                                    ...bsc.settings,
+                                    debug: { ...bsc.settings.debug, recordingResolutionScale: value },
+                                })
+                            }}
+                            onSlidingComplete={(value) => {
+                                bsc.setSettings({
+                                    ...bsc.settings,
+                                    debug: { ...bsc.settings.debug, recordingResolutionScale: value },
+                                })
+                            }}
+                            min={0.25}
+                            max={1.0}
+                            step={0.05}
+                            label="Recording Resolution Scale"
+                            labelUnit=""
+                            showValue={true}
+                            showLabels={true}
+                            description="Scales the recording resolution. Lower values produce smaller file sizes but lower quality. 1.0 = full resolution, 0.5 = half resolution."
+                        />
 
                         <Separator style={{ marginVertical: 16 }} />
 
@@ -200,6 +213,7 @@ const DebugSettings = () => {
                         </WarningContainer>
 
                         <CustomCheckbox
+                            searchId="debug-template-matching-test"
                             checked={bsc.settings.debug.debugMode_startTemplateMatchingTest}
                             onCheckedChange={(checked) => {
                                 if (checked) {
@@ -229,6 +243,7 @@ const DebugSettings = () => {
                         />
 
                         <CustomCheckbox
+                            searchId="debug-single-training-ocr-test"
                             checked={bsc.settings.debug.debugMode_startSingleTrainingOCRTest}
                             onCheckedChange={(checked) => {
                                 if (checked) {
@@ -258,6 +273,7 @@ const DebugSettings = () => {
                         />
 
                         <CustomCheckbox
+                            searchId="debug-comprehensive-training-ocr-test"
                             checked={bsc.settings.debug.debugMode_startComprehensiveTrainingOCRTest}
                             onCheckedChange={(checked) => {
                                 if (checked) {
@@ -287,6 +303,7 @@ const DebugSettings = () => {
                         />
 
                         <CustomCheckbox
+                            searchId="debug-date-ocr-test"
                             checked={bsc.settings.debug.debugMode_startDateOCRTest}
                             onCheckedChange={(checked) => {
                                 if (checked) {
@@ -316,6 +333,7 @@ const DebugSettings = () => {
                         />
 
                         <CustomCheckbox
+                            searchId="debug-race-list-detection-test"
                             checked={bsc.settings.debug.debugMode_startRaceListDetectionTest}
                             onCheckedChange={(checked) => {
                                 if (checked) {
@@ -345,6 +363,7 @@ const DebugSettings = () => {
                         />
 
                         <CustomCheckbox
+                            searchId="debug-aptitudes-detection-test"
                             checked={bsc.settings.debug.debugMode_startAptitudesDetectionTest}
                             onCheckedChange={(checked) => {
                                 if (checked) {
@@ -375,6 +394,7 @@ const DebugSettings = () => {
                     </View>
                 </View>
             </ScrollView>
+            </SearchPageProvider>
         </View>
     )
 }
