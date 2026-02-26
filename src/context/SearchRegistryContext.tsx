@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from "react"
+import { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react"
 import { startTiming } from "../lib/performanceLogger"
 import searchConfig from "../data/searchConfig"
 
@@ -75,7 +75,10 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
         })
     }, [])
 
-    return <SearchContext.Provider value={{ searchIndex, registerItem }}>{children}</SearchContext.Provider>
+    // Memoize the provider value to prevent cascading re-renders.
+    const providerValue = useMemo(() => ({ searchIndex, registerItem }), [searchIndex, registerItem])
+
+    return <SearchContext.Provider value={providerValue}>{children}</SearchContext.Provider>
 }
 
 /**

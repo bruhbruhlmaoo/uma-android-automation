@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react"
 import { databaseManager } from "../lib/database"
 import { startTiming } from "../lib/performanceLogger"
 import { logWithTimestamp, logErrorWithTimestamp } from "../lib/logger"
@@ -96,7 +96,8 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         loadCurrentProfileName()
     }, [loadProfiles, loadCurrentProfileName])
 
-    const value = {
+    // Memoize the provider value to prevent cascading re-renders.
+    const value = useMemo(() => ({
         profiles,
         currentProfileName,
         isLoading,
@@ -105,7 +106,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         setProfiles,
         setCurrentProfileName,
         setIsLoading,
-    }
+    }), [profiles, currentProfileName, isLoading, loadProfiles, loadCurrentProfileName])
 
     return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>
 }

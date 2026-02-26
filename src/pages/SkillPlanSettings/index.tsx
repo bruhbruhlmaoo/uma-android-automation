@@ -1,4 +1,4 @@
-import { useMemo, useContext, useState, useRef, FC } from "react"
+import React, { useMemo, useContext, useState, useRef, FC, useCallback } from "react"
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from "react-native"
 import { Divider } from "react-native-paper"
 import { useTheme } from "../../context/ThemeContext"
@@ -68,7 +68,7 @@ export const skillPlanSettingsPages: DynamicSkillPlanSettingsProps = {
 }
 
 const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, description }) => {
-    usePerformanceLogging(`SkillPlanSettings_${planKey}`)
+    usePerformanceLogging(name)
     const { colors } = useTheme()
     const bsc = useContext(BotStateContext)
 
@@ -83,49 +83,62 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
     const scrollViewRef = useRef<ScrollView>(null)
 
     // Parse skill plan from CSV string.
-    const planIds: number[] = plan && plan !== "" && typeof plan === "string" ? plan.split(",").map((s) => Number(s)) : []
+    const planIds: number[] = useMemo(() => {
+        return plan && plan !== "" && typeof plan === "string" ? plan.split(",").map((s) => Number(s)) : []
+    }, [plan])
+
     // Convert skills.json to array.
-    const skillData: Skill[] = Object.values(skillsData)
+    const skillData: Skill[] = useMemo(() => {
+        return Object.values(skillsData)
+    }, [])
 
     // Filter skills based on search and preferences.
-    const filteredSkills = skillData.filter((skill) => skill.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredSkills = useMemo(() => {
+        return skillData.filter((skill) => skill.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
+    }, [skillData, searchQuery])
 
-    const updateSkillsSetting = (key: string, value: any) => {
-        setSettings({
-            ...bsc.settings,
-            skills: {
-                ...bsc.settings.skills,
-                plans: {
-                    ...bsc.settings.skills.plans,
-                    [planKey]: {
-                        ...bsc.settings.skills.plans[planKey],
-                        [key]: value,
+    const updateSkillsSetting = useCallback(
+        (key: string, value: any) => {
+            setSettings({
+                ...bsc.settings,
+                skills: {
+                    ...bsc.settings.skills,
+                    plans: {
+                        ...bsc.settings.skills.plans,
+                        [planKey]: {
+                            ...bsc.settings.skills.plans[planKey],
+                            [key]: value,
+                        },
                     },
                 },
-            },
-        })
-    }
+            })
+        },
+        [bsc.settings, planKey, setSettings],
+    )
 
-    const handleSkillPress = (skill: Skill) => {
-        // Determine if this should be added to the skill plan or removed.
-        const isSelected = planIds.includes(skill.id)
+    const handleSkillPress = useCallback(
+        (skill: Skill) => {
+            // Determine if this should be added to the skill plan or removed.
+            const isSelected = planIds.includes(skill.id)
 
-        let newPlanIds: number[] = []
-        if (isSelected) {
-            // Remove the skill from the skill plan.
-            newPlanIds = planIds.filter((id) => id !== skill.id)
-        } else {
-            // Add the skill to the skill plan.
-            newPlanIds = [...planIds, skill.id]
-        }
+            let newPlanIds: number[] = []
+            if (isSelected) {
+                // Remove the skill from the skill plan.
+                newPlanIds = planIds.filter((id) => id !== skill.id)
+            } else {
+                // Add the skill to the skill plan.
+                newPlanIds = [...planIds, skill.id]
+            }
 
-        // Update the racing plan with the changes.
-        updateSkillsSetting("plan", newPlanIds.join(","))
-    }
+            // Update the racing plan with the changes.
+            updateSkillsSetting("plan", newPlanIds.join(","))
+        },
+        [planIds, updateSkillsSetting],
+    )
 
-    const clearAllSkillsFromPlan = () => {
+    const clearAllSkillsFromPlan = useCallback(() => {
         updateSkillsSetting("plan", "")
-    }
+    }, [updateSkillsSetting])
 
     const styles = useMemo(
         () =>
@@ -347,4 +360,4 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
     )
 }
 
-export default SkillPlanSettings
+export default React.memo(SkillPlanSettings)

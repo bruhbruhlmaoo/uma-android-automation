@@ -29,13 +29,15 @@ const ImportSettingsPreview = () => {
     const fileUri = params.fileUri || ""
 
     // Group changes by category.
-    const groupedChanges = changes.reduce((acc, change) => {
-        if (!acc[change.category]) {
-            acc[change.category] = []
-        }
-        acc[change.category].push(change)
-        return acc
-    }, {} as Record<string, SettingsChange[]>)
+    const groupedChanges = useMemo(() => {
+        return changes.reduce((acc, change) => {
+            if (!acc[change.category]) {
+                acc[change.category] = []
+            }
+            acc[change.category].push(change)
+            return acc
+        }, {} as Record<string, SettingsChange[]>)
+    }, [changes])
 
     const styles = useMemo(
         () =>

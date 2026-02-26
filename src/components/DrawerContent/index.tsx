@@ -440,4 +440,4 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
     )
 }
 
-export default DrawerContent
+export default React.memo(DrawerContent)

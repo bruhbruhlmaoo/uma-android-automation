@@ -1,6 +1,7 @@
 import { NavigationContainer } from "@react-navigation/native"
 import { createDrawerNavigator } from "@react-navigation/drawer"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
+import { useCallback } from "react"
 import { PortalHost } from "@rn-primitives/portal"
 import { StatusBar } from "expo-status-bar"
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context"
@@ -60,9 +61,12 @@ function SettingsStack() {
 function MainDrawer() {
     const { colors } = useTheme()
 
+    // Stabilize the drawerContent callback to prevent unnecessary remounts.
+    const renderDrawerContent = useCallback((props: any) => <DrawerContent {...props} />, [])
+
     return (
         <Drawer.Navigator
-            drawerContent={(props) => <DrawerContent {...props} />}
+            drawerContent={renderDrawerContent}
             screenOptions={{
                 headerShown: false,
                 drawerType: "front",

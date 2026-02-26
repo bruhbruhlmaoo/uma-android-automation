@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react"
+import { useState, useEffect, useContext, useMemo } from "react"
 import * as FileSystem from "expo-file-system"
 import * as Sharing from "expo-sharing"
 import { startActivityAsync } from "expo-intent-launcher"
@@ -421,7 +421,7 @@ export const useSettingsManager = () => {
         }
     }
 
-    return {
+    return useMemo(() => ({
         saveSettings,
         saveSettingsImmediate,
         loadSettings,
@@ -430,5 +430,5 @@ export const useSettingsManager = () => {
         resetSettings,
         openDataDirectory,
         isSaving: isSaving || isSQLiteSaving,
-    }
+    }), [saveSettings, saveSettingsImmediate, loadSettings, importSettings, exportSettings, resetSettings, openDataDirectory, isSaving, isSQLiteSaving])
 }
