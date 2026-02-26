@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import { startTiming } from "../lib/performanceLogger"
+import { startTiming, markNavigationEnd } from "../lib/performanceLogger"
 
 /**
  * A custom hook that logs component lifecycle events (mount, unmount, re-render).
@@ -8,26 +8,29 @@ import { startTiming } from "../lib/performanceLogger"
  * @param componentName - The name of the component to track.
  */
 export const usePerformanceLogging = (componentName: string) => {
-	const renderCount = useRef(1)
+    const renderCount = useRef(1)
 
-	useEffect(() => {
-		// Log mount event.
-		const endTiming = startTiming(`${componentName}_mount`, "ui")
-		endTiming({ status: "mounted" })
+    useEffect(() => {
+        // Log mount event.
+        const endTiming = startTiming(`${componentName}_mount`, "ui")
+        endTiming({ status: "mounted" })
 
-		return () => {
-			// Log unmount event.
-			const endTiming = startTiming(`${componentName}_unmount`, "ui")
-			endTiming({ status: "unmounted", totalRenders: renderCount.current })
-		}
-	}, [])
+        // Mark the end of a navigation if one was pending for this component.
+        markNavigationEnd(componentName)
 
-	useEffect(() => {
-		// Log re-render events (skip the first render as it's part of mount).
-		if (renderCount.current > 1) {
-			const endTiming = startTiming(`${componentName}_render`, "ui")
-			endTiming({ renderCount: renderCount.current })
-		}
-		renderCount.current++
-	})
+        return () => {
+            // Log unmount event.
+            const endTiming = startTiming(`${componentName}_unmount`, "ui")
+            endTiming({ status: "unmounted", totalRenders: renderCount.current })
+        }
+    }, [])
+
+    useEffect(() => {
+        // Log re-render events (skip the first render as it's part of mount).
+        if (renderCount.current > 1) {
+            const endTiming = startTiming(`${componentName}_render`, "ui")
+            endTiming({ renderCount: renderCount.current })
+        }
+        renderCount.current++
+    })
 }
