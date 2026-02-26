@@ -18,6 +18,7 @@ import icons from "../SkillSettings/icons"
 
 interface Skill {
     id: number
+    gene_id: number
     name_en: string
     desc_en: string
     icon_id: number
