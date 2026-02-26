@@ -47,7 +47,7 @@ function SettingsStack() {
             <Stack.Screen name="RacingPlanSettings" component={RacingPlanSettings} />
             <Stack.Screen name="SkillSettings" component={SkillSettings} />
             {Object.entries(skillPlanSettingsPages).map(([key, config]) => (
-                <Stack.Screen name={config.name}>
+                <Stack.Screen key={key} name={config.name}>
                     {(props) => <SkillPlanSettings {...props} planKey={config.planKey} name={config.name} title={config.title} description={config.description} />}
                 </Stack.Screen>
             ))}
