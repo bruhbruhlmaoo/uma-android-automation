@@ -45,6 +45,8 @@ export class PerformanceLogger {
     private options: PerformanceLoggerOptions
     private maxMetricsHistory = 100
 
+    private pendingNavigations: Map<string, number> = new Map()
+
     constructor(options: PerformanceLoggerOptions = {}) {
         this.options = {
             enableConsoleLogging: true,
@@ -87,6 +89,35 @@ export class PerformanceLogger {
     }
 
     /**
+     * Mark the start of a navigation.
+     */
+    markNavigationStart(target: string) {
+        if (!PerformanceLogger.ENABLED) return
+        this.pendingNavigations.set(target, performance.now())
+    }
+
+    /**
+     * Mark the end of a navigation and record the duration.
+     */
+    markNavigationEnd(target: string, category: PerformanceMetric["category"] = "ui") {
+        if (!PerformanceLogger.ENABLED) return
+        const startTime = this.pendingNavigations.get(target)
+        if (startTime === undefined) return
+
+        const duration = performance.now() - startTime
+        this.pendingNavigations.delete(target)
+
+        const metric: PerformanceMetric = {
+            operation: `navigation_to_${target}`,
+            duration,
+            timestamp: Date.now(),
+            category,
+        }
+
+        this.recordMetric(metric)
+    }
+
+    /**
      * Record a performance metric.
      */
     recordMetric(metric: PerformanceMetric) {
@@ -124,3 +155,5 @@ export const performanceLogger = new PerformanceLogger()
 
 // Export convenience functions.
 export const startTiming = (operation: string, category?: PerformanceMetric["category"]) => performanceLogger.startTiming(operation, category)
+export const markNavigationStart = (target: string) => performanceLogger.markNavigationStart(target)
+export const markNavigationEnd = (target: string, category?: PerformanceMetric["category"]) => performanceLogger.markNavigationEnd(target, category)
