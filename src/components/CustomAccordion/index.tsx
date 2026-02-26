@@ -37,14 +37,18 @@ const LazyAccordionContent: React.FC<{ children: React.ReactNode }> = ({ childre
 const CustomAccordion: React.FC<CustomAccordionProps> = ({ sections, type = "single", defaultValue = [], className, style }) => {
     const { colors } = useTheme()
 
-    const styles = useMemo(() => StyleSheet.create({
-        sectionTitle: {
-            fontSize: 16,
-            fontWeight: "600",
-            color: colors.foreground,
-            marginBottom: 0,
-        },
-    }), [colors])
+    const styles = useMemo(
+        () =>
+            StyleSheet.create({
+                sectionTitle: {
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: colors.foreground,
+                    marginBottom: 0,
+                },
+            }),
+        [colors],
+    )
 
     return (
         <Accordion type={type} defaultValue={defaultValue} className={className} style={style}>
