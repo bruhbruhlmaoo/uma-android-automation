@@ -9,6 +9,9 @@ import { logWithTimestamp, logErrorWithTimestamp } from "../lib/logger"
 
 /**
  * Deep merges two objects, preserving nested structure.
+ * @param target - The target object to merge into.
+ * @param source - The source object to merge from.
+ * @returns A new object with merged values from both target and source.
  */
 const deepMerge = <T extends Record<string, any>>(target: T, source: Partial<T>): T => {
     const output = { ...target }
@@ -23,7 +26,9 @@ const deepMerge = <T extends Record<string, any>>(target: T, source: Partial<T>)
 }
 
 /**
- * Converts settings object to database batch format.
+ * Converts `Settings` object to database batch format.
+ * @param settings - The `Settings` object to convert.
+ * @returns An array of objects in the format `{ category: string; key: string; value: any }`.
  */
 const convertSettingsToBatch = (settings: Settings) => {
     const batch: Array<{ category: string; key: string; value: any }> = []
@@ -38,8 +43,10 @@ const convertSettingsToBatch = (settings: Settings) => {
 }
 
 /**
- * Applies all registered migrations to the settings object.
+ * Applies all registered migrations to the `Settings` object.
  * Add new migrations here as needed.
+ * @param settings - The `Settings` object to apply migrations to.
+ * @returns An object containing the migrated `Settings` object and a boolean indicating whether any migrations were applied.
  */
 export const applyMigrations = (settings: Settings): { settings: Settings; anyMigrated: boolean } => {
     let anyMigrated = false
@@ -59,7 +66,8 @@ export const applyMigrations = (settings: Settings): { settings: Settings; anyMi
 }
 
 /**
- * Manages settings persistence using SQLite database.
+ * Manages settings persistence using `SQLite` database.
+ * @returns An object containing the state and functions for managing settings persistence.
  */
 export const useSettingsManager = () => {
     // Track whether settings are currently being saved.
@@ -68,7 +76,7 @@ export const useSettingsManager = () => {
 
     const bsc = useContext(BotStateContext)
 
-    // Direct database operations
+    // Direct database operations.
     const isSQLiteInitialized = databaseManager.isInitialized()
     const isSQLiteSaving = false
 
@@ -80,7 +88,11 @@ export const useSettingsManager = () => {
         }
     }, [isSQLiteInitialized, migrationCompleted])
 
-    // Save settings to SQLite database.
+    /**
+     * Save settings to `SQLite` database.
+     * @param newSettings - The `Settings` object to save. If not provided, the current settings from the `BotStateContext` will be used.
+     * @returns A promise that resolves when the settings are saved.
+     */
     const saveSettings = async (newSettings?: Settings) => {
         const endTiming = startTiming("settings_manager_save_settings", "settings")
 
@@ -98,7 +110,11 @@ export const useSettingsManager = () => {
         }
     }
 
-    // Save settings immediately without debouncing (for background/exit saves).
+    /**
+     * Save settings immediately without debouncing (for background/exit saves).
+     * @param newSettings - The `Settings` object to save. If not provided, the current settings from the `BotStateContext` will be used.
+     * @returns A promise that resolves when the settings are saved.
+     */
     const saveSettingsImmediate = async (newSettings?: Settings) => {
         const endTiming = startTiming("settings_manager_save_settings_immediate", "settings")
 
@@ -116,7 +132,11 @@ export const useSettingsManager = () => {
         }
     }
 
-    // Load settings from SQLite database.
+    /**
+     * Load settings from `SQLite` database.
+     * @param skipInitializationCheck - Whether to skip the SQLite initialization check.
+     * @returns A promise that resolves when the settings are loaded.
+     */
     const loadSettings = async (skipInitializationCheck: boolean = false) => {
         const timingName = skipInitializationCheck ? "settings_manager_load_settings_bootstrap" : "settings_manager_load_settings"
         const endTiming = startTiming(timingName, "settings")
@@ -168,7 +188,11 @@ export const useSettingsManager = () => {
         }
     }
 
-    // Import settings from a JSON file.
+    /**
+     * Import settings from a JSON file.
+     * @param fileUri - The URI/path to the JSON settings file.
+     * @returns A promise that resolves with the imported settings and profiles.
+     */
     const loadFromJSONFile = async (fileUri: string): Promise<{ settings: Settings; profiles?: Array<{ id: number; name: string; settings: any; created_at: string; updated_at: string }> }> => {
         try {
             const data = await FileSystem.readAsStringAsync(fileUri)
@@ -189,7 +213,11 @@ export const useSettingsManager = () => {
         }
     }
 
-    // Ensure all required settings fields exist by filling missing ones with defaults.
+    /**
+     * Ensure all required `Settings` fields exist by filling missing ones with defaults.
+     * @param decoded - The `Settings` object to fix.
+     * @returns A `Settings` object with all required fields populated.
+     */
     const fixSettings = (decoded: Settings): Settings => {
         const merged = deepMerge(defaultSettings, decoded as Partial<Settings>)
         // Apply all migrations to the settings.
@@ -197,7 +225,11 @@ export const useSettingsManager = () => {
         return settings
     }
 
-    // Import settings from a JSON file and save to SQLite.
+    /**
+     * Import settings from a JSON file and save to `SQLite`.
+     * @param fileUri - The URI/path to the JSON settings file.
+     * @returns A promise that resolves with a boolean indicating whether the import was successful.
+     */
     const importSettings = async (fileUri: string): Promise<boolean> => {
         const endTiming = startTiming("settings_manager_import_settings", "settings")
 
@@ -268,7 +300,10 @@ export const useSettingsManager = () => {
         }
     }
 
-    // Export current settings to a JSON file.
+    /**
+     * Export current settings to a JSON file which includes stripping large fields.
+     * @returns A promise that resolves with the file URI of the exported settings, or null if the export failed.
+     */
     const exportSettings = async (): Promise<string | null> => {
         const endTiming = startTiming("settings_manager_export_settings", "settings")
 
@@ -327,7 +362,10 @@ export const useSettingsManager = () => {
         }
     }
 
-    // Open the app's data directory using Storage Access Framework.
+    /**
+     * Open the app's data directory using Storage Access Framework or fallback to file explorer.
+     * @returns A promise that resolves when the data directory is opened.
+     */
     const openDataDirectory = async () => {
         const endTiming = startTiming("settings_manager_open_data_dir", "settings")
         // Get the app's package name from the document directory path.
@@ -384,7 +422,10 @@ export const useSettingsManager = () => {
         }
     }
 
-    // Reset settings to default values.
+    /**
+     * Reset settings to default values.
+     * @returns A promise that resolves with a boolean indicating whether the reset was successful.
+     */
     const resetSettings = async (): Promise<boolean> => {
         const endTiming = startTiming("settings_manager_reset_settings", "settings")
 

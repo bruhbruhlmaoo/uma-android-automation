@@ -16,35 +16,65 @@ import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 import skillsData from "../../data/skills.json"
 import icons from "../SkillSettings/icons"
 
+/**
+ * Represents a skill entry from the `skills.json` data file.
+ */
 interface Skill {
+    /** The unique skill ID. */
     id: number
+    /** The English display name of the skill. */
     name_en: string
+    /** The English description of the skill. */
     desc_en: string
+    /** The icon ID used for rendering the skill icon. */
     icon_id: number
+    /** The skill point cost to purchase this skill. */
     cost: number
+    /** The evaluated point value of the skill. */
     eval_pt: number
+    /** The point-to-cost ratio for ranking efficiency. */
     pt_ratio: number
+    /** The rarity tier of the skill. */
     rarity: number
+    /** The activation condition string for the skill. */
     condition: string
+    /** The precondition string that must be met before activation. */
     precondition: string
+    /** Whether this is an inherited unique skill. */
     inherited: boolean
+    /** The community tier list rating, or null if unrated. */
     community_tier: number | null
+    /** The game version numbers where this skill is available. */
     versions: number[]
+    /** The ID of the upgraded version of this skill, or null. */
     upgrade: number | null
+    /** The ID of the downgraded version of this skill, or null. */
     downgrade: number | null
 }
 
+/**
+ * Props for the `SkillPlanSettings` component.
+ * Each instance configures a specific skill plan (e.g. `skillPointCheck`, `preFinals`, `careerComplete`).
+ */
 export interface SkillPlanSettingsProps {
+    /** The key identifying this plan in the settings object. */
     planKey: string
+    /** The navigation name for this plan's screen. */
     name: string
+    /** The display title for this plan. */
     title: string
+    /** The description shown at the top of the plan page. */
     description: string
 }
 
+/**
+ * Dynamic map of plan keys to their settings page props.
+ */
 export interface DynamicSkillPlanSettingsProps {
     [key: string]: SkillPlanSettingsProps
 }
 
+/** Registry of all available skill plan settings pages and their configuration. */
 export const skillPlanSettingsPages: DynamicSkillPlanSettingsProps = {
     skillPointCheck: {
         planKey: "skillPointCheck",
@@ -67,6 +97,15 @@ export const skillPlanSettingsPages: DynamicSkillPlanSettingsProps = {
     },
 }
 
+/**
+ * The Skill Plan Settings page.
+ * Configures a specific skill plan's purchasing strategy, inherited/negative skill options,
+ * and a searchable list of skills to add to the plan.
+ * @param planKey - The key identifying this plan in the settings object.
+ * @param name - The navigation name for this plan's screen.
+ * @param title - The display title for this plan.
+ * @param description - The description shown at the top of the plan page.
+ */
 const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, description }) => {
     usePerformanceLogging(name)
     const { colors } = useTheme()
@@ -97,6 +136,11 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         return skillData.filter((skill) => skill.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
     }, [skillData, searchQuery])
 
+    /**
+     * Update a skill plan setting.
+     * @param key The key of the setting to update.
+     * @param value The value to set the setting to.
+     */
     const updateSkillsSetting = useCallback(
         (key: string, value: any) => {
             setSettings({
@@ -116,6 +160,11 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         [bsc.settings, planKey, setSettings],
     )
 
+    /**
+     * Toggle the selection of a skill within the skill plan.
+     * If the skill is already present in the plan, it will be removed. Otherwise, it is added to the plan.
+     * @param skill The specific skill instance to add or remove.
+     */
     const handleSkillPress = useCallback(
         (skill: Skill) => {
             // Determine if this should be added to the skill plan or removed.
@@ -136,6 +185,9 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         [planIds, updateSkillsSetting],
     )
 
+    /**
+     * Remove all skills from the current skill plan.
+     */
     const clearAllSkillsFromPlan = useCallback(() => {
         updateSkillsSetting("plan", "")
     }, [updateSkillsSetting])

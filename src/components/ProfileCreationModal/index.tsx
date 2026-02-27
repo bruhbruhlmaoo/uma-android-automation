@@ -7,18 +7,37 @@ import { X } from "lucide-react-native"
 import { useProfileManager } from "../../hooks/useProfileManager"
 import { Settings } from "../../context/BotStateContext"
 
+// Table headers for the stat targets table.
 const TABLE_HEADERS = ["", "SPD", "STA", "POW", "GUTS", "WIT"]
+// Distance types for the stat targets table.
 const DISTANCE_TYPES = ["Sprint", "Mile", "Med", "Long"]
 
 interface ProfileCreationModalProps {
+    /** Whether the modal is currently visible. */
     visible: boolean
+    /** Callback to close the modal. */
     onClose: () => void
+    /** The current training settings to be saved in the new profile. */
     currentTrainingSettings: Settings["training"]
+    /** The current training stat target settings to be saved in the new profile. */
     currentTrainingStatTargetSettings: Settings["trainingStatTarget"]
+    /** Optional callback fired after a profile is successfully created. */
     onProfileCreated?: (profileName: string) => void
+    /** Optional callback fired when an error occurs. */
     onError?: (message: string) => void
 }
 
+/**
+ * A modal dialog for creating new training profiles.
+ * Displays a name input, a preview of the current training settings,
+ * and a stat targets table organized by distance type.
+ * @param visible Whether the modal is visible.
+ * @param onClose Callback to close the modal.
+ * @param currentTrainingSettings The current training settings to save.
+ * @param currentTrainingStatTargetSettings The current stat target settings to save.
+ * @param onProfileCreated Optional callback fired after successful creation.
+ * @param onError Optional callback for error handling.
+ */
 const ProfileCreationModal: React.FC<ProfileCreationModalProps> = ({ visible, onClose, currentTrainingSettings, currentTrainingStatTargetSettings, onProfileCreated, onError }) => {
     const { colors } = useTheme()
     const { createProfile } = useProfileManager(onError)
@@ -174,18 +193,24 @@ const ProfileCreationModal: React.FC<ProfileCreationModalProps> = ({ visible, on
         }))
     }, [getStatTargets])
 
+    /**
+     * Handles the creation of a new profile.
+     */
     const handleCreate = useCallback(async () => {
         if (!profileName.trim()) {
             return
         }
 
         try {
+            // Set loading state.
             setIsCreating(true)
             const createdProfileName = profileName.trim()
+            // Create the new profile.
             await createProfile(createdProfileName, {
                 training: currentTrainingSettings,
                 trainingStatTarget: currentTrainingStatTargetSettings,
             })
+            // Reset the profile name and close the modal. The callback is called to notify the parent component that the profile was created.
             setProfileName("")
             onProfileCreated?.(createdProfileName)
             onClose()
@@ -197,6 +222,9 @@ const ProfileCreationModal: React.FC<ProfileCreationModalProps> = ({ visible, on
         }
     }, [profileName, createProfile, currentTrainingSettings, currentTrainingStatTargetSettings, onProfileCreated, onClose, onError])
 
+    /**
+     * Handles the closing of the modal by resetting the profile name and calling the `onClose` callback.
+     */
     const handleClose = useCallback(() => {
         setProfileName("")
         onClose()
@@ -206,6 +234,7 @@ const ProfileCreationModal: React.FC<ProfileCreationModalProps> = ({ visible, on
         <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={handleClose}>
             <View style={styles.modal}>
                 <View style={styles.modalContent}>
+                    {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.title}>Create New Profile</Text>
                         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
@@ -213,10 +242,12 @@ const ProfileCreationModal: React.FC<ProfileCreationModalProps> = ({ visible, on
                         </TouchableOpacity>
                     </View>
 
+                    {/* Profile name input */}
                     <View style={styles.input}>
                         <Input placeholder="Profile name" value={profileName} onChangeText={setProfileName} style={{ color: colors.foreground, backgroundColor: colors.secondary }} />
                     </View>
 
+                    {/* Training settings preview */}
                     <View style={styles.settingsPreview}>
                         <Text style={styles.previewTitle}>Current Training Settings (will be saved):</Text>
                         <ScrollView nestedScrollEnabled={true}>
@@ -232,7 +263,7 @@ const ProfileCreationModal: React.FC<ProfileCreationModalProps> = ({ visible, on
                                             </View>
                                         ))}
                                     </View>
-                                    {/* Data Rows */}
+                                    {/* Data Rows for each distance type and stat */}
                                     {tableData.map((row, rowIndex) => (
                                         <View key={rowIndex} style={styles.tableRow}>
                                             <View style={[styles.tableCell, { borderRightWidth: 1 }]}>

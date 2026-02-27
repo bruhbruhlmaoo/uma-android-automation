@@ -3,28 +3,28 @@ import { Animated, ViewStyle, View, LayoutChangeEvent, NativeSyntheticEvent, Nat
 import { FlashList, FlashListProps } from "@shopify/flash-list"
 import { getIndicatorPositionStyle } from "./helpers.ts"
 
-type CustomIndicatorProps<T> = {
-    // Animated value controlling indicator's translation.
+type CustomIndicatorProps = {
+    /** Animated value controlling indicator's translation. */
     indicatorPosition: Animated.Value
-    // Animated value controlling indicator's scale.
+    /** Animated value controlling indicator's scale. */
     indicatorScale: Animated.Value
-    // Whether the scroll direction is horizontal.
+    /** Whether the scroll direction is horizontal. */
     horizontal: boolean
-    // Length (width/height) of the indicator thumb.
+    /** Length (width/height) of the indicator thumb. */
     indicatorSize: number
-    // Maximum distance indicator can travel within the track.
+    /** Maximum distance indicator can travel within the track. */
     scrollableTrackLength: number
-    // Whether scroll direction is inverted.
+    /** Whether scroll direction is inverted. */
     inverted: boolean
-    // Reference to FlashList for programmatic scrolling.
+    /** Reference to FlashList for programmatic scrolling. */
     flashListRef: React.RefObject<any>
-    // Total content size of the list.
+    /** Total content size of the list. */
     contentSize: number
-    // Viewport size of the list.
+    /** Viewport size of the list. */
     visibleSize: number
-    // Style positioning the indicator.
+    /** Style positioning the indicator. */
     indicatorPositionStyle: ViewStyle
-    // Style defining the indicator’s appearance.
+    /** Style defining the indicator's appearance. */
     indicatorStyle: ViewStyle
 }
 
@@ -33,8 +33,20 @@ type CustomIndicatorProps<T> = {
  * - Dragging the indicator moves the content.
  * - Scrolling the content moves the indicator.
  * - Gesture handling ensures smooth, precise control.
+ *
+ * @param indicatorPosition Animated value controlling indicator's translation.
+ * @param indicatorScale Animated value controlling indicator's scale.
+ * @param horizontal Whether the scroll direction is horizontal.
+ * @param indicatorSize Length (width/height) of the indicator thumb.
+ * @param scrollableTrackLength Maximum distance indicator can travel within the track.
+ * @param inverted Whether scroll direction is inverted.
+ * @param flashListRef Reference to FlashList for programmatic scrolling.
+ * @param contentSize Total content size of the list.
+ * @param visibleSize Viewport size of the list.
+ * @param indicatorPositionStyle Style positioning the indicator.
+ * @param indicatorStyle Style defining the indicator's appearance.
  */
-const CustomIndicator = <T,>({
+const CustomIndicator = ({
     indicatorPosition,
     indicatorScale,
     horizontal,
@@ -46,7 +58,7 @@ const CustomIndicator = <T,>({
     visibleSize,
     indicatorPositionStyle,
     indicatorStyle,
-}: CustomIndicatorProps<T>) => {
+}: CustomIndicatorProps) => {
     // Store offset at drag start to calculate relative motion.
     const dragStartOffset = useRef(0)
 
@@ -161,30 +173,30 @@ const CustomIndicator = <T,>({
 }
 
 type CustomScrollViewProps<T> = {
-    // Props passed directly to FlashList.
+    /** Props passed directly to FlashList. */
     targetProps?: Partial<FlashListProps<T>>
-    // Indicator position: left/right/top/bottom or percentage.
+    /** Indicator position: left/right/top/bottom or percentage. */
     position?: string | number
-    // Scroll orientation.
+    /** Scroll orientation. */
     horizontal?: boolean
-    // Hide scrollbar if true.
+    /** Hide scrollbar if true. */
     hideScrollbar?: boolean
-    // Always show scrollbar if true.
+    /** Always show scrollbar if true. */
     persistentScrollbar?: boolean
-    // Styling for scrollbar indicator.
+    /** Styling for scrollbar indicator. */
     indicatorStyle?: ViewStyle
-    // Container view styling.
+    /** Container view styling. */
     containerStyle?: ViewStyle
-    // Child elements (alternative to data prop).
+    /** Child elements (alternative to data prop). */
     children?: React.ReactNode | React.ReactNode[]
-    // Minimum pixel size of indicator.
+    /** Minimum pixel size of indicator. */
     minIndicatorSize?: number
-    // Enable custom indicator (WIP). When false, uses native Android scrollbar.
+    /** Enable custom indicator (WIP). When false, uses native Android scrollbar. */
     enableCustomIndicator?: boolean
 }
 
 /**
- * CustomScrollView wraps a FlashList and provides a custom draggable scrollbar indicator.
+ * CustomScrollView wraps a `FlashList` and provides a custom draggable scrollbar indicator.
  * - The indicator size and position are calculated based on content size and viewport size.
  * - Scroll events update the indicator position and scale.
  * - Dragging the indicator scrolls the content in sync.
@@ -199,6 +211,17 @@ type CustomScrollViewProps<T> = {
  * 2. Dragging the content itself:
  *    - `onScroll` updates the indicator position to match the content offset.
  *    - This keeps the indicator in sync without any user interaction with the thumb.
+ *
+ * @param targetProps Props passed directly to `FlashList`.
+ * @param position Indicator position: left/right/top/bottom or percentage.
+ * @param horizontal Scroll orientation.
+ * @param hideScrollbar Hide scrollbar if true.
+ * @param persistentScrollbar Always show scrollbar if true.
+ * @param indicatorStyle Styling for scrollbar indicator.
+ * @param containerStyle Container view styling.
+ * @param children Child elements (alternative to data prop).
+ * @param minIndicatorSize Minimum pixel size of indicator.
+ * @param enableCustomIndicator Enable custom indicator (WIP). When false, uses native Android scrollbar.
  */
 export const CustomScrollView = forwardRef<any, CustomScrollViewProps<any>>(({
     targetProps,
@@ -245,19 +268,30 @@ export const CustomScrollView = forwardRef<any, CustomScrollViewProps<any>>(({
     // Animated value controlling the scale of the indicator for visual feedback.
     const indicatorScale = useRef(new Animated.Value(1)).current
 
-    // Called when the FlashList content size changes.
+    /**
+     * Callback fired when the FlashList content size changes.
+     * @param width The width of the content.
+     * @param height The height of the content.
+     */
     const handleContentSizeChange = (width: number, height: number) => {
         setContentSize(horizontal ? width : height)
     }
 
-    // Called when the FlashList layout changes. Updates visible and orthogonal size for scroll calculations.
+    /**
+     * Callback fired when the FlashList layout changes.
+     * Updates visible and orthogonal size for scroll calculations.
+     * @param event The layout change event.
+     */
     const handleLayoutChange = (event: LayoutChangeEvent) => {
         const { width, height } = event.nativeEvent.layout
         setVisibleSize(horizontal ? width : height)
         setOrthogonalSize(horizontal ? height : width)
     }
 
-    // Called on scroll events to update indicator position and scale.
+    /**
+     * Callback fired on scroll events to update indicator position and scale.
+     * @param event The scroll event.
+     */
     const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
         // Current scroll offset along the scroll direction.
         const contentOffset = horizontal ? event.nativeEvent.contentOffset.x : event.nativeEvent.contentOffset.y

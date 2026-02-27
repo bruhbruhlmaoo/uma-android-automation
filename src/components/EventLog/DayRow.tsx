@@ -4,10 +4,19 @@ import type { DayRecord } from "../../lib/eventLogParser"
 import { useTheme } from "../../context/ThemeContext"
 
 type Props = {
+    /** The parsed day record data including actions, triggers, and summary. */
     record: DayRecord
+    /** Whether to show detailed trigger information for each action type. */
     showTriggers?: boolean
 }
 
+/**
+ * Displays a single day's event log data as a styled card.
+ * Shows a day number, date, summary text, and action flags (energy, mood, injury, training, race).
+ * Optionally displays detailed trigger information for each action type.
+ * @param record The parsed day record data.
+ * @param showTriggers Whether to show detailed trigger information.
+ */
 const DayRow: React.FC<Props> = ({ record, showTriggers }) => {
     const { colors } = useTheme()
 
@@ -76,6 +85,12 @@ const DayRow: React.FC<Props> = ({ record, showTriggers }) => {
         },
     }), [colors])
 
+    /**
+     * Renders the trigger information for a specific action type.
+     * @param title The title of the trigger section (e.g., `Training`).
+     * @param lines An array of trigger description strings.
+     * @returns The rendered trigger section, or null if no triggers are present.
+     */
     const renderTriggers = (title: string, lines: string[]) => {
         if (!lines || lines.length === 0) return null
         return (

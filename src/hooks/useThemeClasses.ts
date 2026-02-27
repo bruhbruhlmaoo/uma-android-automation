@@ -1,6 +1,10 @@
 import { useMemo } from "react"
 import { useTheme } from "../context/ThemeContext"
 
+/**
+ * Hook to get theme-based Tailwind CSS classes.
+ * @returns An object containing theme-based Tailwind CSS classes.
+ */
 export const useThemeClasses = () => {
     const { isDark } = useTheme()
 

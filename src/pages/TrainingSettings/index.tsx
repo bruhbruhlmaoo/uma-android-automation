@@ -20,6 +20,11 @@ import { SearchPageProvider } from "../../context/SearchPageContext"
 import SearchableItem from "../../components/SearchableItem"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 
+/**
+ * The Training Settings page.
+ * Provides configuration for stat prioritization, blacklists, failure chance thresholds, spark targets, risky training, distance overrides, 
+ * stat target sliders per distance, and profile management (creation, switching, and overwriting).
+ */
 const TrainingSettings = () => {
     usePerformanceLogging("TrainingSettings")
     const { colors } = useTheme()
@@ -157,6 +162,11 @@ const TrainingSettings = () => {
         syncProfileName()
     }, [currentProfileName])
 
+    /**
+     * Update a training setting in the global bot state.
+     * @param key The key of the training setting to update.
+     * @param value The value to set the setting to.
+     */
     const updateTrainingSetting = useCallback((key: keyof typeof settings.training, value: any) => {
         setSettings((prev) => ({
             ...prev,
@@ -167,6 +177,11 @@ const TrainingSettings = () => {
         }))
     }, [setSettings])
 
+    /**
+     * Overwrite the current settings with settings from a selected profile.
+     * Applies migrations to the profile settings and merges them into the global state.
+     * @param profileSettings The partial settings object from the profile.
+     */
     const handleOverwriteSettings = async (profileSettings: Partial<Settings>) => {
         // Get the current profile name directly from the database to ensure we have the latest value.
         const dbProfileName = await databaseManager.getCurrentProfileName()
@@ -202,6 +217,11 @@ const TrainingSettings = () => {
         }
     }
 
+    /**
+     * Update a training stat target setting in the global bot state.
+     * @param key The key of the stat target setting to update.
+     * @param value The value to set the target to.
+     */
     const updateTrainingStatTarget = useCallback((key: keyof typeof settings.trainingStatTarget, value: any) => {
         setSettings((prev) => ({
             ...prev,
@@ -281,6 +301,12 @@ const TrainingSettings = () => {
         [colors],
     )
 
+    /**
+     * Toggle the selection of a stat within a specific list.
+     * @param stat The stat to toggle.
+     * @param list The current list of selected stats.
+     * @param setList The state setter function to update the list.
+     */
     const toggleStat = (stat: string, list: string[], setList: (value: string[]) => void) => {
         if (list.includes(stat)) {
             setList(list.filter((s) => s !== stat))
@@ -289,16 +315,39 @@ const TrainingSettings = () => {
         }
     }
 
+    /**
+     * Clear all selected stats from a list.
+     * @param setList The state setter function to update the list.
+     */
     const clearAll = (setList: (value: string[]) => void) => {
         setList([])
     }
 
+    /**
+     * Select all available stats for a list.
+     * Appends any missing items from the default stat list to the current selection.
+     * @param setList The state setter function to update the list.
+     * @param currentList The current list of selected stats.
+     */
     const selectAll = (setList: (value: string[]) => void, currentList: string[]) => {
         // Add any missing items from default settings to the current list, preserving order.
         const missingItems = defaultSettings.training.statPrioritization.filter((stat) => !currentList.includes(stat))
         setList([...currentList, ...missingItems])
     }
 
+    /**
+     * Render a stat selector component with an interactive modal.
+     * Supports both checkbox-based selection and priority-based ordering.
+     * @param title The display title for the selector.
+     * @param selectedStats The currently selected stats.
+     * @param setSelectedStats The state setter for the selected stats.
+     * @param modalVisible Whether the selection modal is currently visible.
+     * @param setModalVisible The safe setter for the modal visibility state.
+     * @param description An optional description for the selector.
+     * @param mode The selection mode (checkbox or priority).
+     * @param id The search ID for consistent search navigation.
+     * @returns A React element containing the selector and its modal.
+     */
     const renderStatSelector = (
         title: string,
         selectedStats: string[],
@@ -346,7 +395,6 @@ const TrainingSettings = () => {
                                 defaultSettings.training.statPrioritization.map((stat) => (
                                     <CustomCheckbox
                                         key={stat}
-                                        id={`stat-${stat.toLowerCase()}`}
                                         checked={selectedStats.includes(stat)}
                                         onCheckedChange={() => toggleStat(stat, selectedStats, setSelectedStats)}
                                         label={stat}
@@ -444,7 +492,6 @@ const TrainingSettings = () => {
 
                         <View style={styles.section}>
                             <CustomCheckbox
-                                id="disable-training-on-maxed-stats"
                                 checked={disableTrainingOnMaxedStat}
                                 onCheckedChange={(checked) => updateTrainingSetting("disableTrainingOnMaxedStat", checked)}
                                 label="Disable Training on Maxed Stats"
@@ -489,7 +536,6 @@ const TrainingSettings = () => {
 
                         <View style={styles.section}>
                             <CustomCheckbox
-                                id="enable-riskier-training"
                                 checked={enableRiskyTraining}
                                 onCheckedChange={(checked) => updateTrainingSetting("enableRiskyTraining", checked)}
                                 label="Enable Riskier Training"
@@ -544,7 +590,6 @@ const TrainingSettings = () => {
 
                         <View style={styles.section}>
                             <CustomCheckbox
-                                id="enable-prioritize-skill-hints"
                                 checked={enablePrioritizeSkillHints}
                                 onCheckedChange={(checked) => updateTrainingSetting("enablePrioritizeSkillHints", checked)}
                                 label="Prioritize Skill Hints"
@@ -556,7 +601,6 @@ const TrainingSettings = () => {
 
                         <View style={styles.section}>
                             <CustomCheckbox
-                                id="must-rest-before-summer"
                                 checked={mustRestBeforeSummer}
                                 onCheckedChange={(checked) => updateTrainingSetting("mustRestBeforeSummer", checked)}
                                 label="Must Rest before Summer"
@@ -568,7 +612,6 @@ const TrainingSettings = () => {
 
                         <View style={styles.section}>
                             <CustomCheckbox
-                                id="train-wit-during-finale"
                                 checked={trainWitDuringFinale}
                                 onCheckedChange={(checked) => updateTrainingSetting("trainWitDuringFinale", checked)}
                                 label="Train Wit During Finale"
@@ -580,7 +623,6 @@ const TrainingSettings = () => {
 
                         <View style={styles.section}>
                             <CustomCheckbox
-                                id="enable-rainbow-training-bonus"
                                 checked={enableRainbowTrainingBonus}
                                 onCheckedChange={(checked) => updateTrainingSetting("enableRainbowTrainingBonus", checked)}
                                 label="Enable Rainbow Training Bonus"

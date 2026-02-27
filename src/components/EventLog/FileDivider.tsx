@@ -4,9 +4,15 @@ import type { FileDividerRecord } from "../../lib/eventLogParser"
 import { useTheme } from "../../context/ThemeContext"
 
 type Props = {
+    /** The file divider record containing the filename to display. */
     divider: FileDividerRecord
 }
 
+/**
+ * Renders a horizontal line divider with a centered filename label.
+ * Used to visually separate log entries originating from different files.
+ * @param divider The file divider record containing the filename.
+ */
 const FileDivider: React.FC<Props> = ({ divider }) => {
     const { colors } = useTheme()
 

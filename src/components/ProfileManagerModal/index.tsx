@@ -9,17 +9,41 @@ import { X, Edit2, Trash2, Save, Check } from "lucide-react-native"
 import ProfileComparison from "../ProfileComparison"
 
 interface ProfileManagerModalProps {
+    /** Whether the modal is currently visible. */
     visible: boolean
+    /** Callback to close the modal. */
     onClose: () => void
+    /** The current training settings used for comparison when overwriting. */
     currentTrainingSettings: Settings["training"]
+    /** The current training stat target settings used for comparison when overwriting. */
     currentTrainingStatTargetSettings: Settings["trainingStatTarget"]
+    /** Optional callback to apply a profile's settings to the current configuration. */
     onOverwriteSettings?: (settings: Partial<Settings>) => Promise<void>
+    /** Optional callback fired after a profile is deleted. */
     onProfileDeleted?: (deletedProfileName: string) => void
+    /** Optional callback fired after a profile is renamed or updated. */
     onProfileUpdated?: (oldName?: string, newName?: string) => void
+    /** Optional callback fired when no differences are detected between current and profile settings. */
     onNoChangesDetected?: (profileName: string) => void
+    /** Optional callback fired when an error occurs. */
     onError?: (message: string) => void
 }
 
+/**
+ * A modal dialog for managing user profiles, supporting viewing, renaming, deleting,
+ * and overwriting profiles with the current settings.
+ * Shows a ProfileComparison preview before overwriting to highlight differences.
+ * Implements manual touch-to-scroll for reliable scrolling within the modal.
+ * @param visible Whether the modal is visible.
+ * @param onClose Callback to close the modal.
+ * @param currentTrainingSettings Current training settings for comparison.
+ * @param currentTrainingStatTargetSettings Current training stat target settings for comparison.
+ * @param onOverwriteSettings Callback to apply profile settings.
+ * @param onProfileDeleted Optional callback fired after a profile is deleted.
+ * @param onProfileUpdated Optional callback fired after a profile is renamed or updated.
+ * @param onNoChangesDetected Optional callback fired when no differences are detected between current and profile settings.
+ * @param onError Optional callback for error handling.
+ */
 const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
     visible,
     onClose,
@@ -199,6 +223,10 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         }
     }, [visible, loadProfiles])
 
+    /**
+     * Handles the editing of a profile.
+     * @param profileId The ID of the profile to edit.
+     */
     const handleEditProfile = useCallback(
         (profileId: number) => {
             const profile = profiles.find((p) => p.id === profileId)
@@ -210,6 +238,10 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         [profiles],
     )
 
+    /**
+     * Handles the updating of a profile.
+     * @param profileId The ID of the profile to update.
+     */
     const handleUpdateProfile = useCallback(async () => {
         if (!profileName.trim() || !editingProfileId) {
             return
@@ -228,17 +260,26 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         }
     }, [profileName, editingProfileId, profiles, updateProfile, onProfileUpdated, onError])
 
+    /**
+     * Handles the deletion of a profile.
+     * @param profileId The ID of the profile to delete.
+     */
     const handleDeleteClick = useCallback((profileId: number) => {
         setDeleteProfileId(profileId)
         setShowDeleteDialog(true)
     }, [])
 
+    /**
+     * Handles the confirmation of a profile deletion.
+     * @param profileId The ID of the profile to delete.
+     */
     const handleDeleteConfirm = useCallback(async () => {
         if (!deleteProfileId) {
             return
         }
 
         try {
+            // Get the name of the profile to delete.
             const profileToDelete = profiles.find((p) => p.id === deleteProfileId)
             const deletedProfileName = profileToDelete?.name || ""
             await deleteProfile(deleteProfileId)
@@ -258,18 +299,29 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         }
     }, [deleteProfileId, profiles, deleteProfile, loadProfiles, onProfileDeleted, onError])
 
+    /**
+     * Handles the cancellation of a profile deletion.
+     */
     const handleDeleteCancel = useCallback(() => {
         setShowDeleteDialog(false)
         setDeleteProfileId(null)
     }, [])
 
+    /**
+     * Handles the cancellation of a profile edit.
+     */
     const handleCancelEdit = useCallback(() => {
         setProfileName("")
         setEditingProfileId(null)
     }, [])
 
+    /**
+     * Handles the saving of a profile.
+     * @param profileId The ID of the profile to save.
+     */
     const handleSaveClick = useCallback(
         (profileId: number) => {
+            // Get the profile to save.
             const profile = profiles.find((p) => p.id === profileId)
             if (!profile || !onOverwriteSettings) {
                 return
@@ -295,6 +347,10 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         [profiles, onOverwriteSettings, compareWithProfile, currentTrainingSettings, currentTrainingStatTargetSettings, onNoChangesDetected],
     )
 
+    /**
+     * Handles the confirmation of a profile overwrite.
+     * @param profileId The ID of the profile to overwrite.
+     */
     const handleConfirmOverwrite = useCallback(
         async (profileId: number) => {
             try {
@@ -317,6 +373,9 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
         [currentTrainingSettings, currentTrainingStatTargetSettings, updateProfile, onProfileUpdated, onClose, onError],
     )
 
+    /**
+     * Handles the cancellation of a profile overwrite.
+     */
     const handleCancelOverwrite = useCallback(() => {
         setShowComparison(false)
         setOverwriteProfileId(null)
@@ -361,6 +420,7 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
                                     </View>
                                 ) : (
                                     <>
+                                        {/* Map through the profiles and display them. */}
                                         {profiles.map((profile) => {
                                             const isEditing = editingProfileId === profile.id
                                             return (
@@ -380,23 +440,28 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
                                                     <View style={styles.profileActions}>
                                                         {isEditing ? (
                                                             <>
+                                                                {/* Save button */}
                                                                 <TouchableOpacity style={styles.actionButton} onPress={handleUpdateProfile}>
                                                                     <Check size={18} color={colors.primary} />
                                                                 </TouchableOpacity>
+                                                                {/* Cancel button */}
                                                                 <TouchableOpacity style={styles.actionButton} onPress={handleCancelEdit}>
                                                                     <X size={18} color={colors.foreground} />
                                                                 </TouchableOpacity>
                                                             </>
                                                         ) : (
                                                             <>
+                                                                {/* Edit button */}
                                                                 <TouchableOpacity style={styles.actionButton} onPress={() => handleEditProfile(profile.id)}>
                                                                     <Edit2 size={18} color={colors.primary} />
                                                                 </TouchableOpacity>
+                                                                {/* Delete button */}
                                                                 <TouchableOpacity style={styles.actionButton} onPress={() => handleDeleteClick(profile.id)}>
                                                                     <Trash2 size={18} color={colors.destructive} />
                                                                 </TouchableOpacity>
                                                             </>
                                                         )}
+                                                        {/* Save button */}
                                                         {!isEditing && onOverwriteSettings && (
                                                             <TouchableOpacity style={styles.actionButton} onPress={() => handleSaveClick(profile.id)}>
                                                                 <Save size={18} color={colors.primary} />
@@ -410,6 +475,7 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
                                 )}
                             </View>
 
+                            {/* Comparison modal */}
                             {showComparison && comparisonData && overwriteProfileId && (
                                 <ProfileComparison
                                     comparison={comparisonData}
@@ -424,11 +490,13 @@ const ProfileManagerModal: React.FC<ProfileManagerModalProps> = ({
                 </TouchableOpacity>
             </RNModal>
 
+            {/* Delete dialog */}
             <RNModal visible={showDeleteDialog} transparent={true} animationType="fade" onRequestClose={handleDeleteCancel} statusBarTranslucent={true}>
                 <View style={[styles.modal, { zIndex: 10000 }]}>
                     <View style={[styles.modalContent, { maxWidth: "85%" }]}>
                         <View style={styles.header}>
                             <Text style={styles.title}>Delete Profile</Text>
+                            {/* Close button */}
                             <TouchableOpacity style={styles.closeButton} onPress={handleDeleteCancel}>
                                 <X size={24} color={colors.foreground} />
                             </TouchableOpacity>

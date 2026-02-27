@@ -12,6 +12,8 @@ interface Props {
 /**
  * A reusable component for displaying warnings or errors.
  * Renders text with default warning styles if children is a string, otherwise renders children directly.
+ * @param style Optional custom style for the container view.
+ * @param children The content to display inside the container.
  */
 const WarningContainer = ({ style, children }: Props) => {
     const { colors } = useTheme()

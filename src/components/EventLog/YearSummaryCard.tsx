@@ -4,9 +4,16 @@ import type { YearSummary } from "../../lib/eventLogParser"
 import { useTheme } from "../../context/ThemeContext"
 
 type Props = {
+    /** The year summary data including action counts, stat gains, and elapsed time. */
     summary: YearSummary
 }
 
+/**
+ * Displays a summary card for a single year's event log data.
+ * Shows total actions (energy, mood, injury, race, training), stat gains per training type,
+ * and elapsed time. Appends "+ Finals" to the title for Senior Year if finals data is present.
+ * @param summary The year summary data.
+ */
 const YearSummaryCard: React.FC<Props> = ({ summary }) => {
     const { colors } = useTheme()
 

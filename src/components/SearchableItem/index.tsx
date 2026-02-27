@@ -140,8 +140,8 @@ const SearchableItemContent = ({ id, children, scrollViewRef, style }: Searchabl
 
 /**
  * Wraps a setting component. If the current route is targeting this component's ID,
- * it temporarily highlights it and automatically scrolls the parent ScrollView to it.
- * Also dynamically registers the item into the global SearchRegistry.
+ * it temporarily highlights it and automatically scrolls the parent `ScrollView` to it.
+ * Also dynamically registers the item into the global `SearchRegistry`.
  * @param id The unique identifier for this item.
  * @param title The searchable title. If not provided, it will be extracted from the children.
  * @param description The searchable description. If not provided, it will be extracted from the children.

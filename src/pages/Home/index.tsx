@@ -34,6 +34,10 @@ const styles = StyleSheet.create({
     },
 })
 
+/**
+ * The main Home page of the application.
+ * Displays the Start/Stop button for the bot, a message log, and handles bot lifecycle events including settings persistence and readiness checks.
+ */
 const Home = () => {
     usePerformanceLogging("Home")
     const { StartModule } = NativeModules
@@ -67,7 +71,9 @@ const Home = () => {
         }
     }, [])
 
-    // Grab the program name and version.
+    /**
+     * Grab the program name and version.
+     */
     const getVersion = () => {
         const appName = Application.applicationName || "App"
         var version = Application.nativeApplicationVersion || "0.0.0"
@@ -77,6 +83,9 @@ const Home = () => {
         bsc.setAppVersion(version)
     }
 
+    /**
+     * Handles the button press for starting or stopping the bot.
+     */
     const handleButtonPress = async () => {
         if (isRunning) {
             StartModule.stop()
