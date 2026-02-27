@@ -367,7 +367,7 @@ open class Campaign(game: Game) : DialogHandler(game) {
         // Operations to be done every time the date changes.
         // Skip if we've already checked the date this turn and no game-advancing action was taken.
         if (!bHasCheckedDateThisTurn) {
-            if (game.updateDate()) {
+            if (game.updateDate() || !game.trainee.bHasUpdatedStats) {
 
                 // Reset flags on date change.
                 game.racing.encounteredRacingPopup = false
