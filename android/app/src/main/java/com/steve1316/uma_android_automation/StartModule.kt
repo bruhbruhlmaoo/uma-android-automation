@@ -292,6 +292,25 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     }
 
     /**
+     * Retrieves the device's exact width, height, and DPI metrics.
+     *
+     * @param promise The React Native promise that resolves the WritableMap of metrics.
+     */
+    @ReactMethod
+    fun getDeviceDimensions(promise: Promise) {
+        try {
+            val metrics = reactApplicationContext.resources.displayMetrics
+            val map = Arguments.createMap()
+            map.putInt("width", metrics.widthPixels)
+            map.putInt("height", metrics.heightPixels)
+            map.putInt("dpi", metrics.densityDpi)
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("DEVICE_INFO_ERROR", "Failed to retrieve device dimensions: ${e.message}")
+        }
+    }
+
+    /**
      * Sends the message back to the Javascript frontend along with its event name to be listened on.
      *
      * @param eventName The name of the event to be picked up on as defined in the developer's JS frontend.
