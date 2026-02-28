@@ -21,6 +21,11 @@ import { useSettings } from "../../context/SettingsContext"
 import { useSettingsFileManager } from "../../hooks/useSettingsFileManager"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 
+/**
+ * The main Settings page of the application.
+ * Provides scenario selection, navigation links to sub-settings pages,
+ * misc bot configuration options, and settings management (import/export/reset).
+ */
 const Settings = () => {
     usePerformanceLogging("Settings")
     const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false)
@@ -44,7 +49,7 @@ const Settings = () => {
                     backgroundColor: colors.background,
                 },
             }),
-        [colors],
+        [colors]
     )
 
     //////////////////////////////////////////////////
@@ -57,6 +62,9 @@ const Settings = () => {
         setTimeout(() => setSnackbarOpen(false), 2500)
     }, [bsc.readyStatus])
 
+    /**
+     * Reset the settings to their default values.
+     */
     const handleResetSettings = async () => {
         const success = await resetSettings()
         if (success) {
