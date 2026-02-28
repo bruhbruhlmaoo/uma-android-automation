@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useMemo } from "react"
+import { useState, useEffect, useContext, useMemo, useRef } from "react"
 import * as FileSystem from "expo-file-system"
 import * as Sharing from "expo-sharing"
 import { startActivityAsync } from "expo-intent-launcher"
@@ -76,6 +76,20 @@ export const useSettingsManager = () => {
 
     const bsc = useContext(BotStateContext)
 
+    // Ref to always track the latest settings, avoiding stale closure issues.
+    const settingsRef = useRef<Settings>(bsc.settings)
+
+    // Track whether the initial load from database has completed.
+    const hasLoadedRef = useRef(false)
+
+    // Debounce timer for auto-saving settings.
+    const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    // Keep the ref in sync with the latest settings.
+    useEffect(() => {
+        settingsRef.current = bsc.settings
+    }, [bsc.settings])
+
     // Direct database operations.
     const isSQLiteInitialized = databaseManager.isInitialized()
     const isSQLiteSaving = false
@@ -88,6 +102,36 @@ export const useSettingsManager = () => {
         }
     }, [isSQLiteInitialized, migrationCompleted])
 
+    // Auto-save settings to SQLite whenever they change, with debouncing.
+    // Skips saving during initial load to avoid re-writing defaults back on startup.
+    useEffect(() => {
+        if (!hasLoadedRef.current || !isSQLiteInitialized) {
+            return
+        }
+
+        // Clear any pending debounce timer.
+        if (autoSaveTimerRef.current) {
+            clearTimeout(autoSaveTimerRef.current)
+        }
+
+        // Debounce the save to batch rapid changes.
+        autoSaveTimerRef.current = setTimeout(async () => {
+            try {
+                logWithTimestamp("[SettingsManager] Auto-saving settings to database...")
+                await databaseManager.saveSettingsBatch(convertSettingsToBatch(settingsRef.current))
+                logWithTimestamp("[SettingsManager] Auto-save completed.")
+            } catch (error) {
+                logErrorWithTimestamp(`[SettingsManager] Auto-save failed: ${error}`)
+            }
+        }, 500)
+
+        return () => {
+            if (autoSaveTimerRef.current) {
+                clearTimeout(autoSaveTimerRef.current)
+            }
+        }
+    }, [bsc.settings, isSQLiteInitialized])
+
     /**
      * Save settings to `SQLite` database.
      * @param newSettings - The `Settings` object to save. If not provided, the current settings from the `BotStateContext` will be used.
@@ -99,7 +143,8 @@ export const useSettingsManager = () => {
         setIsSaving(true)
 
         try {
-            const localSettings: Settings = newSettings ? newSettings : bsc.settings
+            // Read from the ref to always get the latest settings.
+            const localSettings: Settings = newSettings ? newSettings : settingsRef.current
             await databaseManager.saveSettingsBatch(convertSettingsToBatch(localSettings))
             endTiming({ status: "success", hasNewSettings: !!newSettings })
         } catch (error) {
@@ -121,7 +166,8 @@ export const useSettingsManager = () => {
         setIsSaving(true)
 
         try {
-            const localSettings: Settings = newSettings ? newSettings : bsc.settings
+            // Read from the ref to always get the latest settings.
+            const localSettings: Settings = newSettings ? newSettings : settingsRef.current
             await databaseManager.saveSettingsBatch(convertSettingsToBatch(localSettings))
             endTiming({ status: "success", hasNewSettings: !!newSettings, immediate: true })
         } catch (error) {
@@ -177,6 +223,8 @@ export const useSettingsManager = () => {
             }
 
             bsc.setSettings(newSettings)
+            // Mark that the initial load has completed so auto-save can begin.
+            hasLoadedRef.current = true
             logWithTimestamp(`[SettingsManager] Settings loaded and applied to context ${context}.`)
             logWithTimestamp(`[SettingsManager] Scenario value after load: "${newSettings.general.scenario}"`)
             endTiming({ status: "success", usedDefaults: newSettings === defaultSettings })
