@@ -47,10 +47,43 @@ const Home = () => {
     const [showNotReadyDialog, setShowNotReadyDialog] = useState<boolean>(false)
     const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false)
     const [snackbarMessage, setSnackbarMessage] = useState<string>("")
+    const [deviceMetrics, setDeviceMetrics] = useState<{ width: number; height: number; dpi: number } | null>(null)
+    const [unsupportedReason, setUnsupportedReason] = useState<string | null>(null)
 
     const bsc = useContext(BotStateContext)
     const mlc = useContext(MessageLogContext)
     const { saveSettings } = useSettings()
+
+    const pulseAnim = useRef(new Animated.Value(1)).current
+
+    useEffect(() => {
+        let animation: Animated.CompositeAnimation | null = null
+
+        if (unsupportedReason) {
+            // Pulsate the icon to grab attention when there's an unsupported device.
+            animation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.25,
+                        duration: 700,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 700,
+                        useNativeDriver: true,
+                    }),
+                ])
+            )
+            animation.start()
+        } else {
+            pulseAnim.setValue(1)
+        }
+
+        return () => {
+            animation?.stop()
+        }
+    }, [unsupportedReason])
 
     useEffect(() => {
         const mediaProjectionSubscription = DeviceEventEmitter.addListener("MediaProjectionService", (data) => {
@@ -64,12 +97,40 @@ const Home = () => {
         })
 
         getVersion()
+        fetchDeviceMetrics()
 
         return () => {
             mediaProjectionSubscription.remove()
             botServiceSubscription.remove()
         }
     }, [])
+
+    /**
+     * Fetch device metrics from NativeModule.
+     */
+    const fetchDeviceMetrics = async () => {
+        try {
+            const metrics = await StartModule.getDeviceDimensions()
+            setDeviceMetrics(metrics)
+
+            const { width, height, dpi } = metrics
+            const isWidth1080 = Math.min(width, height) === 1080
+            const is1920 = Math.max(width, height) === 1920
+            const is2340 = Math.max(width, height) === 2340
+
+            if (!isWidth1080 || (!is1920 && !is2340)) {
+                setUnsupportedReason(`unsupported resolution: ${width}x${height}`)
+            } else if (is1920 && dpi !== 240) {
+                setUnsupportedReason(`unsupported DPI: ${dpi} (expected 240)`)
+            } else if (is2340 && dpi !== 450) {
+                setUnsupportedReason(`unsupported DPI: ${dpi} (expected 450)`)
+            } else {
+                setUnsupportedReason(null)
+            }
+        } catch (error) {
+            logErrorWithTimestamp("[Home] Failed to fetch device dimensions:", error)
+        }
+    }
 
     /**
      * Grab the program name and version.
@@ -118,15 +179,31 @@ const Home = () => {
                         <CustomButton variant={isRunning ? "destructive" : isDark ? "default" : "secondary"} onPress={handleButtonPress} isLoading={isRunning} style={styles.button}>
                             {isRunning ? "Stop" : bsc.readyStatus ? "Start" : "Not Ready"}
                         </CustomButton>
-                        {!bsc.readyStatus && !isRunning && (
+                        {unsupportedReason ? (
                             <Tooltip delayDuration={150}>
                                 <TooltipTrigger>
-                                    <Ionicons name="information-circle-outline" size={24} color={colors.foreground} />
+                                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                        <Ionicons name="alert-circle-outline" size={24} color={colors.warningBorder} />
+                                    </Animated.View>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                    <Text>Select a Scenario in Settings to start</Text>
+                                <TooltipContent sideOffset={12} side="bottom" style={{ maxWidth: 350, backgroundColor: colors.warningBg, borderColor: colors.warningBorder, borderWidth: 1 }}>
+                                    <Text
+                                        style={{ color: colors.warningText }}
+                                    >{`Current device display: ${deviceMetrics?.width}x${deviceMetrics?.height} DPI ${deviceMetrics?.dpi}.\n\nBe warned that performance will be degraded due to ${unsupportedReason}. Use 1080x1920 DPI 240 or 1080x2340 DPI 450 for optimal performance.`}</Text>
                                 </TooltipContent>
                             </Tooltip>
+                        ) : (
+                            !bsc.readyStatus &&
+                            !isRunning && (
+                                <Tooltip delayDuration={150}>
+                                    <TooltipTrigger>
+                                        <Ionicons name="information-circle-outline" size={24} color={colors.foreground} />
+                                    </TooltipTrigger>
+                                    <TooltipContent sideOffset={12} side="bottom">
+                                        <Text>Select a Scenario in Settings to start</Text>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )
                         )}
                     </View>
                 }
