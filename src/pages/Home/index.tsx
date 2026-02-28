@@ -4,16 +4,17 @@ import { useContext, useEffect, useState } from "react"
 import { BotStateContext } from "../../context/BotStateContext"
 import { useSettings } from "../../context/SettingsContext"
 import { logWithTimestamp, logErrorWithTimestamp } from "../../lib/logger"
-import { DeviceEventEmitter, StyleSheet, View, NativeModules, TouchableOpacity } from "react-native"
+import { DeviceEventEmitter, StyleSheet, View, NativeModules } from "react-native"
 import { Snackbar } from "react-native-paper"
 import { MessageLogContext } from "../../context/MessageLogContext"
 import { useTheme } from "../../context/ThemeContext"
 import CustomButton from "../../components/CustomButton"
 import { Text } from "../../components/ui/text"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../../components/ui/alert-dialog"
-import { useNavigation, DrawerActions } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip"
+import PageHeader from "../../components/PageHeader"
+import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 
 const styles = StyleSheet.create({
     root: {
@@ -28,28 +29,20 @@ const styles = StyleSheet.create({
         width: "100%",
         flexDirection: "column",
     },
-    buttonContainer: {
-        alignItems: "center",
-        marginBottom: 10,
-        width: "100%",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingHorizontal: 10,
-    },
     button: {
         width: 100,
     },
-    menuButton: {
-        padding: 8,
-        borderRadius: 8,
-    },
 })
 
+/**
+ * The main Home page of the application.
+ * Displays the Start/Stop button for the bot, a message log, and handles bot lifecycle events including settings persistence and readiness checks.
+ */
 const Home = () => {
+    usePerformanceLogging("Home")
     const { StartModule } = NativeModules
 
     const { isDark, colors } = useTheme()
-    const navigation = useNavigation()
     const [isRunning, setIsRunning] = useState<boolean>(false)
     const [showNotReadyDialog, setShowNotReadyDialog] = useState<boolean>(false)
     const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false)
@@ -58,10 +51,6 @@ const Home = () => {
     const bsc = useContext(BotStateContext)
     const mlc = useContext(MessageLogContext)
     const { saveSettings } = useSettings()
-
-    const openDrawer = () => {
-        navigation.dispatch(DrawerActions.openDrawer())
-    }
 
     useEffect(() => {
         const mediaProjectionSubscription = DeviceEventEmitter.addListener("MediaProjectionService", (data) => {
@@ -82,7 +71,9 @@ const Home = () => {
         }
     }, [])
 
-    // Grab the program name and version.
+    /**
+     * Grab the program name and version.
+     */
     const getVersion = () => {
         const appName = Application.applicationName || "App"
         var version = Application.nativeApplicationVersion || "0.0.0"
@@ -92,6 +83,9 @@ const Home = () => {
         bsc.setAppVersion(version)
     }
 
+    /**
+     * Handles the button press for starting or stopping the bot.
+     */
     const handleButtonPress = async () => {
         if (isRunning) {
             StartModule.stop()
@@ -115,27 +109,28 @@ const Home = () => {
 
     return (
         <View style={styles.root}>
-            <View style={styles.buttonContainer}>
-                <TouchableOpacity onPress={openDrawer} style={styles.menuButton} activeOpacity={0.7}>
-                    <Ionicons name="menu" size={28} color={colors.foreground} />
-                </TouchableOpacity>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <CustomButton variant={isRunning ? "destructive" : isDark ? "default" : "secondary"} onPress={handleButtonPress} isLoading={isRunning} style={styles.button}>
-                        {isRunning ? "Stop" : bsc.readyStatus ? "Start" : "Not Ready"}
-                    </CustomButton>
-                    {!bsc.readyStatus && !isRunning && (
-                        <Tooltip delayDuration={150}>
-                            <TooltipTrigger>
-                                <Ionicons name="information-circle-outline" size={24} color={colors.foreground} />
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <Text>Select a Scenario in Settings to start</Text>
-                            </TooltipContent>
-                        </Tooltip>
-                    )}
-                </View>
-                <View style={{ width: 36 }} />
-            </View>
+            <PageHeader
+                title=""
+                showHomeButton={false}
+                style={{ width: "100%" }}
+                centerComponent={
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <CustomButton variant={isRunning ? "destructive" : isDark ? "default" : "secondary"} onPress={handleButtonPress} isLoading={isRunning} style={styles.button}>
+                            {isRunning ? "Stop" : bsc.readyStatus ? "Start" : "Not Ready"}
+                        </CustomButton>
+                        {!bsc.readyStatus && !isRunning && (
+                            <Tooltip delayDuration={150}>
+                                <TooltipTrigger>
+                                    <Ionicons name="information-circle-outline" size={24} color={colors.foreground} />
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                    <Text>Select a Scenario in Settings to start</Text>
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
+                    </View>
+                }
+            />
 
             <View style={styles.contentContainer}>
                 <MessageLog />
