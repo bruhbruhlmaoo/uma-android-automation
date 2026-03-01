@@ -19,6 +19,7 @@ import CustomButton from '../CustomButton';
 import CustomSelect from '../CustomSelect';
 import { Ionicons } from "@expo/vector-icons"
 import SearchableItem from '../SearchableItem';
+import * as SelectPrimitive from "@rn-primitives/select"
 
 
 interface SelectOption {
@@ -28,7 +29,7 @@ interface SelectOption {
 }
 
 interface SelectButtonProps extends PressableProps {
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "success" | "info" | "warning" | "error"
     size?: "default" | "sm" | "lg" | "icon"
     style?: ViewStyle
     className?: string
@@ -36,14 +37,17 @@ interface SelectButtonProps extends PressableProps {
     isLoading?: boolean
     fontSize?: number
     icon?: React.ReactElement
+    iconName?: string
     iconPosition?: "left" | "right"
     options?: SelectOption[]
     groupLabel?: string
     portalHost?: string
     defaultValue?: string
+    placeholder?: string
     value?: string
     setValue?: React.Dispatch<React.SetStateAction<string>>
     onValueChange?: (value: string | undefined) => void
+    onPress?: () => void
 }
 
 const SelectButton: React.FC<SelectButtonProps> = ({
@@ -55,23 +59,79 @@ const SelectButton: React.FC<SelectButtonProps> = ({
     isLoading = false,
     fontSize,
     icon,
+    iconName,
     iconPosition = "left",
     options = [],
     groupLabel,
     portalHost,
     defaultValue,
+    placeholder,
     value,
     setValue,
     onValueChange,
+    onPress,
     ...props
 }) => {
     const { colors, isDark } = useTheme()
 
-    const [isDropdownVisible, setIsDropdownVisible] = useState(false)
     const triggerRef = useRef<View>(null)
     const [triggerWidth, setTriggerWidth] = useState<number>(0)
 
     const currentLabel = options.find((item) => item.value === (value || defaultValue))?.label
+
+    /**
+     * Determine the background color based on variant and theme.
+     * @returns The background color for the button.
+     */
+    const getBackgroundColor = () => {
+        switch (variant) {
+            case "destructive":
+                return colors.destructive
+            case "outline":
+                return isDark ? "black" : "white"
+            case "secondary":
+                return colors.secondary
+            case "ghost":
+                return "transparent"
+            case "link":
+                return "transparent"
+            case "success":
+                return colors.success
+            case "info":
+                return colors.info
+            case "warning":
+                return colors.warning
+            case "error":
+                return colors.error
+            default:
+                return colors.primary
+        }
+    }
+
+    /**
+     * Determine the text color based on variant and theme.
+     * @returns The text color for the button.
+     */
+    const getTextColor = () => {
+        switch (variant) {
+            case "destructive":
+                return "white"
+            case "outline":
+                return isDark ? "white" : "black"
+            case "secondary":
+                return isDark ? "black" : "white"
+            case "success":
+                return colors.successContent
+            case "info":
+                return colors.infoContent
+            case "warning":
+                return colors.warningContent
+            case "error":
+                return colors.errorContent
+            default:
+                return "black"
+        }
+    }
 
     const styles = useMemo(
         () =>
@@ -80,7 +140,6 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                     flexDirection: "row",
                     overflow: "hidden",
                     alignItems: "center",
-                    padding: 10,
                 },
                 button: {
                     flex: 1,
@@ -91,16 +150,17 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                     borderTopLeftRadius: 0,
                     borderBottomLeftRadius: 0,
                 },
-                dropdownMenu: {
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    zIndex: 1,
-                    maxHeight: 150,
+                verticalRuleContainer: {
+                    flex: 1,
+                    width: 1,
+                    height: "100%",
+                    justifyContent: "center",
+                    alignItems: "center",
                 },
-                menuItem: {
-                    padding: 10,
+                verticalRule: {
+                    width: 1,
+                    height: "70%",
+                    backgroundColor: colors.border,
                 },
             }),
         [colors],
@@ -116,74 +176,13 @@ const SelectButton: React.FC<SelectButtonProps> = ({
         setTriggerWidth(measuredWidth)
     }
 
-    // Determine the background color based on variant and theme.
-    const getBackgroundColor = () => {
-        if (disabled) return { opacity: 0.5 }
-
-        switch (variant) {
-            case "destructive":
-                return { backgroundColor: colors.destructive }
-            case "outline":
-                return { backgroundColor: isDark ? "black" : "white" }
-            case "secondary":
-                return { backgroundColor: colors.secondary }
-            case "ghost":
-                return { backgroundColor: "transparent" }
-            case "link":
-                return { backgroundColor: "transparent" }
-            default:
-                return {}
-        }
-    }
-
-    // Determine the text color based on variant and theme.
-    const getTextColor = () => {
-        switch (variant) {
-            case "destructive":
-                return "white"
-            case "outline":
-                return isDark ? "white" : "black"
-            case "secondary":
-                return isDark ? "black" : "white"
-            default:
-                return "black"
-        }
-    }
-
-    // Apply custom styling for specific variants that need theme-aware colors.
-    const getCustomStyle = () => {
-        if (disabled) return {}
-
-        switch (variant) {
-            case "destructive":
-                return { backgroundColor: colors.destructive }
-            case "outline":
-                return { borderColor: isDark ? "white" : "black" }
-            case "secondary":
-                return { backgroundColor: isDark ? colors.secondary : colors.primary }
-            case "default":
-                return { backgroundColor: isDark ? colors.primary : colors.secondary }
-            default:
-                return {}
-        }
-    }
-
-    const toggleDropdown = () => {
-        setIsDropdownVisible(prev => !prev)
-    }
-
     const onPressButton = () => {
-        console.log("clicked button")
-    }
-
-    const onPressDropdown = () => {
-        console.log("clicked dropdown")
-        toggleDropdown()
+        if (onPress) {
+            onPress()
+        }
     }
 
     const handleValueChange = (option: Option) => {
-        toggleDropdown()
-
         if (onValueChange) {
             onValueChange(option?.value || "")
             
@@ -193,52 +192,74 @@ const SelectButton: React.FC<SelectButtonProps> = ({
         }
     }
 
+    const getIcon = (): React.ReactElement | undefined => {
+        if (icon) {
+            return icon
+        } else if (iconName) {
+            return <Ionicons name={iconName} size={20} color={getTextColor()} />
+        } else {
+            return undefined
+        }
+    }
+
     return (
-        <View style={styles.container}>
-            <CustomButton
-                style={styles.button}
-                variant={variant}
-                isLoading={isLoading}
-                onPress={onPressButton}
-            >
-                {value}
-            </CustomButton>
-            <Select
-                onValueChange={handleValueChange}
-                value={value as any}
-                defaultValue={defaultValue as any}
-                disabled={disabled}
-            >
-                <View ref={triggerRef} style={{}} onLayout={onTriggerLayout}>
+        <Select
+            onValueChange={handleValueChange}
+            value={value as any}
+            defaultValue={defaultValue as any}
+            disabled={disabled}
+        >
+            <View style={styles.container} ref={triggerRef} onLayout={onTriggerLayout}>
+                <CustomButton
+                    style={styles.button}
+                    variant={variant}
+                    icon={getIcon()}
+                    iconPosition={iconPosition}
+                    size={size}
+                    isLoading={false}
+                    onPress={onPressButton}
+                >
+                    {value || defaultValue ? currentLabel ?? "ERROR" : placeholder}
+                </CustomButton>
+                <View style={styles.verticalRuleContainer}>
+                    <View style={styles.verticalRule} />
+                </View>
+                <SelectPrimitive.Trigger asChild>
                     <CustomButton
                         style={styles.buttonDropdown}
                         variant={variant}
+                        size={size}
                         isLoading={false}
-                        onPress={onPressDropdown}
                     >
-                        <Ionicons name="caret-down" size={24} color={getTextColor()} />
+                        <Ionicons name="caret-down" size={20} color={getTextColor()} />
                     </CustomButton>
-                </View>
-                <SelectContent style={{ width: triggerWidth }} portalHost={portalHost}>
-                    <NativeSelectScrollView>
-                        <SelectGroup>
-                            {groupLabel && <SelectLabel>{groupLabel}</SelectLabel>}
-                            {options &&
-                                options.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        label={option.label}
-                                        value={option.value}
-                                        disabled={option.disabled}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                        </SelectGroup>
-                    </NativeSelectScrollView>
-                </SelectContent>
-            </Select>
-        </View>
+                </SelectPrimitive.Trigger>
+            </View>
+            <SelectContent
+                style={{ width: triggerWidth, backgroundColor: getBackgroundColor(), borderColor: getBackgroundColor() }}
+                align="end"
+                sideOffset={1}
+                position="popper"
+                portalHost={portalHost}
+            >
+                <NativeSelectScrollView>
+                    <SelectGroup>
+                        {groupLabel && <SelectLabel>{groupLabel}</SelectLabel>}
+                        {options &&
+                            options.map((option) => (
+                                <SelectItem
+                                    key={option.value}
+                                    label={option.label}
+                                    value={option.value}
+                                    disabled={option.disabled}
+                                >
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                    </SelectGroup>
+                </NativeSelectScrollView>
+            </SelectContent>
+        </Select>
     )
 
 };

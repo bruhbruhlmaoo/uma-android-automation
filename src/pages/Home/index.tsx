@@ -167,6 +167,16 @@ const Home = () => {
         }
     }
 
+    const getSelectButtonVariant = (): any => {
+        if (unsupportedReason) {
+            return "warning"
+        } else if (deviceMetrics && bsc.settings.general.scenario !== "") {
+            return "success"
+        } else {
+            return isDark ? "default" : "secondary"
+        }
+    }
+
     return (
         <View style={styles.root}>
             <PageHeader
@@ -175,19 +185,25 @@ const Home = () => {
                 style={{ width: "100%" }}
                 centerComponent={
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <SelectButton
-                            options={scenarios}
-                            value={bsc.settings.general.scenario}
-                            onValueChange={(value) => {
-                                const newScenario = value || ""
-                                bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
-                                bsc.setReadyStatus(newScenario !== "")
-                            }}
-                            //placeholder="Select a Scenario"
-                        />
-                        <CustomButton variant={isRunning ? "destructive" : isDark ? "default" : "secondary"} onPress={handleButtonPress} isLoading={isRunning} style={styles.button}>
-                            {isRunning ? "Stop" : bsc.readyStatus ? "Start" : "Not Ready"}
-                        </CustomButton>
+                        {isRunning ? (
+                            <CustomButton variant={"destructive"} onPress={handleButtonPress} isLoading={true} style={styles.button}>
+                                Stop
+                            </CustomButton>
+                        ) : (
+                            <SelectButton
+                                variant={getSelectButtonVariant()}
+                                iconName={bsc.settings.general.scenario === "" ? undefined : "play-outline"}
+                                options={scenarios}
+                                placeholder="Not Ready"
+                                value={bsc.settings.general.scenario}
+                                onValueChange={(value) => {
+                                    const newScenario = value || ""
+                                    bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
+                                    bsc.setReadyStatus(newScenario !== "")
+                                }}
+                                onPress={handleButtonPress}
+                            />
+                        )}
                         {unsupportedReason ? (
                             <Tooltip delayDuration={150}>
                                 <TooltipTrigger>
