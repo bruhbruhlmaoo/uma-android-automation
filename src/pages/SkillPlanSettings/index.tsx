@@ -22,6 +22,8 @@ import icons from "../SkillSettings/icons"
 interface Skill {
     /** The unique skill ID. */
     id: number
+    /** The skill ID for the inherited version of the skill. Same as ID if skill can't be inherited. */
+    gene_id: number
     /** The English display name of the skill. */
     name_en: string
     /** The English description of the skill. */
