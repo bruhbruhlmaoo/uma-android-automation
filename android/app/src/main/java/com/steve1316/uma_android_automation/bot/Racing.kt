@@ -567,10 +567,9 @@ class Racing (private val game: Game) {
                 return false
             }
         } else {
-            // No maiden races available on this day. Back out and try again later.
-            MessageLog.i(TAG, "[RACE] No maiden races available on this day. Aborting racing...")
-            ButtonBack.click(imageUtils = game.imageUtils)
-            return false
+            // No maiden races available on this day. Check for extra races instead.
+            MessageLog.i(TAG, "[RACE] No maiden races available on this day. Checking for extra races instead...")
+            return handleExtraRace()
         }
 
         // Confirm the selection and the resultant popup and then wait for the game to load.
