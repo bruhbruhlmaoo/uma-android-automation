@@ -67,6 +67,20 @@ class Game(val myContext: Context) {
     private val enableStopBeforeFinals: Boolean = SettingsHelper.getBooleanSetting("general", "enableStopBeforeFinals")
     private val waitDelay: Double = SettingsHelper.getDoubleSetting("general", "waitDelay")
 
+	// Initialize Discord settings from SQLite.
+	init {
+		DiscordUtils.enableDiscordNotifications = SettingsHelper.getBooleanSetting("discord", "enableDiscordNotifications", false)
+		if (DiscordUtils.enableDiscordNotifications) {
+			try {
+				DiscordUtils.discordToken = SettingsHelper.getStringSetting("discord", "discordToken")
+				DiscordUtils.discordUserID = SettingsHelper.getStringSetting("discord", "discordUserID").toString()
+			} catch (e: Exception) {
+				Log.w(TAG, "Failed to read Discord settings: ${e.message}")
+				DiscordUtils.enableDiscordNotifications = false
+			}
+		}
+	}
+
 	////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////
     val trainee: Trainee = Trainee()
