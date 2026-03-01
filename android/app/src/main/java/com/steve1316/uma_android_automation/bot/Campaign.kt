@@ -607,6 +607,9 @@ open class Campaign(game: Game) : DialogHandler(game) {
 		if (game.racing.detectedMandatoryRaceCheck) {
 			MessageLog.i(TAG, "\n[END] Stopping bot due to detection of Mandatory Race.")
 			game.notificationMessage = "Stopping bot due to detection of Mandatory Race."
+			if (DiscordUtils.enableDiscordNotifications) {
+				DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Stopping bot due to detection of Mandatory Race.\n```")
+			}
 			return true
 		}
         ButtonBack.click(game.imageUtils)
@@ -664,11 +667,18 @@ open class Campaign(game: Game) : DialogHandler(game) {
                     game.tap(350.0, 450.0, "ok", taps = 1)
                 }
             } catch (e: InterruptedException) {
-                game.notificationMessage = "Campaign main loop exiting: ${e.message}"
-                if (e.message?.contains("Bot had reached end of run") == true) {
-                    MessageLog.i(TAG, "Campaign main loop exiting: ${e.message}")
+                val stopReason = e.message ?: "Bot was manually stopped."
+                game.notificationMessage = "Campaign main loop exiting: $stopReason"
+                // Send Discord notification with the stop reason.
+                if (DiscordUtils.enableDiscordNotifications) {
+                    val isSuccess = stopReason.contains("Bot had reached end of run") == true
+                    val colorChar = if (isSuccess) "+" else "-"
+                    DiscordUtils.queue.add("```diff\n$colorChar ${MessageLog.getSystemTimeString()} $stopReason\n```")
+                }
+                if (stopReason.contains("Bot had reached end of run") == true) {
+                    MessageLog.i(TAG, "Campaign main loop exiting: $stopReason")
                 } else {
-                    MessageLog.e(TAG, "Campaign main loop exiting: ${e.message}")
+                    MessageLog.e(TAG, "Campaign main loop exiting: $stopReason")
                 }
                 break
             }
