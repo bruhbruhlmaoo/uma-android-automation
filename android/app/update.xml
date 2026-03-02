@@ -1,30 +1,17 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.1.0</latestVersion>
+    <latestVersion>5.1.1</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.1.0 - Changelog
+v5.1.1 - Changelog
 
 New
 ---
-- New frontend feature to search for options via their title and/or description with highlighting and navigation built-in. Options that did not have them now do.
-- Add performance logging to the frontend (viewable to developers only).
-- Add Discord support to the frontend as a new page. You will need a token generated from your Discord Developer Portal, a bot that shares the same server as you, and your numerical user ID. Once set up and every time the bot starts and stops, it will send a Discord DM to you with timestamps and the reason (if any) of why it stopped.
-- Home page now has its icon next to the Start/Stop button more fleshed out to perform a device check on your display setup when the app is first launched. If it detects an issue, it will show a tooltip warning of degraded performance and the reason why like mismatched DPI for example.
-
-Adjustments
----
-- Update `Automation Library` version to `2.4.5` for up-to-date Discord support.
-- Performance optimizations has led to the frontend feeling more smoother.
-- Made the frontend autosave whenever a setting is changed and debounced it to prevent excessive writes back to back.
-- Add fallback handling for stat gains and failure chance if their anchor points were not found to prevent `NullPointerException` from being printed in the logs.
+- Update `Automation Library` to version `2.4.6` to have the app remember the floating overlay button location from now on.
 
 Fixed
 ---
-- Fix bug where the first time an aptitude check was performed, it led to stats being shown as -1.
-- Fix edge case where `!` and `|` were being read as `1` when reading the user in-game race agenda title.
-- Fix edge case where fan requirement was being hindered by the user disabling fan farming.
-- Fix edge case where Unity Cup opponent selection could skip over one of the selections.
+- Fix possible edge case for race skips not being initiated.
     </releaseNotes>
   </update>
 </AppUpdater>
