@@ -167,14 +167,78 @@ const Home = () => {
         }
     }
 
+    /** Gets the appropriate icon name for the SelectButton based on device state. */
+    const getSelectButtonIconName = (): string => {
+        if (bsc.settings.general.scenario === "") {
+            return ""
+        } else if (isRunning) {
+            return "stop-outline"
+        } else {
+            return "play-outline"
+        }
+    }
+
+    /** Gets the SelectButton variant based on device state. */
     const getSelectButtonVariant = (): any => {
         if (unsupportedReason) {
             return "warning"
+        } else if (isRunning) {
+            return "error"
         } else if (deviceMetrics && bsc.settings.general.scenario !== "") {
             return "success"
         } else {
             return isDark ? "default" : "secondary"
         }
+    }
+
+    /** Returns a status indicator based on the device state. */
+    const renderStatus = (): React.ReactElement | null => {
+        const warningTextLines: string[] = [
+            "Current Display: ${deviceMetrics?.width}x${deviceMetrics?.height} (${deviceMetrics?.dpi} DPI).",
+            "",
+            "Warning: Performance may be degraded due to ${unsupportedReason}.",
+            "",
+            "Supported Configurations:",
+            "• 1080x1920 @ 240 DPI",
+            "• 1080x2340 @ 450 DPI",
+            "",
+            "Note: Height is not as important to meet as the width. In addition, DPI is tied to the width and height together. How to calculate your specific DPI:",
+            "",
+            "DPI = sqrt(width^2 + height^2) / diagonal",
+            "",
+            "where width and height of the screen is in pixels, and diagonal is the diagonal size of the physical screen in inches.",
+        ]
+        const warningText: string = warningTextLines.join("\n")
+
+        if (unsupportedReason){
+            return ( 
+                <Tooltip delayDuration={150}>
+                    <TooltipTrigger>
+                        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                            <Ionicons name="alert-circle-outline" size={24} color={colors.warning} />
+                        </Animated.View>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={12} side="bottom" style={{ maxWidth: 350, backgroundColor: colors.warningBg, borderColor: colors.warningBorder, borderWidth: 1 }}>
+                        <Text
+                            style={{ color: colors.warningText }}
+                        >{warningText}</Text>
+                    </TooltipContent>
+                </Tooltip>
+            )
+        } else if (deviceMetrics && !bsc.readyStatus && !isRunning) {
+            return (
+                <Tooltip delayDuration={150}>
+                    <TooltipTrigger>
+                        <Ionicons name="information-circle-outline" size={24} color={colors.info} />
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={12} side="bottom">
+                        <Text>Select a Scenario in Settings to start</Text>
+                    </TooltipContent>
+                </Tooltip>
+            )
+        }
+
+        return null
     }
 
     return (
@@ -185,65 +249,20 @@ const Home = () => {
                 style={{ width: "100%" }}
                 centerComponent={
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        {isRunning ? (
-                            <CustomButton variant={"destructive"} onPress={handleButtonPress} isLoading={true} style={styles.button}>
-                                Stop
-                            </CustomButton>
-                        ) : (
-                            <SelectButton
-                                variant={getSelectButtonVariant()}
-                                iconName={bsc.settings.general.scenario === "" ? undefined : "play-outline"}
-                                options={scenarios}
-                                placeholder="Not Ready"
-                                value={bsc.settings.general.scenario}
-                                onValueChange={(value) => {
-                                    const newScenario = value || ""
-                                    bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
-                                    bsc.setReadyStatus(newScenario !== "")
-                                }}
-                                onPress={handleButtonPress}
-                            />
-                        )}
-                        {unsupportedReason ? (
-                            <Tooltip delayDuration={150}>
-                                <TooltipTrigger>
-                                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                        <Ionicons name="alert-circle-outline" size={24} color={colors.warningBorder} />
-                                    </Animated.View>
-                                </TooltipTrigger>
-                                <TooltipContent sideOffset={12} side="bottom" style={{ maxWidth: 350, backgroundColor: colors.warningBg, borderColor: colors.warningBorder, borderWidth: 1 }}>
-                                    <Text
-                                        style={{ color: colors.warningText }}
-                                    >{`Current Display: ${deviceMetrics?.width}x${deviceMetrics?.height} (${deviceMetrics?.dpi} DPI).
-
-Warning: Performance may be degraded due to ${unsupportedReason}.
-
-Supported Configurations:
-• 1080x1920 @ 240 DPI
-• 1080x2340 @ 450 DPI
-
-Note: Height is not as important to meet as the width. In addition, DPI is tied to the width and height together. How to calculate your specific DPI:
-
-DPI = sqrt(width^2 + height^2) / diagonal
-
-where width and height of the screen is in pixels, and diagonal is the diagonal size of the physical screen in inches.`}</Text>
-                                </TooltipContent>
-                            </Tooltip>
-                        ) : deviceMetrics ? (
-                            <Ionicons name="checkmark-circle-outline" size={24} color="green" />
-                        ) : (
-                            !bsc.readyStatus &&
-                            !isRunning && (
-                                <Tooltip delayDuration={150}>
-                                    <TooltipTrigger>
-                                        <Ionicons name="information-circle-outline" size={24} color={colors.foreground} />
-                                    </TooltipTrigger>
-                                    <TooltipContent sideOffset={12} side="bottom">
-                                        <Text>Select a Scenario in Settings to start</Text>
-                                    </TooltipContent>
-                                </Tooltip>
-                            )
-                        )}
+                        <SelectButton
+                            variant={getSelectButtonVariant()}
+                            iconName={getSelectButtonIconName()}
+                            options={scenarios}
+                            placeholder={deviceMetrics ? "Select a Scenario" : "Not Ready"}
+                            value={bsc.settings.general.scenario}
+                            onValueChange={(value) => {
+                                const newScenario = value || ""
+                                bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
+                                bsc.setReadyStatus(newScenario !== "")
+                            }}
+                            onPress={handleButtonPress}
+                        />
+                        {renderStatus()}
                     </View>
                 }
             />

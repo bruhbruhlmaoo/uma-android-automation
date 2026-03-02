@@ -33,7 +33,6 @@ interface SelectButtonProps extends PressableProps {
     size?: "default" | "sm" | "lg" | "icon"
     style?: ViewStyle
     className?: string
-    disabled?: boolean
     isLoading?: boolean
     fontSize?: number
     icon?: React.ReactElement
@@ -55,7 +54,6 @@ const SelectButton: React.FC<SelectButtonProps> = ({
     size = "default",
     style,
     className = "",
-    disabled = false,
     isLoading = false,
     fontSize,
     icon,
@@ -90,7 +88,7 @@ const SelectButton: React.FC<SelectButtonProps> = ({
             case "outline":
                 return isDark ? "black" : "white"
             case "secondary":
-                return colors.secondary
+                return isDark ? colors.primary : colors.secondary
             case "ghost":
                 return "transparent"
             case "link":
@@ -104,7 +102,7 @@ const SelectButton: React.FC<SelectButtonProps> = ({
             case "error":
                 return colors.error
             default:
-                return colors.primary
+                return isDark ? colors.secondary: colors.primary
         }
     }
 
@@ -133,6 +131,14 @@ const SelectButton: React.FC<SelectButtonProps> = ({
         }
     }
 
+    const getSelectContentBackgroundColor = () => {
+        if (variant === "default") {
+            return isDark ? colors.primary : colors.secondary
+        } else {
+            return getBackgroundColor()
+        }
+    }
+
     const styles = useMemo(
         () =>
             StyleSheet.create({
@@ -152,8 +158,6 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                 },
                 verticalRuleContainer: {
                     flex: 1,
-                    width: 1,
-                    height: "100%",
                     justifyContent: "center",
                     alignItems: "center",
                 },
@@ -207,7 +211,6 @@ const SelectButton: React.FC<SelectButtonProps> = ({
             onValueChange={handleValueChange}
             value={value as any}
             defaultValue={defaultValue as any}
-            disabled={disabled}
         >
             <View style={styles.container} ref={triggerRef} onLayout={onTriggerLayout}>
                 <CustomButton
@@ -236,7 +239,11 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                 </SelectPrimitive.Trigger>
             </View>
             <SelectContent
-                style={{ width: triggerWidth, backgroundColor: getBackgroundColor(), borderColor: getBackgroundColor() }}
+                style={{
+                    width: triggerWidth,
+                    backgroundColor: getSelectContentBackgroundColor(),
+                    borderColor: getSelectContentBackgroundColor(),
+                }}
                 align="end"
                 sideOffset={1}
                 position="popper"
