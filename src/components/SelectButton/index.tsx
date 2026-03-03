@@ -61,7 +61,7 @@ const SelectButton: React.FC<SelectButtonProps> = ({
     const triggerRef = useRef<View>(null)
     const [triggerWidth, setTriggerWidth] = useState<number>(0)
 
-    const currentLabel = options.find((item) => item.value === (value || defaultValue))?.label
+    const currentLabel = options.find((item) => item.value === value || item.value === defaultValue)?.label
 
     /**
      * Determine the background color based on variant and theme.
@@ -195,7 +195,7 @@ const SelectButton: React.FC<SelectButtonProps> = ({
         <Select onValueChange={handleValueChange} value={value as any} defaultValue={defaultValue as any}>
             <View style={styles.container} ref={triggerRef} onLayout={onTriggerLayout}>
                 <CustomButton style={styles.button} variant={variant} icon={getIcon()} iconPosition={iconPosition} size={size} isLoading={false} onPress={onPressButton}>
-                    {value || defaultValue ? currentLabel ?? "ERROR" : placeholder}
+                    {currentLabel ?? placeholder}
                 </CustomButton>
                 <View style={styles.verticalRuleContainer}>
                     <View style={styles.verticalRule} />
