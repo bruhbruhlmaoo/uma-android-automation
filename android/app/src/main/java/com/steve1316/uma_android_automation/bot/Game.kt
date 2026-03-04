@@ -537,7 +537,7 @@ class Game(val myContext: Context) {
 				MessageLog.i(TAG, "[ENERGY] Successfully recovered energy.")
 				true
 			}
-			findAndTapImage("recover_energy_summer", sourceBitmap, tries = 1, region = imageUtils.regionBottomHalf) -> {
+			ButtonRestAndRecreation.click(imageUtils, sourceBitmap = sourceBitmap) -> {
 				ButtonOk.click(imageUtils, region = imageUtils.regionMiddle)
                 // Another OK tap for the possibility of a scheduled race warning popup.
                 wait(0.25)
@@ -568,10 +568,10 @@ class Game(val myContext: Context) {
 		MessageLog.i(TAG, "[MOOD] Detected mood to be ${trainee.mood}.")
 
 		// Only recover mood if its below Good mood and its not Summer.
-		return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && imageUtils.findImageWithBitmap("recover_energy_summer", sourceBitmap, region = imageUtils.regionBottomHalf, suppressError = true) == null) {
+		return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(imageUtils, sourceBitmap = sourceBitmap)) {
 			MessageLog.i(TAG, "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.")
 			false
-		} else if ((trainee.mood < Mood.GOOD) && imageUtils.findImageWithBitmap("recover_energy_summer", sourceBitmap, region = imageUtils.regionBottomHalf, suppressError = true) == null) {
+		} else if ((trainee.mood < Mood.GOOD) && ButtonRestAndRecreation.check(imageUtils, sourceBitmap = sourceBitmap)) {
 			MessageLog.i(TAG, "[MOOD] Current mood is not good (${trainee.mood}). Recovering mood now.")
 
             // Check if a date is available.
@@ -582,7 +582,7 @@ class Game(val myContext: Context) {
                 // Note that if a date was already completed, the Recreation popup will still show so it will require an additional step to recover mood.
                 recreationDateCompleted = true
                 if (!findAndTapImage("recover_mood", sourceBitmap, tries = 1, region = imageUtils.regionBottomHalf, suppressError = true)) {
-                    findAndTapImage("recover_energy_summer", sourceBitmap, tries = 1, region = imageUtils.regionBottomHalf, suppressError = true)
+                    ButtonRestAndRecreation.click(imageUtils, sourceBitmap = sourceBitmap)
                 }
 
                 // Tap OK for the possibility of a scheduled race warning popup.
