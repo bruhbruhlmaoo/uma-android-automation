@@ -327,7 +327,7 @@ class Racing (private val game: Game) {
                 return false
             }
             return handleExtraRace(isScheduledRace = isScheduledRace)
-        } else if (game.imageUtils.findImage("race_change_strategy", tries = 1, region = game.imageUtils.regionMiddle).first != null) {
+        } else if (ButtonChangeRunningStyle.check(game.imageUtils)) {
             MessageLog.i(TAG, "[RACE] The bot is currently sitting on the race screen. Most likely here for a scheduled race.")
             handleStandaloneRace()
         }

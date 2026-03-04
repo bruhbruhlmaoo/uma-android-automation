@@ -24,6 +24,7 @@ import com.steve1316.uma_android_automation.types.Mood
 
 import com.steve1316.uma_android_automation.components.ButtonBack
 import com.steve1316.uma_android_automation.components.ButtonCancel
+import com.steve1316.uma_android_automation.components.ButtonChangeRunningStyle
 import com.steve1316.uma_android_automation.components.ButtonCompleteCareer
 import com.steve1316.uma_android_automation.components.ButtonCraneGame
 import com.steve1316.uma_android_automation.components.ButtonCraneGameOk
@@ -363,7 +364,7 @@ class Game(val myContext: Context) {
 	 */
 	fun checkRacingScreen(): Boolean {
 		MessageLog.i(TAG, "\nChecking if the bot is sitting on the Racing screen.")
-		return if (imageUtils.findImage("race_change_strategy", tries = 1, region = imageUtils.regionBottomHalf).first != null) {
+		return if (ButtonChangeRunningStyle.check(imageUtils)) {
 			MessageLog.i(TAG, "Bot is at the Racing screen waiting to be skipped or done manually.")
 			true
 		} else {
