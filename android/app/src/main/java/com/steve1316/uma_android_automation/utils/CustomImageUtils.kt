@@ -727,7 +727,6 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		val orangeLower = Scalar(100.0, 150.0, 150.0)
 		val orangeUpper = Scalar(130.0, 255.0, 255.0)
 
-		val (_, maxedTemplateBitmap) = getBitmaps("stat_maxed")
 		val results = arrayListOf<BarFillResult>()
 
 		for ((index, statBlock) in allStatBlocks.withIndex()) {
@@ -748,8 +747,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 				continue
 			}
 
-			val (isMaxed, _) = match(croppedBitmap, maxedTemplateBitmap!!, "stat_maxed")
-			if (isMaxed) {
+			if (LabelStatMaxed.check(this, sourceBitmap = croppedBitmap)) {
 				// Skip if the relationship bar is already maxed.
 				if (debugMode) {
                     MessageLog.d(TAG, "Relationship bar #${index + 1} is full.")

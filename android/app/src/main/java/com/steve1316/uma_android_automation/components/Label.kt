@@ -104,3 +104,8 @@ object LabelOrdinaryCuties : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]LabelOrdinaryCuties"
     override val template = Template("components/label/ordinary_cuties", region = Region.middle)
 }
+
+object LabelStatMaxed : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]LabelStatMaxed"
+    override val template = Template("components/label/stat_maxed")
+}
