@@ -69,6 +69,12 @@ open class DialogHandler(val game: Game) {
 
 		MessageLog.d(TAG, "[DIALOG] Handle dialog: ${dialog.name}")
 
+        val bShouldDefer = args["bShouldDefer"] as? Boolean ?: false
+        if (bShouldDefer) {
+            MessageLog.d(TAG, "[DIALOG] Dialog handling deferred to calling function.")
+            return Pair(false, dialog)
+        }
+
 		when (dialog.name) {
 			// Generic Dialogs (from Game.kt)
 			"connection_error" -> {
