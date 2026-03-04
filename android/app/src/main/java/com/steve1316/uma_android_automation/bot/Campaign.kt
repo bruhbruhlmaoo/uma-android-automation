@@ -387,7 +387,7 @@ open class Campaign(game: Game) : DialogHandler(game) {
                 }
 
                 // Update trainee information using parallel processing with shared screenshot.
-                val skillPointsLocation = game.imageUtils.findImageWithBitmap("skill_points", sourceBitmap, suppressError = true)
+                val skillPointsLocation = LabelStatTableHeaderSkillPoints.findImageWithBitmap(game.imageUtils, sourceBitmap = sourceBitmap)
 
                 if (!BotService.isRunning) {
                     return false
@@ -556,7 +556,7 @@ open class Campaign(game: Game) : DialogHandler(game) {
                     }
 
                     if (hasInjury) {
-                        ButtonOk.click(imageUtils, sourceBitmap = sourceBitmap, region = game.imageUtils.regionMiddle)
+                        ButtonOk.click(game.imageUtils, sourceBitmap = sourceBitmap, region = game.imageUtils.regionMiddle)
                         game.wait(3.0)
                         bHasCheckedDateThisTurn = false
                     } else {

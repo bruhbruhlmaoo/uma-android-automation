@@ -3,6 +3,7 @@ package com.steve1316.uma_android_automation.bot
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.automation_library.utils.MessageLog
+import com.steve1316.uma_android_automation.components.ButtonClose
 import net.ricecode.similarity.JaroWinklerStrategy
 import net.ricecode.similarity.StringSimilarityServiceImpl
 import org.opencv.core.Point
@@ -653,7 +654,7 @@ class TrainingEvent(private val game: Game) {
                 iterationCount++
                 
                 // First check for Close button.
-                if (ButtonClose.click(imageUtils)) {
+                if (ButtonClose.click(game.imageUtils)) {
                     MessageLog.i(TAG, "[TRAINING_EVENT] Close button found and clicked. Tutorial event handling complete.")
                     closeButtonFound = true
                     break

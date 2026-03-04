@@ -22,21 +22,27 @@ import com.steve1316.uma_android_automation.types.BoundingBox
 import com.steve1316.uma_android_automation.types.Aptitude
 import com.steve1316.uma_android_automation.types.Mood
 
-import com.steve1316.uma_android_automation.components.DialogUtils
-import com.steve1316.uma_android_automation.components.DialogInterface
-import com.steve1316.uma_android_automation.components.ButtonHomeFullStats
-import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
+import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ButtonCancel
+import com.steve1316.uma_android_automation.components.ButtonCompleteCareer
 import com.steve1316.uma_android_automation.components.ButtonCraneGame
 import com.steve1316.uma_android_automation.components.ButtonCraneGameOk
+import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
+import com.steve1316.uma_android_automation.components.ButtonHomeFullStats
 import com.steve1316.uma_android_automation.components.ButtonInfirmary
 import com.steve1316.uma_android_automation.components.ButtonOk
 import com.steve1316.uma_android_automation.components.ButtonSkip
-import com.steve1316.uma_android_automation.components.IconTazuna
-import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
-import com.steve1316.uma_android_automation.components.IconGoalRibbon
-import com.steve1316.uma_android_automation.components.ButtonBack
 import com.steve1316.uma_android_automation.components.ButtonUnityCupRace
-import com.steve1316.uma_android_automation.components.ButtonCompleteCareer
+import com.steve1316.uma_android_automation.components.ComponentInterface
+import com.steve1316.uma_android_automation.components.DialogInterface
+import com.steve1316.uma_android_automation.components.DialogUtils
+import com.steve1316.uma_android_automation.components.IconGoalRibbon
+import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
+import com.steve1316.uma_android_automation.components.IconTazuna
+import com.steve1316.uma_android_automation.components.LabelConnecting
+import com.steve1316.uma_android_automation.components.LabelEnergy
+import com.steve1316.uma_android_automation.components.LabelNowLoading
+import com.steve1316.uma_android_automation.components.LabelStatTableHeaderSkillPoints
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -235,9 +241,9 @@ class Game(val myContext: Context) {
 		MessageLog.i(TAG, "\n[TEST] Now beginning basic template match test on the Home screen.")
 		MessageLog.i(TAG, "[TEST] Template match confidence setting will be overridden for the test.\n")
 		var results = mutableMapOf<String, MutableList<ScaleConfidenceResult>>(
-			"energy" to mutableListOf(),
-			"tazuna" to mutableListOf(),
-			"skill_points" to mutableListOf()
+			LabelEnergy.template.path to mutableListOf(),
+			IconTazuna.template.path to mutableListOf(),
+			LabelStatTableHeaderSkillPoints.template.path to mutableListOf()
 		)
 		results = imageUtils.startTemplateMatchingTest(results)
 		MessageLog.i(TAG, "\n[TEST] Basic template match test complete.")
@@ -247,7 +253,7 @@ class Game(val myContext: Context) {
 			if (scaleConfidenceResults.isNotEmpty()) {
 				MessageLog.i(TAG, "[TEST] All working scale/confidence combinations for $templateName:")
 				for (result in scaleConfidenceResults) {
-					MessageLog.i(TAG, "[TEST]	Scale: ${result.scale}, Confidence: ${result.confidence}")
+					MessageLog.i(TAG, "[TEST]\tScale: ${result.scale}, Confidence: ${result.confidence}")
 				}
 			} else {
 				MessageLog.w(TAG, "No working scale/confidence combinations found for $templateName")
@@ -451,25 +457,25 @@ class Game(val myContext: Context) {
         }
 	}
 
-	/**
-	 * Checks if the bot is at a "Now Loading..." screen or if the game is awaiting for a server response. This may cause significant delays in normal bot processes.
-	 *
-	 * @param suppressLogging Whether or not to suppress logging for this function. Defaults to false.
-	 * @return True if the game is still loading or is awaiting for a server response. Otherwise, false.
-	 */
-	fun checkLoading(suppressLogging: Boolean = false): Boolean {
-		if (!suppressLogging) MessageLog.i(TAG, "[LOADING] Now checking if the game is still loading...")
+    /**
+     * Checks if the bot is at a "Now Loading..." screen or if the game is awaiting for a server response. This may cause significant delays in normal bot processes.
+     *
+     * @param suppressLogging Whether or not to suppress logging for this function. Defaults to false.
+     * @return True if the game is still loading or is awaiting for a server response. Otherwise, false.
+     */
+    fun checkLoading(suppressLogging: Boolean = false): Boolean {
+        if (!suppressLogging) MessageLog.i(TAG, "[LOADING] Now checking if the game is still loading...")
         val sourceBitmap = imageUtils.getSourceBitmap()
-		return if (imageUtils.findImageWithBitmap("connecting", sourceBitmap, region = imageUtils.regionTopHalf, suppressError = true) != null) {
-			MessageLog.i(TAG, "[LOADING] Detected that the game is awaiting a response from the server from the \"Connecting\" text at the top of the screen. Waiting...")
-			true
-		} else if (imageUtils.findImageWithBitmap("now_loading", sourceBitmap, region = imageUtils.regionBottomHalf, suppressError = true) != null) {
-			MessageLog.i(TAG, "[LOADING] Detected that the game is still loading from the \"Now Loading\" text at the bottom of the screen. Waiting...")
-			true
-		} else {
-			false
-		}
-	}
+        return if (LabelConnecting.check(imageUtils, sourceBitmap = sourceBitmap)) {
+            MessageLog.i(TAG, "[LOADING] Detected that the game is awaiting a response from the server from the \"Connecting\" text at the top of the screen. Waiting...")
+            true
+        } else if (LabelNowLoading.check(imageUtils, sourceBitmap = sourceBitmap)) {
+            MessageLog.i(TAG, "[LOADING] Detected that the game is still loading from the \"Now Loading\" text at the bottom of the screen. Waiting...")
+            true
+        } else {
+            false
+        }
+    }
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -762,13 +768,6 @@ class Game(val myContext: Context) {
             MessageLog.i(TAG, "[CRANE GAME] Event exited.")
 		} else if (findAndTapImage("race_end", sourceBitmap, tries = 1, region = imageUtils.regionBottomHalf, suppressError = true)) {
 			MessageLog.i(TAG, "[MISC] Ended a leftover race.")
-		} else if (imageUtils.findImageWithBitmap("connection_error", sourceBitmap, region = imageUtils.regionMiddle, suppressError = true) != null) {
-			MessageLog.i(TAG, "\n[END] Bot will stop due to detecting a connection error.")
-			notificationMessage = "Bot will stop due to detecting a connection error."
-			if (DiscordUtils.enableDiscordNotifications) {
-				DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Bot will stop due to detecting a connection error.\n```")
-			}
-			return false
 		} else if (imageUtils.findImageWithBitmap("race_not_enough_fans", sourceBitmap, region = imageUtils.regionMiddle, suppressError = true) != null) {
 			MessageLog.i(TAG, "[MISC] There was a popup about insufficient fans.")
 			racing.encounteredRacingPopup = true

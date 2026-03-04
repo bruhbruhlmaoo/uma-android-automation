@@ -374,7 +374,7 @@ class Racing (private val game: Game) {
         }
 
         // If there is a popup warning about racing too many times, confirm the popup to continue as this is a mandatory race.
-        if (ButtonOk.click(imageUtils, region = imageUtils.regionMiddle)) {
+        if (ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)) {
             game.wait(2.0)
         }
 
@@ -645,13 +645,13 @@ class Racing (private val game: Game) {
                 if (!enableForceRacing && !enableMandatoryRacingPlan) {
                     raceRepeatWarningCheck = true
                     MessageLog.i(TAG, "[RACE] Closing popup warning of doing more than 3+ races and setting flag to prevent racing for now. Canceling the racing process and doing something else.")
-                    ButtonCancel.click(imageUtils)
+                    ButtonCancel.click(game.imageUtils)
                     // Clear requirement flags since we cannot proceed with racing.
                     clearRacingRequirementFlags()
                     MessageLog.i(TAG, "********************")
                     return false
                 } else {
-                    ButtonOk.click(imageUtils, region = imageUtils.regionMiddle)
+                    ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
                     game.wait(1.0)
                 }
             }

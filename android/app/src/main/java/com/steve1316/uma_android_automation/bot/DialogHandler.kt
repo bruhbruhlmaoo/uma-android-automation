@@ -72,6 +72,9 @@ open class DialogHandler(val game: Game) {
 				}
 
 				if (game.connectionErrorRetryAttempts >= game.maxConnectionErrorRetryAttempts) {
+                    if (DiscordUtils.enableDiscordNotifications) {
+                        DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Max connection error retry attempts reached. Stopping bot...\n```")
+                    }
 					throw InterruptedException("Max connection error retry attempts reached. Stopping bot...")
 				}
 

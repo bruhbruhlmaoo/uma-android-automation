@@ -184,8 +184,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		val (sourceBitmap, templateBitmap) = getBitmaps("shift")
 
 		// Acquire the location of the energy text image.
-		val (_, energyTemplateBitmap) = getBitmaps("energy")
-		val (_, matchLocation) = match(sourceBitmap, energyTemplateBitmap!!, "energy")
+        val matchLocation: Point? = LabelEnergy.findImageWithBitmap(this, sourceBitmap = sourceBitmap)
 		if (matchLocation == null) {
 			MessageLog.w(TAG, "Could not proceed with OCR text detection due to not being able to find the energy template on the source image.")
 			return ""
@@ -339,7 +338,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 * @return The remaining turn number.
 	 */
 	fun determineTurnsRemainingBeforeNextGoal(): Int {
-		val (energyTextLocation, sourceBitmap) = findImage("energy", tries = 1, region = regionTopHalf)
+		val (energyTextLocation, sourceBitmap) = LabelEnergy.find(this)
 
 		if (energyTextLocation != null) {
 			// Determine crop region based on campaign.
@@ -566,7 +565,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 */
 	fun determineSkillPoints(sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null): Int {
 		val (skillPointsLocation, sourceBitmap) = if (skillPointsLocation == null) {
-			findImage("skill_points", tries = 1)
+			LabelStatTableHeaderSkillPoints.find(this)
         } else if (sourceBitmap == null) {
             Pair(skillPointsLocation, getSourceBitmap())
         } else {
@@ -938,7 +937,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 */
 	fun determineSingleStatValue(statName: StatName, sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null): Int {
 		val (finalSkillPointsLocation, finalSourceBitmap) = if (sourceBitmap == null && skillPointsLocation == null) {
-			findImage("skill_points")
+			LabelStatTableHeaderSkillPoints.find(this)
 		} else {
 			Pair(skillPointsLocation, sourceBitmap)
 		}
@@ -991,7 +990,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 */
 	fun determineStatValues(sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null): Map<StatName, Int> {
 		val (finalSkillPointsLocation, finalSourceBitmap) = if (sourceBitmap == null && skillPointsLocation == null) {
-			findImage("skill_points")
+			LabelStatTableHeaderSkillPoints.find(this)
 		} else {
 			Pair(skillPointsLocation, sourceBitmap)
 		}
@@ -1082,7 +1081,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		}
 
 		// Main screen detection path.
-		val (energyLocation, sourceBitmap) = findImage("energy")
+		val (energyLocation, sourceBitmap) = LabelEnergy.find(this)
 		val offsetX = if (game.scenario == "Unity Cup") {
 			-40
 		} else {
@@ -1158,7 +1157,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		)
 
 		val (skillPointsLocation, sourceBitmap) = if (sourceBitmap == null && skillPointsLocation == null) {
-			findImage("skill_points")
+			LabelStatTableHeaderSkillPoints.find(this)
 		} else {
 			Pair(skillPointsLocation, sourceBitmap)
 		}
@@ -1941,12 +1940,12 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
     * @return If energy bar is detected, returns the filled percentage, else returns null.
     */
     fun analyzeEnergyBar(): Int? {
-        val (sourceBitmap, templateBitmap) = getBitmaps("energy")
+        val templateBitmap: Bitmap = LabelEnergy.template.getBitmap(this)!!
         if (templateBitmap == null) {
             MessageLog.e(TAG, "[ERROR] Failed to find template bitmap for \"energy\".")
             return null
         }
-        val energyTextLocation = findImage("energy", tries = 1, region = regionTopHalf).first
+        val (energyTextLocation, sourceBitmap) = LabelEnergy.find(this)
         if (energyTextLocation == null) {
             MessageLog.e(TAG, "[ERROR] Failed to find the text location of the energy bar.")
             return null

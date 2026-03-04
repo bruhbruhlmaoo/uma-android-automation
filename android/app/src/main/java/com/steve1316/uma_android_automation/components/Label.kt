@@ -80,7 +80,6 @@ object LabelScheduledRace : ComponentInterface {
     override val template = Template("components/label/scheduled_race", region = Region.bottomHalf)
 }
 
-
 object LabelTrainingCannotPerform : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]LabelTrainingCannotPerform"
     override val template = Template("components/label/training_cannot_perform", region = Region.middle)
@@ -89,4 +88,14 @@ object LabelTrainingCannotPerform : ComponentInterface {
 object LabelTrophyWonDialogTitle : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]LabelTrophyWonDialogTitle"
     override val template = Template("components/label/trophy_won")
+}
+
+object LabelConnecting : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]LabelConnecting"
+    override val template = Template("components/label/connecting", region = Region.topHalf)
+}
+
+object LabelNowLoading : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]LabelNowLoading"
+    override val template = Template("components/label/now_loading", region = Region.bottomHalf)
 }

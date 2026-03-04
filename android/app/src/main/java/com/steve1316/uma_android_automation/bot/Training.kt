@@ -15,22 +15,23 @@ import com.steve1316.uma_android_automation.utils.GameDate
 import com.steve1316.automation_library.data.SharedData
 import com.steve1316.automation_library.utils.BotService
 import com.steve1316.automation_library.utils.MessageLog
-import com.steve1316.uma_android_automation.components.ComponentInterface
+import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ButtonOk
+import com.steve1316.uma_android_automation.components.ButtonTraining
+import com.steve1316.uma_android_automation.components.ButtonTrainingGuts
+import com.steve1316.uma_android_automation.components.ButtonTrainingPower
 import com.steve1316.uma_android_automation.components.ButtonTrainingSpeed
 import com.steve1316.uma_android_automation.components.ButtonTrainingStamina
-import com.steve1316.uma_android_automation.components.ButtonTrainingPower
-import com.steve1316.uma_android_automation.components.ButtonTrainingGuts
 import com.steve1316.uma_android_automation.components.ButtonTrainingWit
-import com.steve1316.uma_android_automation.components.ButtonTraining
-import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ComponentInterface
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderGuts
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderPower
 import com.steve1316.uma_android_automation.components.IconTrainingHeaderSpeed
 import com.steve1316.uma_android_automation.components.IconTrainingHeaderStamina
-import com.steve1316.uma_android_automation.components.IconTrainingHeaderPower
-import com.steve1316.uma_android_automation.components.IconTrainingHeaderGuts
 import com.steve1316.uma_android_automation.components.IconTrainingHeaderWit
-import com.steve1316.uma_android_automation.components.LabelTrainingFailureChance
-import com.steve1316.uma_android_automation.components.LabelTrainingCannotPerform
 import com.steve1316.uma_android_automation.components.LabelStatTableHeaderSkillPoints
+import com.steve1316.uma_android_automation.components.LabelTrainingCannotPerform
+import com.steve1316.uma_android_automation.components.LabelTrainingFailureChance
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
@@ -1214,7 +1215,7 @@ class Training(private val game: Game) {
             game.wait(1.0)
 
             // Dismiss any popup warning about a scheduled race.
-            ButtonOk.click(imageUtils, region = imageUtils.regionMiddle)
+            ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
 
 			MessageLog.i(TAG, "[TRAINING] Process to execute training completed.")
 		} else {
