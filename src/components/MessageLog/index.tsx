@@ -351,6 +351,7 @@ ${longTargetsString}
 🔍 Popup Check: ${settings.general.enablePopupCheck ? "✅" : "❌"}
 🔍 Enable Crane Game Attempt: ${settings.general.enableCraneGameAttempt ? "✅" : "❌"}
 🛑 Stop Before Finals: ${settings.general.enableStopBeforeFinals ? "✅" : "❌"}
+🛑 Stop At Date: ${settings.general.enableStopAtDate ? "✅" : "❌"}
 ⏰ Wait Delay: ${settings.general.waitDelay}s
 
 ---------- Debug Options ----------
