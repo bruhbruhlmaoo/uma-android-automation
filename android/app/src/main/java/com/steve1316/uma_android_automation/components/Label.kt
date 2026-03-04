@@ -149,3 +149,8 @@ object LabelStatAptitudeS : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]LabelStatAptitudeS"
     override val template = Template("components/label/stat_aptitude_S")
 }
+
+object LabelRecreationDateComplete : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]LabelRecreationDateComplete"
+    override val template = Template("components/label/recreation_date_complete", region = Region.middle)
+}

@@ -620,7 +620,7 @@ class Game(val myContext: Context) {
             MessageLog.i(TAG, "\n[RECREATION_DATE] Recreation has a possible date available.")
             wait(1.0)
             // Check if the date is already done.
-            if (imageUtils.findImage("recreation_date_complete", tries = 1, region = imageUtils.regionMiddle).first != null) {
+            if (LabelRecreationDateComplete.check(imageUtils)) {
                 MessageLog.i(TAG, "[RECREATION_DATE] Recreation date is already completed.")
                 recreationDateCompleted = true
                 if (recoverMoodIfCompleted) {
