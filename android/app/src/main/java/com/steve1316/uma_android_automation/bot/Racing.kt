@@ -1310,14 +1310,19 @@ class Racing (private val game: Game) {
                 if (agendaText == selectedUserAgenda) {
                     MessageLog.i(TAG, "[RACE] ✓ Found $selectedUserAgenda. Tapping the Load List button...")
                     game.gestureUtils.tap(buttonLocation.x, buttonLocation.y, "race_agenda_load_list")
-                    // Clicking this button triggers connection to server or may
-                    // cause a dialog to open. Either way we should wait.
-                    game.wait(game.dialogWaitDelay)
-                    
-                    // Tap the overwrite button.
-                    if(game.findAndTapImage("race_agenda_overwrite", tries = 1, region = game.imageUtils.regionMiddle)) {
-                        // Clicking this button triggers connection to server.
-                        game.waitForLoading()
+                    // Clicking this button triggers connection to server or
+                    // open the Overwrite dialog. Either way we should wait.
+                    val dialog = game.campaign.handleDialogs(
+                        args = mapOf<String, Boolean>(
+                            "bShouldDefer" to true,
+                            "bShouldWait" to true,
+                            "bShouldWaitForLoading" to true,
+                        ),
+                    ).second
+
+                    // Only handle the Overwrite dialog here.
+                    if (dialog.name == "overwrite") {
+                        dialog.ok(game.imageUtils)
                     }
                     
                     foundAgenda = true
