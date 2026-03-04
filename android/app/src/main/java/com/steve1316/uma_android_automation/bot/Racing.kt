@@ -666,7 +666,7 @@ class Racing (private val game: Game) {
                 return false
             }
 
-            val maxCount = game.imageUtils.findAll("race_selection_fans", region = game.imageUtils.regionBottomHalf).size
+            val maxCount = LabelRaceSelectionFans.findAll(game.imageUtils).size
             if (maxCount == 0) {
                 // If there is a fan/trophy requirement but no races available, reset the flags and proceed with training to advance the day.
                 if (hasFanRequirement || hasTrophyRequirement) {
