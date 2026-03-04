@@ -469,11 +469,10 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 *
 	 * @param extraRaceLocation Point object of the extra race's location.
 	 * @param sourceBitmap Bitmap of the source screenshot.
-	 * @param doubleStarPredictionBitmap Bitmap of the double star prediction template image.
 	 * @param forceRacing Flag to allow the extra race to forcibly pass double star prediction check. Defaults to false.
 	 * @return Number of fans to be gained from the extra race or -1 if not found as an object.
 	 */
-	fun determineExtraRaceFans(extraRaceLocation: Point, sourceBitmap: Bitmap, doubleStarPredictionBitmap: Bitmap, forceRacing: Boolean = false): RaceDetails {
+	fun determineExtraRaceFans(extraRaceLocation: Point, sourceBitmap: Bitmap, forceRacing: Boolean = false): RaceDetails {
 		// Crop the source screenshot to show only the fan amount and the predictions.
 		val croppedBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -173), relY(extraRaceLocation.y, -106), relWidth(163), relHeight(96), "determineExtraRaceFans prediction")
 		if (croppedBitmap == null) {
@@ -486,7 +485,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugExtraRacePrediction.png", cvImage)
 
 		// Determine if the extra race has double star prediction.
-		val (predictionCheck, _) = match(croppedBitmap, doubleStarPredictionBitmap, "race_extra_double_prediction")
+        val predictionCheck = IconRaceListPredictionDoubleStar.check(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
 
 		return if (forceRacing || predictionCheck) {
 			if (debugMode && !forceRacing) MessageLog.d(TAG, "This race has double predictions. Now checking how many fans this race gives.")

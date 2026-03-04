@@ -239,7 +239,7 @@ class Racing (private val game: Game) {
         game.updateDate()
 
         // Check for all double star predictions.
-        val doublePredictionLocations = game.imageUtils.findAll("race_extra_double_prediction")
+        val doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
         MessageLog.i(TAG, "[TEST] Found ${doublePredictionLocations.size} races with double predictions.")
         
         doublePredictionLocations.forEachIndexed { index, location ->
@@ -783,7 +783,7 @@ class Racing (private val game: Game) {
         MessageLog.i(TAG, "[RACE] Loaded ${userPlannedRaces.size} user-selected races and ${raceData.size} race entries.")
 
         // Detects all double-star race predictions on screen.
-        val doublePredictionLocations = game.imageUtils.findAll("race_extra_double_prediction")
+        val doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
         MessageLog.i(TAG, "[RACE] Found ${doublePredictionLocations.size} double-star prediction locations.")
         if (doublePredictionLocations.isEmpty()) {
             MessageLog.i(TAG, "[RACE] No double-star predictions found. Canceling racing process.")
@@ -839,7 +839,7 @@ class Racing (private val game: Game) {
 
                             if (higherFanLocation != null) {
                                 MessageLog.i(TAG, "[RACE] ✓ Found higher-fan variant after scrolling. Selecting it.")
-                                game.tap(higherFanLocation.x, higherFanLocation.y, "race_extra_double_prediction", ignoreWaiting = true)
+                                game.tap(higherFanLocation.x, higherFanLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
                                 return true
                             } else {
                                 // Not found after scroll, scroll back up and use the first found location.
@@ -850,11 +850,11 @@ class Racing (private val game: Game) {
                                     val relocatedLocation = findRaceLocationByName(currentDoublePredictions, mandatoryExtraRaceData.name)
                                     val finalLocation = relocatedLocation ?: firstFoundLocation
                                     MessageLog.i(TAG, "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" found. Selecting it.")
-                                    game.tap(finalLocation.x, finalLocation.y, "race_extra_double_prediction", ignoreWaiting = true)
+                                    game.tap(finalLocation.x, finalLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
                                     return true
                                 } else {
                                     MessageLog.i(TAG, "[RACE] Could not scroll back. Using first found position.")
-                                    game.tap(firstFoundLocation.x, firstFoundLocation.y, "race_extra_double_prediction", ignoreWaiting = true)
+                                    game.tap(firstFoundLocation.x, firstFoundLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
                                     return true
                                 }
                             }
@@ -862,7 +862,7 @@ class Racing (private val game: Game) {
                     }
 
                     MessageLog.i(TAG, "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" found on screen with double predictions${if (scrollAttempt > 0) " after $scrollAttempt scroll(s)" else ""}. Selecting it immediately (skipping opportunity cost analysis).")
-                    game.tap(mandatoryExtraRaceLocation.x, mandatoryExtraRaceLocation.y, "race_extra_double_prediction", ignoreWaiting = true)
+                    game.tap(mandatoryExtraRaceLocation.x, mandatoryExtraRaceLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
                     return true
                 }
 
@@ -1052,7 +1052,7 @@ class Racing (private val game: Game) {
         }
 
         MessageLog.i(TAG, "[RACE] Selecting smart racing choice: ${bestRace.raceData.name} (score: ${game.decimalFormat.format(bestRace.score)}).")
-        game.tap(targetRaceLocation.x, targetRaceLocation.y, "race_extra_double_prediction", ignoreWaiting = true)
+        game.tap(targetRaceLocation.x, targetRaceLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
 
         return true
     }
@@ -1066,7 +1066,7 @@ class Racing (private val game: Game) {
         MessageLog.i(TAG, "[RACE] Using traditional racing logic for extra races...")
 
         // Detects double-star races on screen.
-        var doublePredictionLocations = game.imageUtils.findAll("race_extra_double_prediction")
+        var doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
 
         // If no double predictions found and fans/Pre-OP/G3 requirement is active and is after Junior Year, scroll to find them.
         if (doublePredictionLocations.isEmpty() && game.currentDate.year != DateYear.JUNIOR && (hasFanRequirement || hasPreOpOrAboveRequirement || hasG3OrAboveRequirement)) {
@@ -1106,7 +1106,7 @@ class Racing (private val game: Game) {
                 // Check if any matched race is G1.
                 if (raceDataList.any { it.grade == RaceGrade.G1 }) {
                     MessageLog.i(TAG, "[RACE] Only one race with double predictions and it's G1. Selecting it.")
-                    game.tap(doublePredictionLocations[0].x, doublePredictionLocations[0].y, "race_extra_double_prediction", ignoreWaiting = true)
+                    game.tap(doublePredictionLocations[0].x, doublePredictionLocations[0].y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
                     return true
                 } else {
                     // Not G1. Trophy requirement specifically needs G1 races, so cancel.
@@ -1119,17 +1119,17 @@ class Racing (private val game: Game) {
                 } else {
                     MessageLog.i(TAG, "[RACE] Only one race with double predictions and G3 or above criteria active. Selecting it.")
                 }
-                game.tap(doublePredictionLocations[0].x, doublePredictionLocations[0].y, "race_extra_double_prediction", ignoreWaiting = true)
+                game.tap(doublePredictionLocations[0].x, doublePredictionLocations[0].y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
                 return true
             } else {
                 MessageLog.i(TAG, "[RACE] Only one race with double predictions. Selecting it.")
-                game.tap(doublePredictionLocations[0].x, doublePredictionLocations[0].y, "race_extra_double_prediction", ignoreWaiting = true)
+                game.tap(doublePredictionLocations[0].x, doublePredictionLocations[0].y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
                 return true
             }
         }
 
         // Otherwise, iterates through each extra race to determine fan gain and double prediction status.
-        val (sourceBitmap, templateBitmap) = game.imageUtils.getBitmaps("race_extra_double_prediction")
+        val sourceBitmap: Bitmap = game.imageUtils.getSourceBitmap()
         val listOfRaces = ArrayList<RaceDetails>()
         val extraRaceLocations = ArrayList<Point>()
         val raceNamesList = ArrayList<String>()
@@ -1144,7 +1144,7 @@ class Racing (private val game: Game) {
                 raceNamesList.add(raceName)
             }
 
-            val raceDetails = game.imageUtils.determineExtraRaceFans(selectedExtraRace, sourceBitmap, templateBitmap!!, forceRacing = enableForceRacing)
+            val raceDetails = game.imageUtils.determineExtraRaceFans(selectedExtraRace, sourceBitmap, forceRacing = enableForceRacing)
             listOfRaces.add(raceDetails)
 
             if (count + 1 < maxCount) {
