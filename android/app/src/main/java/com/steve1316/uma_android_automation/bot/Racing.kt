@@ -1321,7 +1321,7 @@ class Racing (private val game: Game) {
                     ).second
 
                     // Only handle the Overwrite dialog here.
-                    if (dialog.name == "overwrite") {
+                    if (dialog != null && dialog.name == "overwrite") {
                         dialog.ok(game.imageUtils)
                     }
                     

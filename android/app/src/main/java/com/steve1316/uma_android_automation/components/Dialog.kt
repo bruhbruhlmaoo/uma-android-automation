@@ -999,8 +999,8 @@ object DialogOverwrite : DialogInterface {
     override val name: String = "overwrite"
     override val title: String = "Overwrite"
     override val closeButton = null
-    override val okButton: BaseComponentInterface = ButtonOverwrite
-    override val buttons: List<BaseComponentInterface> = listOf(
+    override val okButton: ComponentInterface = ButtonOverwrite
+    override val buttons: List<ComponentInterface> = listOf(
         ButtonCancel,
         ButtonOverwrite,
     )
