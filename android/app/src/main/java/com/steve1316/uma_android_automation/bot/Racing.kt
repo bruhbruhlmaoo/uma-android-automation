@@ -1270,7 +1270,7 @@ class Racing (private val game: Game) {
         
         // It is assumed that the user is already at the screen with the list of selectable races.
         // Now tap on the Agenda button.
-        if (!game.findAndTapImage("race_agenda", tries = 1, region = game.imageUtils.regionBottomHalf)) {
+        if (!ButtonAgenda.click(game.imageUtils)) {
             MessageLog.w(TAG, "[RACE] Could not find the Agenda button. Backing out and skipping agenda loading.")
             ButtonBack.click(game.imageUtils)
             game.waitForLoading()
