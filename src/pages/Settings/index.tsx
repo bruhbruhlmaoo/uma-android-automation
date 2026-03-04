@@ -367,6 +367,26 @@ const Settings = () => {
                 />
 
                 <CustomSlider
+                    searchId="settings-dialog-wait-delay"
+                    value={bsc.settings.general.dialogWaitDelay}
+                    placeholder={bsc.defaultSettings.general.dialogWaitDelay}
+                    onValueChange={(value) => {
+                        bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, dialogWaitDelay: value } })
+                    }}
+                    onSlidingComplete={(value) => {
+                        bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, dialogWaitDelay: value } })
+                    }}
+                    min={0.0}
+                    max={1.0}
+                    step={0.1}
+                    label="Dialog Wait Delay"
+                    labelUnit="s"
+                    showValue={true}
+                    showLabels={true}
+                    description="Sets the delay between clicking buttons that open dialogs and handling the dialogs. Lowering this will make the bot run faster at an increased risk of the bot incorrectly handling dialogs that pop up."
+                />
+
+                <CustomSlider
                     searchId="settings-overlay-button-size"
                     value={bsc.settings.misc.overlayButtonSizeDP}
                     placeholder={bsc.defaultSettings.misc.overlayButtonSizeDP}

@@ -353,6 +353,7 @@ ${longTargetsString}
 🛑 Stop Before Finals: ${settings.general.enableStopBeforeFinals ? "✅" : "❌"}
 🛑 Stop At Date: ${settings.general.enableStopAtDate ? "✅" : "❌"}
 ⏰ Wait Delay: ${settings.general.waitDelay}s
+⏰ Dialog Wait Delay: ${settings.general.dialogWaitDelay}s
 
 ---------- Debug Options ----------
 🐛 Debug Mode: ${settings.debug.enableDebugMode ? "✅" : "❌"}
