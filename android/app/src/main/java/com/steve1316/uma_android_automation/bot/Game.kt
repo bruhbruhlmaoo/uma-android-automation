@@ -31,6 +31,7 @@ import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
 import com.steve1316.uma_android_automation.components.ButtonHomeFullStats
 import com.steve1316.uma_android_automation.components.ButtonInfirmary
 import com.steve1316.uma_android_automation.components.ButtonInheritance
+import com.steve1316.uma_android_automation.components.ButtonNext
 import com.steve1316.uma_android_automation.components.ButtonOk
 import com.steve1316.uma_android_automation.components.ButtonSkip
 import com.steve1316.uma_android_automation.components.ButtonUnityCupRace
@@ -739,11 +740,11 @@ class Game(val myContext: Context) {
 				DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Bot may have encountered a warning popup. Exiting now...\n```")
 			}
 			return false
-		} else if (findAndTapImage("next", sourceBitmap, tries = 1, region = imageUtils.regionBottomHalf)) {
+		} else if (ButtonNext.click(imageUtils, sourceBitmap = sourceBitmap)) {
 			// Now confirm the completion of a Training Goal popup.
 			MessageLog.i(TAG, "[MISC] Popup detected that needs to be dismissed with the \"Next\" button.")
 			wait(2.0)
-			findAndTapImage("next", tries = 1, region = imageUtils.regionBottomHalf)
+			ButtonNext.click(imageUtils)
 			wait(1.0)
         } else if (imageUtils.findImageWithBitmap("race_repeat_warning", sourceBitmap, region = imageUtils.regionTopHalf) != null) {
             MessageLog.i(TAG, "[MISC] Consecutive race warning detected on the screen so dismissing the popup.")

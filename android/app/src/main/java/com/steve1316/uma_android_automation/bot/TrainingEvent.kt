@@ -1,9 +1,13 @@
 package com.steve1316.uma_android_automation.bot
 
-import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.automation_library.utils.MessageLog
+
+import com.steve1316.uma_android_automation.MainActivity
+
 import com.steve1316.uma_android_automation.components.ButtonClose
+import com.steve1316.uma_android_automation.components.ButtonNext
+
 import net.ricecode.similarity.JaroWinklerStrategy
 import net.ricecode.similarity.StringSimilarityServiceImpl
 import org.opencv.core.Point
@@ -661,7 +665,7 @@ class TrainingEvent(private val game: Game) {
                 }
                 
                 // If Close button not found, look for Next button.
-                if (game.findAndTapImage("next", tries = 1, region = game.imageUtils.regionBottomHalf, suppressError = true)) {
+                if (ButtonNext.click(game.imageUtils)) {
                     MessageLog.i(TAG, "[TRAINING_EVENT] Next button found and clicked. Waiting for next screen...")
                     game.wait(1.0)
                 } else {
