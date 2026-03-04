@@ -418,7 +418,7 @@ class Game(val myContext: Context) {
 
                     wait(0.3)
 
-                    if (imageUtils.findImage("recover_injury_header", tries = 1, region = imageUtils.regionMiddle).first != null) {
+                    if (IconInfirmaryEventHeader.check(imageUtils)) {
                         MessageLog.i(TAG, "[INJURY] Injury detected and attempted to heal.")
                         true
                     } else {
