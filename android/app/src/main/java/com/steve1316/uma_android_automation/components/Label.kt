@@ -194,3 +194,8 @@ object LabelEventProgress : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]LabelEventProgress"
     override val template = Template("components/label/event_progress", region = Region.middle)
 }
+
+object LabelRecreationUmamusume : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]LabelRecreationUmamusume"
+    override val template = Template("components/label/recreation_umamusume", region = Region.middle)
+}

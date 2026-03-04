@@ -589,10 +589,9 @@ class Game(val myContext: Context) {
                 wait(0.25)
                 ButtonOk.click(imageUtils, region = imageUtils.regionMiddle)
 
-                if (imageUtils.findImage("recreation_umamusume", region = imageUtils.regionMiddle, suppressError = true).first != null) {
-                    // The Recreation popup is now open so an additional step is required to recover mood.
+                // The Recreation popup is now open so an additional step is required to recover mood.
+                if (LabelRecreationUmamusume.click(imageUtils)) {
                     MessageLog.i(TAG, "[MOOD] Recreation date is already completed. Recovering mood with the Umamusume now...")
-                    findAndTapImage("recreation_umamusume", region = imageUtils.regionMiddle)
                 } else {
                     // Otherwise, dismiss the popup that says to confirm recreation if the user has not set it to skip the confirmation in their in-game settings.
                     ButtonOk.click(imageUtils, region = imageUtils.regionMiddle)
@@ -625,7 +624,7 @@ class Game(val myContext: Context) {
                 recreationDateCompleted = true
                 if (recoverMoodIfCompleted) {
                     MessageLog.i(TAG, "[RECREATION_DATE] Mood requires recovery. Recovering mood with the Umamusume now...")
-                    findAndTapImage("recreation_umamusume", region = imageUtils.regionMiddle)
+                    LabelRecreationUmamusume.click(imageUtils)
                     true
                 } else {
                     MessageLog.i(TAG, "[RECREATION_DATE] Mood does not require recovery. Moving on...")
