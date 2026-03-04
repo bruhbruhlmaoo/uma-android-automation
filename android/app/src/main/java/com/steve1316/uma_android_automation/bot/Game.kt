@@ -33,6 +33,7 @@ import com.steve1316.uma_android_automation.components.ButtonHomeFullStats
 import com.steve1316.uma_android_automation.components.ButtonInfirmary
 import com.steve1316.uma_android_automation.components.ButtonInheritance
 import com.steve1316.uma_android_automation.components.ButtonNext
+import com.steve1316.uma_android_automation.components.ButtonNextRaceEnd
 import com.steve1316.uma_android_automation.components.ButtonOk
 import com.steve1316.uma_android_automation.components.ButtonSkip
 import com.steve1316.uma_android_automation.components.ButtonUnityCupRace
@@ -770,7 +771,7 @@ class Game(val myContext: Context) {
         ) {
             ButtonCraneGameOk.click(imageUtils = imageUtils, sourceBitmap = sourceBitmap)
             MessageLog.i(TAG, "[CRANE GAME] Event exited.")
-		} else if (findAndTapImage("race_end", sourceBitmap, tries = 1, region = imageUtils.regionBottomHalf, suppressError = true)) {
+		} else if (ButtonNextRaceEnd.click(imageUtils, sourceBitmap = sourceBitmap)) {
 			MessageLog.i(TAG, "[MISC] Ended a leftover race.")
 		} else if (imageUtils.findImageWithBitmap("race_not_enough_fans", sourceBitmap, region = imageUtils.regionMiddle, suppressError = true) != null) {
 			MessageLog.i(TAG, "[MISC] There was a popup about insufficient fans.")
