@@ -20,6 +20,7 @@ import com.steve1316.uma_android_automation.components.ButtonUnityCupWatchMainRa
 import com.steve1316.uma_android_automation.components.DialogInterface
 import com.steve1316.uma_android_automation.components.DialogUtils
 import com.steve1316.uma_android_automation.components.IconDoubleCircle
+import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
 import com.steve1316.uma_android_automation.components.IconUnityCupRaceEndLogo
 import com.steve1316.uma_android_automation.components.LabelUnityCupOpponentSelectionLaurel
 
@@ -102,8 +103,8 @@ class UnityCup(game: Game) : Campaign(game) {
             tutorialDisabled = if (game.imageUtils.findImage("unitycup_tutorial_header", tries = 1, region = game.imageUtils.regionTopHalf).first != null) {
                 // If the tutorial is detected, select the second option to close it.
                 MessageLog.i(TAG, "\n[UNITY_CUP] Detected tutorial for Unity Cup. Closing it now...")
-                val trainingOptionLocations: ArrayList<Point> = game.imageUtils.findAll("training_event_active")
-                game.gestureUtils.tap(trainingOptionLocations[1].x, trainingOptionLocations[1].y, "training_event_active")
+                val trainingOptionLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
+                game.gestureUtils.tap(trainingOptionLocations[1].x, trainingOptionLocations[1].y, IconTrainingEventHorseshoe.template.path)
                 true
             } else {
                 MessageLog.i(TAG, "\n[UNITY_CUP] Tutorial must have already been dismissed.")

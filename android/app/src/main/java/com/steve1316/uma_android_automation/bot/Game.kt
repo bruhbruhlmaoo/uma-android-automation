@@ -295,7 +295,7 @@ class Game(val myContext: Context) {
 	 */
 	fun checkTrainingEventScreen(): Boolean {
 		MessageLog.i(TAG, "\nChecking if the bot is sitting on the Training Event screen.")
-		return if (imageUtils.findImage("training_event_active", tries = 1, region = imageUtils.regionMiddle).first != null) {
+		return if (IconTrainingEventHorseshoe.check(imageUtils)) {
 			MessageLog.i(TAG, "Bot is at the Training Event screen.")
 			true
 		} else {

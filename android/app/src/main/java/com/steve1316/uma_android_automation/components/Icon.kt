@@ -226,3 +226,8 @@ object IconRecreationDate : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]IconRecreationDate"
     override val template = Template("components/icon/recreation_date", region = Region.bottomHalf)
 }
+
+object IconTrainingEventHorseshoe : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconTrainingEventHorseshoe"
+    override val template = Template("components/icon/training_event_horseshoe", region = Region.leftHalf)
+}
