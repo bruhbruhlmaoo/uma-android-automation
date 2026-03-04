@@ -1323,20 +1323,49 @@ class Racing (private val game: Game) {
             for ((buttonLocation, agendaText) in agendaMappings) {
                 if (agendaText == selectedUserAgenda) {
                     MessageLog.i(TAG, "[RACE] ✓ Found $selectedUserAgenda. Tapping the Load List button...")
+                    // Clicking this button triggers connection to server.
+                    // Or it could result in three other states:
+                    // 1)   The overwrite dialog appears.
+                    // 2)   The scheduled_race dialog appears.
+                    // 3)   The my_agendas dialog closes automatically and
+                    //      the scheduled_races dialog remains on screen.
                     game.gestureUtils.tap(buttonLocation.x, buttonLocation.y, ButtonRaceAgendaLoadList.template.path)
-                    // Clicking this button triggers connection to server or
-                    // open the Overwrite dialog. Either way we should wait.
-                    val dialog = game.campaign.handleDialogs(
-                        args = mapOf<String, Boolean>(
-                            "bShouldDefer" to true,
-                            "bShouldWait" to true,
-                            "bShouldWaitForLoading" to true,
-                        ),
-                    ).second
 
-                    // Only handle the Overwrite dialog here.
-                    if (dialog != null && dialog.name == "overwrite") {
-                        dialog.ok(game.imageUtils)
+                    // Timeout after 5 seconds. Shouldn't ever take near that long.
+                    val timeoutMs: Int = 5000
+                    val startTime: Long = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - startTime < timeoutMs) {
+                        val dialog = game.campaign.handleDialogs(
+                            args = mapOf<String, Boolean>(
+                                "bShouldDefer" to true,
+                                "bShouldWait" to true,
+                                "bShouldWaitForLoading" to true,
+                            ),
+                        ).second
+
+                        when (dialog?.name) {
+                            "overwrite" -> dialog.ok(game.imageUtils)
+                            // Pops up when we try to load agenda with races that
+                            // are in the past.
+                            "scheduled_race" -> dialog.close(game.imageUtils)
+                            // We've closed all the extra dialogs after loading agenda.
+                            // Break from loop.
+                            "scheduled_races" -> break
+                            // We might detect the dialog too quick and find this
+                            // one as it is in the process of closing.
+                            // Ignore this and continue loop
+                            "my_agendas" -> {}
+                            // No dialog detected. This can happen if a dialog is closing.
+                            // Not a problem, just continue with loop and timeout when
+                            // the time comes.
+                            null -> {}
+                            // Fall back to the base dialog handler if we get a dialog
+                            // that we weren't expecting.
+                            else -> {
+                                MessageLog.e(TAG, "[RACE] Unknown dialog detected: ${dialog.name}. Falling back to base dialog handler.")
+                                game.campaign.handleDialogs()
+                            }
+                        }
                     }
                     
                     foundAgenda = true
