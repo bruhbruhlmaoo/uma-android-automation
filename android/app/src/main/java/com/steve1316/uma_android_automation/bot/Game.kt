@@ -521,7 +521,7 @@ class Game(val myContext: Context) {
 		// Skip recreation date if it's already completed (will only be used for mood recovery).
 		if (
             !recreationDateCompleted &&
-            imageUtils.findImageWithBitmap("recreation_date", sourceBitmap = sourceBitmap, region = imageUtils.regionBottomHalf) != null &&
+            IconRecreationDate.check(imageUtils, sourceBitmap = sourceBitmap) &&
             handleRecreationDate(recoverMoodIfCompleted = false)) {
 			MessageLog.i(TAG, "[ENERGY] Successfully recovered energy via recreation date.")
 			return true
@@ -575,7 +575,7 @@ class Game(val myContext: Context) {
 			MessageLog.i(TAG, "[MOOD] Current mood is not good (${trainee.mood}). Recovering mood now.")
 
             // Check if a date is available.
-            if (!recreationDateCompleted && imageUtils.findImageWithBitmap("recreation_date", sourceBitmap = sourceBitmap, region = imageUtils.regionBottomHalf) != null) {
+            if (!recreationDateCompleted && IconRecreationDate.check(imageUtils, sourceBitmap = sourceBitmap)) {
                 handleRecreationDate(recoverMoodIfCompleted = true)
             } else {
                 // Otherwise, recover mood as normal.
