@@ -1337,7 +1337,9 @@ class Racing (private val game: Game) {
                     game.wait(0.5)
                     
                     // Tap the overwrite button.
-                    game.findAndTapImage("race_agenda_overwrite", tries = 1, region = game.imageUtils.regionMiddle)
+                    if (!ButtonOverwrite.click(game.imageUtils)) {
+                        MessageLog.w(TAG, "[RACE] Failed to click the agenda's Overwrite button.")
+                    }
                     game.waitForLoading()
                     
                     foundAgenda = true

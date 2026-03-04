@@ -596,3 +596,8 @@ object ButtonSkillDown : ComponentInterface {
     override val TAG: String = "ButtonSkillDown"
     override val template = Template("components/button/skill_down", region = Region.rightHalf)
 }
+
+object ButtonOverwrite : ComponentInterface {
+    override val TAG: String = "ButtonOverwrite"
+    override val template = Template("components/button/overwrite", region = Region.rightHalf)
+}
