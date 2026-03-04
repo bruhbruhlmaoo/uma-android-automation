@@ -1332,7 +1332,7 @@ class Racing (private val game: Game) {
             for ((buttonLocation, agendaText) in agendaMappings) {
                 if (agendaText == selectedUserAgenda) {
                     MessageLog.i(TAG, "[RACE] ✓ Found $selectedUserAgenda. Tapping the Load List button...")
-                    game.gestureUtils.tap(buttonLocation.x, buttonLocation.y, "race_agenda_load_list")
+                    game.gestureUtils.tap(buttonLocation.x, buttonLocation.y, ButtonRaceAgendaLoadList.template.path)
                     game.wait(0.5)
                     
                     // Tap the overwrite button.
