@@ -115,7 +115,7 @@ class UnityCup(game: Game) : Campaign(game) {
 
 	override fun handleRaceEvents(isScheduledRace: Boolean): Boolean {
         MessageLog.i(TAG, "\n[UNITY_CUP] Running handleRaceEvents() for Unity Cup.")
-		if (game.imageUtils.findImage("unitycup_race", tries = 1, region = game.imageUtils.regionBottomHalf).first != null) {
+		if (ButtonUnityCupRace.check(game.imageUtils)) {
             // Handle the Unity Cup race.
             MessageLog.i(TAG, "[UNITY_CUP] Will start the process for Unity Cup race handling.")
 			handleRaceEventsUnityCup()
@@ -138,7 +138,7 @@ class UnityCup(game: Game) : Campaign(game) {
 		
         // If none of these exist then we aren't in any unity cup screens at the moment. Abort.
         if (
-            game.imageUtils.findImage("unitycup_race", region = game.imageUtils.regionBottomHalf).first == null &&
+            !ButtonUnityCupRace.check(game.imageUtils) &&
             game.imageUtils.findImage("unitycup_final_race", region = game.imageUtils.regionBottomHalf).first == null &&
             game.imageUtils.findImage("unitycup_race_manual", region = game.imageUtils.regionBottomHalf).first == null
         ) {
@@ -154,7 +154,7 @@ class UnityCup(game: Game) : Campaign(game) {
             when {
                 handleDialogs().first -> {}
                 // Go to opponent selection screen.
-                game.findAndTapImage("unitycup_race", sourceBitmap = sourceBitmap) -> {
+                ButtonUnityCupRace.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
                     MessageLog.d(TAG, "[UNITY_CUP] Going to opponent selection screen...")
                     selectedOpponentIndex = 0
                     bOverrideOpponentSelection = false
