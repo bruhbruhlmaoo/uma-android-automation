@@ -146,3 +146,18 @@ object IconOneFreePerDayTooltip : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]IconOneFreePerDayTooltip"
     override val template = Template("components/icon/one_free_per_day_tooltip", region = Region.middle)
 }
+
+object IconEnergyBarLeftPart : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconEnergyBarLeftPart"
+    override val template = Template("components/icon/energy_bar_left_part", region = Region.topHalf)
+}
+
+object IconEnergyBarRightPart0 : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconEnergyBarRightPart0"
+    override val template = Template("components/icon/energy_bar_right_part_0", region = Region.topHalf)
+}
+
+object IconEnergyBarRightPart1 : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconEnergyBarRightPart1"
+    override val template = Template("components/icon/energy_bar_right_part_1", region = Region.topHalf)
+}

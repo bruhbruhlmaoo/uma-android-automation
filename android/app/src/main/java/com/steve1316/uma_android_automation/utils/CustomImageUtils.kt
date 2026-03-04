@@ -1969,13 +1969,13 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
         // Now find the left and right brackets of the energy bar
         // to refine our cropped region.
 
-        val energyBarLeftPartTemplateBitmap: Bitmap? = getBitmaps("energy_bar_left_part").second
+        val energyBarLeftPartTemplateBitmap: Bitmap? = IconEnergyBarLeftPart.template.getBitmap(this)
         if (energyBarLeftPartTemplateBitmap == null) {
             MessageLog.e(TAG, "[ERROR] Failed to find the template bitmap for the left part of the energy bar.")
             return null
         }
 
-        val leftPartLocation: Point? = match(croppedBitmap, energyBarLeftPartTemplateBitmap, "energy_bar_left_part").second
+        val leftPartLocation: Point? = IconEnergyBarLeftPart.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
         if (leftPartLocation == null) {
             MessageLog.e(TAG, "[ERROR] Failed to find the location of the left part of the energy bar.")
             return null
@@ -1983,17 +1983,17 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
         // The right side of the energy bar looks very different depending on whether
         // the max energy has been increased. Thus we need to look for one of two bitmaps.
-        var energyBarRightPartTemplateBitmap: Bitmap? = getBitmaps("energy_bar_right_part_0").second
+        var energyBarRightPartTemplateBitmap: Bitmap? = IconEnergyBarRightPart0.template.getBitmap(this)
         var rightPartLocation: Point?
         if (energyBarRightPartTemplateBitmap == null) {
-            energyBarRightPartTemplateBitmap = getBitmaps("energy_bar_right_part_1").second
+            energyBarRightPartTemplateBitmap = IconEnergyBarRightPart1.template.getBitmap(this)
             if (energyBarRightPartTemplateBitmap == null) {
                 MessageLog.e(TAG, "[ERROR] Failed to find the template bitmap for the right part of the energy bar.")
                 return null
             }
-            rightPartLocation = match(croppedBitmap, energyBarRightPartTemplateBitmap, "energy_bar_right_part_1").second
+            rightPartLocation = IconEnergyBarRightPart1.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
         } else {
-            rightPartLocation = match(croppedBitmap, energyBarRightPartTemplateBitmap, "energy_bar_right_part_0").second
+            rightPartLocation = IconEnergyBarRightPart0.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
         }
 
         if (rightPartLocation == null) {
