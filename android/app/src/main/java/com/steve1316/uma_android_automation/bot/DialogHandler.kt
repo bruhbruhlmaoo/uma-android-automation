@@ -116,6 +116,7 @@ open class DialogHandler(val game: Game) {
 				dialog.ok(game.imageUtils)
 			}
 			"runners" -> dialog.close(imageUtils = game.imageUtils)
+            "schedule_race" -> dialog.close(imageUtils = game.imageUtils)
 			"strategy" -> {
 				if (!game.trainee.bHasUpdatedAptitudes) {
 					game.trainee.bTemporaryRunningStyleAptitudesUpdated = game.racing.updateRaceScreenRunningStyleAptitudes()
