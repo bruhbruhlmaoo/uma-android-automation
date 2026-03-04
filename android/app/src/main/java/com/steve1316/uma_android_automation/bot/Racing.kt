@@ -1290,7 +1290,7 @@ class Racing (private val game: Game) {
         game.waitForLoading()
         
         // Check if an agenda is already loaded. If so, then the user must have loaded this earlier in the career so no need to select it again.
-        if (game.imageUtils.findImage("race_agenda_empty", tries = 1, region = game.imageUtils.regionTopHalf).first == null) {
+        if (!IconRaceAgendaEmpty.check(game.imageUtils)) {
             MessageLog.i(TAG, "[RACE] A race agenda is already loaded. Skipping agenda selection.")
 
             // Mark as loaded so we don't try again this run and close the popup.
