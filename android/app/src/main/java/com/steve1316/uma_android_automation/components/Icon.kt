@@ -171,3 +171,48 @@ object IconRaceNotEnoughFans : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]IconRaceNotEnoughFans"
     override val template = Template("components/icon/race_not_enough_fans", region = Region.middle)
 }
+
+object IconStatBlockSpeed : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatBlockSpeed"
+    override val template = Template("components/icon/stat_block_speed")
+}
+
+object IconStatBlockStamina : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatBlockStamina"
+    override val template = Template("components/icon/stat_block_stamina")
+}
+
+object IconStatBlockPower : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatBlockPower"
+    override val template = Template("components/icon/stat_block_power")
+}
+
+object IconStatBlockGuts : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatBlockGuts"
+    override val template = Template("components/icon/stat_block_guts")
+}
+
+object IconStatBlockWit : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatBlockWit"
+    override val template = Template("components/icon/stat_block_wit")
+}
+
+object IconStatBlockTrainer : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatBlockTrainer"
+    override val template = Template("components/icon/stat_block_trainer")
+}
+
+object IconStatSupportEtsukoOtonashi : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatSupportEtsukoOtonashi"
+    override val template = Template("components/icon/stat_support_etsuko_otonashi")
+}
+
+object IconStatSupportRikoKashimoto : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatSupportRikoKashimoto"
+    override val template = Template("components/icon/stat_support_riko_kashimoto")
+}
+
+object IconStatSupportYayoiAkikawa : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconStatSupportYayoiAkikawa"
+    override val template = Template("components/icon/stat_support_yayoi_akikawa")
+}

@@ -619,18 +619,29 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 		val latch = CountDownLatch(6)
 
+        val statBlockComponentMap: Map<String, ComponentInterface> = mapOf(
+            StatName.SPEED.name to IconStatBlockSpeed,
+            StatName.STAMINA.name to IconStatBlockStamina,
+            StatName.POWER.name to IconStatBlockPower,
+            StatName.GUTS.name to IconStatBlockGuts,
+            StatName.WIT.name to IconStatBlockWit,
+            "trainer" to IconStatBlockTrainer,
+        )
+
+        val statSupportComponentMap: Map<String, ComponentInterface> = mapOf(
+            "stat_support_etsuko_otonashi" to IconStatSupportEtsukoOtonashi,
+            "stat_support_riko_kashimoto" to IconStatSupportRikoKashimoto,
+            "stat_support_yayoi_akikawa" to IconStatSupportYayoiAkikawa,
+        )
+
         var allStatBlocks: MutableList<StatBlock> = mutableListOf()
         val blockMap = ConcurrentHashMap<String, ArrayList<Point>>()
         val threads = mutableListOf<Thread>()
 
-        for (name in StatName.entries) {
+        for ((name, component) in statBlockComponentMap) {
             val thread = Thread {
                 try {
-                    blockMap[name.name] = findAllWithBitmap(
-                        "stat_${name.name.lowercase()}_block",
-                        sourceBitmap,
-                        region=Region.topRightThird,
-                    )
+                    blockMap[name] = component.findAll(this, sourceBitmap = sourceBitmap, region = Region.topRightThird)
                 } catch (_: InterruptedException) {
                 } finally {
                     latch.countDown()
@@ -639,23 +650,6 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
             threads.add(thread)
             thread.start()
         }
-
-        // Unique block for trainer supports.
-        val thread = Thread {
-            try {
-                blockMap["trainer"] = findAllWithBitmap(
-                    "stat_trainer_block",
-                    sourceBitmap,
-                    region=Region.topRightThird,
-                )
-            } catch (_: InterruptedException) {
-                // Gracefully handle interruption when bot is stopped.
-            } finally {
-                latch.countDown()
-            }
-		}
-        threads.add(thread)
-        thread.start()
 
 		// Wait for all threads to complete.
 		try {
@@ -700,7 +694,9 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 			// Search for trainer supports. At most one can appear at a time for any one training option.
 			for ((assetName, trainerName, _) in trainersToSearch) {
-				val trainerLocation = findImageWithBitmap(assetName, sourceBitmap, region = Region.topRightThird, suppressError = true)
+                // We hardcode these values so if we fail to fetch the value then that is a programmer error.
+                val component: ComponentInterface = statSupportComponentMap[assetName]!!
+                val trainerLocation = component.findImageWithBitmap(this, sourceBitmap = sourceBitmap, region = Region.topRightThird)
 				if (trainerLocation != null) {
 					// Store the actual center location. The processing loop will use a different offset for trainer_support.
 					allStatBlocks.add(StatBlock("trainer_support", trainerLocation, trainerName))
