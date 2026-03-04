@@ -1049,7 +1049,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 		// Skip this check if we know we're on the Main screen.
 		if (!isOnMainScreen) {
-			val (raceStatusLocation, sourceBitmap) = findImage("race_status", tries = 1)
+			val (raceStatusLocation, sourceBitmap) = ButtonRaceListFullStats.find(this)
 			if (raceStatusLocation != null) {
 				// Perform OCR with thresholding (date text is on solid white background).
 				MessageLog.i(TAG, "Detecting date from the Race List screen.")

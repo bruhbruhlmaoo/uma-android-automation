@@ -230,7 +230,7 @@ class Racing (private val game: Game) {
      */
     fun startRaceListDetectionTest() {
         MessageLog.i(TAG, "\n[TEST] Now beginning detection test on the Race List screen for the currently displayed races.")
-        if (game.imageUtils.findImage("race_status").first == null) {
+        if (!ButtonRaceListFullStats.check(game.imageUtils)) {
             MessageLog.i(TAG, "[TEST] Bot is not on the Race List screen. Ending the test.")
             return
         }
