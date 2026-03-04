@@ -181,7 +181,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 * @return The detected event title in the cropped region.
 	 */
 	fun findEventTitle(increment: Double = 0.0): String {
-		val (sourceBitmap, templateBitmap) = getBitmaps("shift")
+        val sourceBitmap: Bitmap = getSourceBitmap()
 
 		// Acquire the location of the energy text image.
         val matchLocation: Point? = LabelEnergy.findImageWithBitmap(this, sourceBitmap = sourceBitmap)
@@ -204,8 +204,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugEventTitleText.png", tempImage)
 
 		// Now see if it is necessary to shift the cropped region over by 70 pixels or not to account for certain events.
-		val (shiftMatch, _) = match(croppedBitmap, templateBitmap!!, "shift")
-		croppedBitmap = if (shiftMatch) {
+		croppedBitmap = if (IconEventTitleSpacer.check(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))) {
 			Log.d(TAG, "Shifting the region over by 70 pixels!")
 			createSafeBitmap(sourceBitmap, relX(newX.toDouble(), 70), newY, 645 - 70, 65, "findEventTitle shifted crop") ?: croppedBitmap
 		} else {

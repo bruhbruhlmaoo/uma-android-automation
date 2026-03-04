@@ -231,3 +231,8 @@ object IconTrainingEventHorseshoe : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]IconTrainingEventHorseshoe"
     override val template = Template("components/icon/training_event_horseshoe", region = Region.leftHalf)
 }
+
+object IconEventTitleSpacer : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconEventTitleSpacer"
+    override val template = Template("components/icon/event_title_spacer")
+}
