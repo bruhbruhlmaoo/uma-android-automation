@@ -30,6 +30,7 @@ import com.steve1316.uma_android_automation.components.ButtonCraneGameOk
 import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
 import com.steve1316.uma_android_automation.components.ButtonHomeFullStats
 import com.steve1316.uma_android_automation.components.ButtonInfirmary
+import com.steve1316.uma_android_automation.components.ButtonInheritance
 import com.steve1316.uma_android_automation.components.ButtonOk
 import com.steve1316.uma_android_automation.components.ButtonSkip
 import com.steve1316.uma_android_automation.components.ButtonUnityCupRace
@@ -516,7 +517,7 @@ class Game(val myContext: Context) {
 	fun handleInheritanceEvent(): Boolean {
         // Stop checking after Senior Year Early Apr.
 		return if (currentDate.day <= 56) {
-			if (findAndTapImage("inheritance", tries = 1, region = imageUtils.regionBottomHalf)) {
+            if (ButtonInheritance.click(imageUtils)) { 
 				MessageLog.i(TAG, "\nClaimed an inheritance on ${currentDate}.")
                 trainee.bHasUpdatedAptitudes = false
 				true
