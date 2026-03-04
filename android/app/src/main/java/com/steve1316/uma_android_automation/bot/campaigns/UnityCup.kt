@@ -139,7 +139,7 @@ class UnityCup(game: Game) : Campaign(game) {
         // If none of these exist then we aren't in any unity cup screens at the moment. Abort.
         if (
             !ButtonUnityCupRace.check(game.imageUtils) &&
-            game.imageUtils.findImage("unitycup_final_race", region = game.imageUtils.regionBottomHalf).first == null &&
+            !ButtonUnityCupRaceFinal.check(game.imageUtils) &&
             !ButtonUnityCupWatchMainRace.check(game.imageUtils)
         ) {
             return false
@@ -159,7 +159,7 @@ class UnityCup(game: Game) : Campaign(game) {
                     selectedOpponentIndex = 0
                     bOverrideOpponentSelection = false
                 }
-                game.findAndTapImage("unitycup_final_race", sourceBitmap = sourceBitmap) -> {
+                ButtonUnityCupRaceFinal.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
                     MessageLog.i(TAG, "[UNITY_CUP] Final race detected with Team Zenith.")
                     bIsFinals = true
                 }
