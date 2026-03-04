@@ -1135,7 +1135,7 @@ class Racing (private val game: Game) {
         val raceNamesList = ArrayList<String>()
 
         for (count in 0 until maxCount) {
-            val selectedExtraRace = game.imageUtils.findImage("race_extra_selection", region = game.imageUtils.regionBottomHalf).first ?: break
+            val selectedExtraRace = IconRaceListSelectionBracketBottomRight.find(game.imageUtils).first ?: break
             extraRaceLocations.add(selectedExtraRace)
 
             // Extract race name for G1 filtering if trophy requirement is active.
@@ -1150,7 +1150,7 @@ class Racing (private val game: Game) {
             if (count + 1 < maxCount) {
                 val nextX = game.imageUtils.relX(selectedExtraRace.x, -100)
                 val nextY = game.imageUtils.relY(selectedExtraRace.y, 150)
-                game.tap(nextX.toDouble(), nextY.toDouble(), "race_extra_selection", ignoreWaiting = true)
+                game.tap(nextX.toDouble(), nextY.toDouble(), IconRaceListSelectionBracketBottomRight.template.path, ignoreWaiting = true)
             }
 
             game.wait(0.5)
@@ -1209,7 +1209,7 @@ class Racing (private val game: Game) {
         game.tap(
             target.x - game.imageUtils.relWidth((100 * 1.36).toInt()),
             target.y - game.imageUtils.relHeight(70),
-            "race_extra_selection",
+            IconRaceListSelectionBracketBottomRight.template.path,
             ignoreWaiting = true,
         )
 

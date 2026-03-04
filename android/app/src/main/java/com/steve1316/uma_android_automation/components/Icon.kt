@@ -97,6 +97,11 @@ object IconRaceListPredictionDoubleStar : ComponentInterface {
     override val template = Template("components/icon/race_list_prediction_double_star", region = Region.rightHalf)
 }
 
+object IconRaceListSelectionBracketBottomRight : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]IconRaceListSelectionBracketBottomRight"
+    override val template = Template("components/icon/race_list_selection_bracket_bottom_right", region = Region.rightHalf)
+}
+
 object IconRaceListMaidenPill : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]IconRaceListMaidenPill"
     override val template = Template("components/icon/race_list_maiden_pill", region = Region.bottomHalf)
