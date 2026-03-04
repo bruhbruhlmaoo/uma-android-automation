@@ -140,7 +140,7 @@ class UnityCup(game: Game) : Campaign(game) {
         if (
             !ButtonUnityCupRace.check(game.imageUtils) &&
             game.imageUtils.findImage("unitycup_final_race", region = game.imageUtils.regionBottomHalf).first == null &&
-            game.imageUtils.findImage("unitycup_race_manual", region = game.imageUtils.regionBottomHalf).first == null
+            !ButtonUnityCupWatchMainRace.check(game.imageUtils)
         ) {
             return false
         }
