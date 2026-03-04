@@ -1279,7 +1279,7 @@ class Racing (private val game: Game) {
         game.waitForLoading()
 
         // Now tap on the My Agenda button.
-        if (!game.findAndTapImage("race_my_agenda", tries = 1, region = game.imageUtils.regionBottomHalf)) {
+        if (!ButtonMyAgendas.click(game.imageUtils)) {
             MessageLog.w(TAG, "[RACE] Could not find the My Agenda button. Closing and backing out.")
             ButtonClose.click(game.imageUtils)
             game.wait(0.5)

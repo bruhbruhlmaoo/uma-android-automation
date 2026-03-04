@@ -601,3 +601,8 @@ object ButtonOverwrite : ComponentInterface {
     override val TAG: String = "ButtonOverwrite"
     override val template = Template("components/button/overwrite", region = Region.rightHalf)
 }
+
+object ButtonMyAgendas : ComponentInterface {
+    override val TAG: String = "ButtonMyAgendas"
+    override val template = Template("components/button/my_agendas", region = Region.bottomHalf)
+}
