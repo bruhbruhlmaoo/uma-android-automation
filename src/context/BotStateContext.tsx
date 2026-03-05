@@ -167,6 +167,8 @@ export interface Settings {
         recordingBitRate: number
         recordingFrameRate: number
         recordingResolutionScale: number
+        enableRemoteLogViewer: boolean
+        remoteLogViewerPort: number
     }
 
     // Discord settings
@@ -357,6 +359,8 @@ export const defaultSettings: Settings = {
         recordingBitRate: 6,
         recordingFrameRate: 30,
         recordingResolutionScale: 1.0,
+        enableRemoteLogViewer: false,
+        remoteLogViewerPort: 9000,
     },
     discord: {
         enableDiscordNotifications: false,
