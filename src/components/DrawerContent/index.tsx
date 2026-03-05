@@ -56,8 +56,7 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
                     backgroundColor: colors.card,
                 },
                 header: {
-                    paddingTop: 40,
-                    paddingBottom: 24,
+                    paddingBottom: 12,
                     paddingHorizontal: 20,
                     borderBottomWidth: 1,
                     borderBottomColor: colors.border,
