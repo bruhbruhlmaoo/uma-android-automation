@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native"
 import { DrawerContentScrollView, DrawerContentComponentProps, useDrawerStatus } from "@react-navigation/drawer"
 import { CommonActions } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
+import { Avatar, AvatarImage } from "../ui/avatar"
 import { markNavigationStart } from "../../lib/performanceLogger"
 import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext } from "../../context/BotStateContext"
@@ -60,6 +61,13 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
                     paddingHorizontal: 20,
                     borderBottomWidth: 1,
                     borderBottomColor: colors.border,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                },
+                headerTextContainer: {
+                    flex: 1,
+                    justifyContent: "center",
                 },
                 headerTitle: {
                     fontSize: 24,
@@ -474,13 +482,20 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
     }
 
     return (
-        <DrawerContentScrollView {...props} style={styles.container} contentContainerStyle={{ flexGrow: 1 }}>
+        <>
+            <DrawerContentScrollView {...props} style={styles.container} contentContainerStyle={{ flexGrow: 1 }}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Uma Android Automation</Text>
-                <Text style={styles.headerSubtitle}>{bsc.appVersion}</Text>
+                <View style={styles.headerTextContainer}>
+                    <Text style={styles.headerTitle}>Uma Android Automation</Text>
+                    <Text style={styles.headerSubtitle}>{bsc.appVersion}</Text>
+                </View>
+                <Avatar alt="UAA" style={{ width: 72, height: 72 }}>
+                    <AvatarImage source={require("../../assets/app_icon.png")} />
+                </Avatar>
             </View>
             <View style={styles.menuContainer}>{menuItems.map((item) => renderMenuItem(item, 0))}</View>
         </DrawerContentScrollView>
+    </>
     )
 }
 
