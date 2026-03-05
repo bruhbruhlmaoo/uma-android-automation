@@ -410,7 +410,11 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
      */
     @Subscribe
     fun onJSEvent(event: JSEvent) {
-        sendEvent(event.eventName, event.message)
+        // Only send the event to the React Native frontend if it's not internal.
+        // This prevents flooding the bridge during parallel operations where disableOutput is true.
+        if (!event.isInternal) {
+            sendEvent(event.eventName, event.message)
+        }
     }
 
     /**
