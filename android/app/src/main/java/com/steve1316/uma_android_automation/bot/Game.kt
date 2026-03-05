@@ -889,7 +889,16 @@ class Game(val myContext: Context) {
 		} else {
             // Send Discord notification that the run has started.
 			if (DiscordUtils.enableDiscordNotifications) {
-				DiscordUtils.queue.add("```diff\n+ ${MessageLog.getSystemTimeString()} Bot run started! Scenario: $scenario\n```")
+				val enableRemoteLogViewer = SettingsHelper.getBooleanSetting("debug", "enableRemoteLogViewer", false)
+				var logViewerString = ""
+				if (enableRemoteLogViewer) {
+                    // Notify the user that the Remote Log Viewer is enabled and is viewable at the indicated address.
+					val port = SettingsHelper.getIntSetting("debug", "remoteLogViewerPort", 9000)
+					val ipAddress = com.steve1316.uma_android_automation.utils.LogStreamServer.getDeviceIpAddress(myContext)
+					val finalIpAddress = if (ipAddress == "10.0.2.15") "localhost" else ipAddress
+					logViewerString = "\n+ Remote Log Viewer is enabled at http://$finalIpAddress:$port"
+				}
+				DiscordUtils.queue.add("```diff\n+ ${MessageLog.getSystemTimeString()} Bot run started! Scenario: $scenario$logViewerString\n```")
 			}
 			wait(5.0)
             campaign.start()
