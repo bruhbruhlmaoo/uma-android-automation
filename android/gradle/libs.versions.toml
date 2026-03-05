@@ -14,7 +14,7 @@ androidGradleBuildTools = "8.13.0"
 junitJupiter = "6.0.2"
 junitPlatformLauncher = "6.0.2"
 kotlinGradlePlugin = "2.2.0"
-androidCvAutomationLibrary = "2.4.6"
+androidCvAutomationLibrary = "2.4.7"
 lottie = "6.6.9"
 nanohttpd = "2.3.1"
 
