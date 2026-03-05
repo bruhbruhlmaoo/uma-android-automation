@@ -21,6 +21,8 @@ import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.MyAccessibilityService
 import com.steve1316.automation_library.utils.BatteryOptimizationUtils
 import com.steve1316.uma_android_automation.bot.Game
+import com.steve1316.uma_android_automation.utils.LogStreamServer
+import com.steve1316.automation_library.utils.SettingsHelper
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.SubscriberExceptionEvent
@@ -364,6 +366,21 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             promise.resolve(map)
         } catch (e: Exception) {
             promise.reject("DEVICE_INFO_ERROR", "Failed to retrieve device dimensions: ${e.message}")
+        }
+    }
+
+    /**
+     * Retrieves the device's WiFi IP address for the Remote Log Viewer.
+     *
+     * @param promise The React Native promise that resolves with the IP address string.
+     */
+    @ReactMethod
+    fun getDeviceIpAddress(promise: Promise) {
+        try {
+            val ipAddress = LogStreamServer.getDeviceIpAddress(context)
+            promise.resolve(ipAddress)
+        } catch (e: Exception) {
+            promise.reject("IP_ADDRESS_ERROR", "Failed to retrieve device IP address: ${e.message}")
         }
     }
 
