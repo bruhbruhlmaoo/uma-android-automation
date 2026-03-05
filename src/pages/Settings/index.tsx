@@ -107,7 +107,7 @@ const Settings = () => {
     const handleStopAtDateChange = useCallback(
         (part: "year" | "month" | "phase", value: string) => {
             const currentParts = bsc.settings.general.stopAtDate.split(" ")
-            let newYear = currentParts[0] || "Junior"
+            let newYear = currentParts[0] || "Senior"
             let newMonth = currentParts[1] || "January"
             let newPhase = currentParts[2] || "Early"
 
