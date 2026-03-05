@@ -124,6 +124,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
     const { enabled, strategy, enableBuyInheritedUniqueSkills, enableBuyNegativeSkills, plan } = combinedConfig[planKey]
 
     const [searchQuery, setSearchQuery] = useState("")
+    const [showSelected, setShowSelected] = useState(false)
     const scrollViewRef = useRef<ScrollView>(null)
 
     // Parse skill plan from CSV string.
@@ -131,10 +132,18 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         return plan && plan !== "" && typeof plan === "string" ? plan.split(",").map((s) => Number(s)) : []
     }, [plan])
 
+    // Set showSelected to False whenever we have no selected skills.
+    React.useEffect(() => {
+        if (planIds.length === 0) {
+            setShowSelected(false)
+        }
+    }, [planIds, setShowSelected])
+
     // Filter skills based on search and preferences.
     const filteredSkills = useMemo(() => {
-        return skillData.filter((skill) => skill.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
-    }, [skillData, searchQuery])
+        const skills: Skill[] = showSelected ? skillData.filter((skill: Skill) => planIds.includes(skill.id)) : skillData
+        return skills.filter((skill: Skill) => skill.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
+    }, [searchQuery, planIds, showSelected])
 
     /**
      * Update a skill plan setting.
@@ -328,7 +337,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
                     <View style={{ flex: 1 }}>
                         <Text style={styles.sectionTitle}>Planned Skills</Text>
                         <Text style={[styles.inputDescription, { marginTop: 0 }]}>
-                            Selected {planIds.length} / {filteredSkills.length} skills
+                            Selected {planIds.length} / {skillData.length} skills
                         </Text>
                     </View>
                     <View style={{ flexDirection: "row", gap: 8 }}>
@@ -336,6 +345,16 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
                             Clear
                         </CustomButton>
                     </View>
+                </View>
+
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                    <CustomCheckbox
+                        searchId={`show-selected-skills-${name}`}
+                        checked={planIds.length === 0 ? false : showSelected}
+                        disabled={planIds.length === 0}
+                        onCheckedChange={(checked) => setShowSelected(checked && planIds.length !== 0)}
+                        label="Show Only Selected Skills"
+                    />
                 </View>
 
                 <View style={{ flexDirection: "row", marginBottom: 12 }}>
