@@ -226,8 +226,8 @@ where width and height of the screen is in pixels, and diagonal is the diagonal 
                     <TooltipTrigger>
                         <Ionicons name="information-circle-outline" size={24} color={colors.info} />
                     </TooltipTrigger>
-                    <TooltipContent sideOffset={12} side="bottom">
-                        <Text>Select a Scenario in Settings to start</Text>
+                    <TooltipContent sideOffset={12} side="bottom" style={{ width: 200 }}>
+                        <Text>Select a Scenario to start from the center button dropdown.</Text>
                     </TooltipContent>
                 </Tooltip>
             )
