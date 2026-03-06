@@ -67,7 +67,8 @@ class Racing (private val game: Game) {
     internal val juniorYearRaceStrategy = SettingsHelper.getStringSetting("racing", "juniorYearRaceStrategy")
     internal val userSelectedOriginalStrategy = SettingsHelper.getStringSetting("racing", "originalRaceStrategy")
     private var detectedOriginalStrategy: String? = null
-    private var hasAppliedStrategyOverride = false
+    private var bHasSetStrategyJunior: Boolean = false
+    private var bHasSetStrategyOriginal: Boolean = false
 
     // Cached race plan data loaded once per class instance.
     private val raceData: Map<String, RaceData> = loadRaceData()
@@ -1848,46 +1849,72 @@ class Racing (private val game: Game) {
 	 *
 	 * During Junior Year: Applies the user-selected strategy and stores the original.
 	 * After Junior Year: Restores the original strategy and disables the feature.
+     *
+     * If the date is unknown and the running style hasn't ever been set,
+     * then we set the strategy using the Original strategy.
+     * The next time we race and have access to the date, we will attempt to set
+     * the running style no matter what in order to avoid weird edge cases.
+     *
+     * This is as opposed to setting a temporary flag and updating our flags the next
+     * time a date is detected. However if we did this, then there are edge cases such
+     * as racing in late december of junior year. This could cause us to incorrectly
+     * determine that we set the Original race strategy in the previous turn since
+     * we have no idea how many turns have passed since setting the initial strategy.
 	 */
 	fun selectRaceStrategy() {
 		val isJuniorYear = game.currentDate.year == DateYear.JUNIOR
 		val isPastJuniorYear = game.currentDate.year.ordinal > DateYear.JUNIOR.ordinal
 
 		// Determine if a strategy override or reversion is needed.
-		val needsOverride = isJuniorYear && !hasAppliedStrategyOverride && juniorYearRaceStrategy != userSelectedOriginalStrategy
-		val needsReversion = isPastJuniorYear && hasAppliedStrategyOverride
+		val bShouldSetStrategyJunior = isJuniorYear && !bHasSetStrategyJunior && juniorYearRaceStrategy != userSelectedOriginalStrategy
+		val bShouldSetStrategyOriginal = isPastJuniorYear && bHasSetStrategyJunior && !bHasSetStrategyOriginal
 
-		if (
-			!game.trainee.bHasUpdatedAptitudes &&
-			!game.trainee.bTemporaryRunningStyleAptitudesUpdated
-		) {
-			// If trainee aptitudes are unknown, this means we probably started the bot
-			// at the race screen. We need to open the race strategy dialog and
-			// read the aptitudes in from there.
-			MessageLog.i(TAG, "Setting running style and performing temporary initial aptitude check.")
-			ButtonChangeRunningStyle.click(imageUtils = game.imageUtils, tries = 10)
-			game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-			var tries = 10
-			while (tries > 0 && !game.campaign.handleDialogs().first) {
-				tries--
-			}
-		} else if (!game.trainee.bHasSetRunningStyle || needsOverride || needsReversion) {
-			if (needsOverride) {
-				MessageLog.i(TAG, "[RACE] Junior Year detected. Applying Junior race strategy override: $juniorYearRaceStrategy")
-			} else if (needsReversion) {
-				MessageLog.i(TAG, "[RACE] Past Junior Year detected. Reverting to original race strategy: $userSelectedOriginalStrategy")
-			} else {
-				// If we haven't set the trainee's running style yet, open the dialog.
-				MessageLog.i(TAG, "Setting running style for the first time.")
-			}
+        when {
+            bShouldSetStrategyJunior -> MessageLog.i(TAG, "[RACE] Junior Year detected. Applying Junior race strategy override: $juniorYearRaceStrategy")
+            bShouldSetStrategyOriginal -> MessageLog.i(TAG, "[RACE] Past Junior Year detected. Reverting to original race strategy: $userSelectedOriginalStrategy")
+            !game.trainee.bHasSetRunningStyle -> MessageLog.i(TAG, "[RACE] Setting initial race strategy for unknown date.")
+            else -> return
+        }
 
-			ButtonChangeRunningStyle.click(imageUtils = game.imageUtils, tries = 10)
-			game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-			var tries = 10
-			while (tries > 0 && !game.campaign.handleDialogs().first) {
-				tries--
-			}
-		}
+        // Unset this flag so that we can validate that the dialog handler completed
+        // the operation successfully. If this isn't set by the end of this function,
+        // then we know we failed to set the strategy.
+        game.trainee.bHasSetRunningStyle = false
+
+        var numTries: Int = 0
+        val timeoutMs: Int = 30000 // 30 sec
+        val startTime: Long = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            MessageLog.d(TAG, "[RACE] Changing race strategy. Attempt #${numTries + 1}")
+            if (ButtonChangeRunningStyle.click(game.imageUtils)) {
+                game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+            }
+
+            game.campaign.handleDialogs()
+
+            if (game.trainee.bHasSetRunningStyle) {
+                break
+            }
+
+            numTries++
+        }
+
+        when {
+            !game.trainee.bHasSetRunningStyle -> {
+                MessageLog.w(TAG, "[RACE] Timed out setting the race strategy after ${numTries} tries.")
+            }
+            bShouldSetStrategyJunior -> {
+                MessageLog.i(TAG, "[RACE] Successfully set Junior Year race strategy.")
+                bHasSetStrategyJunior = true
+            }
+            bShouldSetStrategyOriginal -> {
+                MessageLog.i(TAG, "[RACE] Successfully set Original race strategy.")
+                bHasSetStrategyOriginal = true
+            }
+            else -> {
+                MessageLog.i(TAG, "[RACE] Successfully set race strategy for unknown date.")
+            }
+        }
 	}
 
     /**

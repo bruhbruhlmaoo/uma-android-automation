@@ -130,6 +130,10 @@ open class DialogHandler(val game: Game) {
 					game.trainee.bTemporaryRunningStyleAptitudesUpdated = game.racing.updateRaceScreenRunningStyleAptitudes()
 				}
 
+                if (game.currentDate.day == 1) {
+                    MessageLog.i(TAG, "[DIALOG] strategy:: Unknown date. Using Original strategy.")
+                }
+
 				var runningStyle: RunningStyle? = null
 				val runningStyleString: String = when {
 					// Special case for when the bot has not been able to check the date
