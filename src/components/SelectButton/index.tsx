@@ -1,7 +1,7 @@
 /** @format */
 
 import React, { useRef, useState, useMemo } from "react"
-import { View, LayoutChangeEvent, ViewStyle, PressableProps, StyleSheet } from "react-native"
+import { View, LayoutChangeEvent, StyleSheet } from "react-native"
 import { useTheme } from "../../context/ThemeContext"
 import { Option, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, NativeSelectScrollView } from "../ui/select"
 import CustomButton from "../CustomButton"
@@ -14,13 +14,9 @@ interface SelectOption {
     disabled?: boolean
 }
 
-interface SelectButtonProps extends PressableProps {
+interface SelectButtonProps {
     variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "success" | "info" | "warning" | "error"
     size?: "default" | "sm" | "lg" | "icon"
-    style?: ViewStyle
-    className?: string
-    isLoading?: boolean
-    fontSize?: number
     icon?: React.ReactElement
     iconName?: React.ComponentProps<typeof Ionicons>["name"]
     iconPosition?: "left" | "right"
@@ -38,10 +34,6 @@ interface SelectButtonProps extends PressableProps {
 const SelectButton: React.FC<SelectButtonProps> = ({
     variant = "default",
     size = "default",
-    style,
-    className = "",
-    isLoading = false,
-    fontSize,
     icon,
     iconName,
     iconPosition = "left",
@@ -54,7 +46,6 @@ const SelectButton: React.FC<SelectButtonProps> = ({
     setValue,
     onValueChange,
     onPress,
-    ...props
 }) => {
     const { colors, isDark } = useTheme()
 
