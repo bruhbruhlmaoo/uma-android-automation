@@ -1,5 +1,3 @@
-/** @format */
-
 import React, { useRef, useState, useMemo } from "react"
 import { View, LayoutChangeEvent, StyleSheet } from "react-native"
 import { useTheme } from "../../context/ThemeContext"
