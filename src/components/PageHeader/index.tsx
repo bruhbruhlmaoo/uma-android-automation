@@ -231,7 +231,11 @@ const PageHeader = ({ title, showHomeButton = true, titleComponent, centerCompon
                     right: 0,
                     alignItems: "center",
                     justifyContent: "center",
-                    pointerEvents: "box-none",
+                },
+                headerRight: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
                 },
                 menuButton: {
                     padding: 8,
@@ -355,6 +359,9 @@ const PageHeader = ({ title, showHomeButton = true, titleComponent, centerCompon
                     )}
                 </View>
                 {!isSearching && rightComponent && <View>{rightComponent}</View>}
+
+                {/* Right Section */}
+                {!isSearching && rightComponent && <View style={styles.headerRight}>{rightComponent}</View>}
             </View>
 
             {/* Fading Overlay for Search Results */}
