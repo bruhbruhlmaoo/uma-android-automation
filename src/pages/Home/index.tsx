@@ -191,22 +191,19 @@ const Home = () => {
 
     /** Returns a status indicator based on the device state. */
     const renderStatus = (): React.ReactElement | null => {
-        const warningTextLines: string[] = [
-            "Current Display: ${deviceMetrics?.width}x${deviceMetrics?.height} (${deviceMetrics?.dpi} DPI).",
-            "",
-            "Warning: Performance may be degraded due to ${unsupportedReason}.",
-            "",
-            "Supported Configurations:",
-            "• 1080x1920 @ 240 DPI",
-            "• 1080x2340 @ 450 DPI",
-            "",
-            "Note: Height is not as important to meet as the width. In addition, DPI is tied to the width and height together. How to calculate your specific DPI:",
-            "",
-            "DPI = sqrt(width^2 + height^2) / diagonal",
-            "",
-            "where width and height of the screen is in pixels, and diagonal is the diagonal size of the physical screen in inches.",
-        ]
-        const warningText: string = warningTextLines.join("\n")
+        const warningText = `Current Display: ${deviceMetrics?.width}x${deviceMetrics?.height} (${deviceMetrics?.dpi} DPI).
+
+Warning: Performance may be degraded due to ${unsupportedReason}.
+
+Supported Configurations:
+• 1080x1920 @ 240 DPI
+• 1080x2340 @ 450 DPI
+
+Note: Height is not as important to meet as the width. In addition, DPI is tied to the width and height together. How to calculate your specific DPI:
+
+DPI = sqrt(width^2 + height^2) / diagonal
+
+where width and height of the screen is in pixels, and diagonal is the diagonal size of the physical screen in inches.`
 
         if (unsupportedReason) {
             return (
