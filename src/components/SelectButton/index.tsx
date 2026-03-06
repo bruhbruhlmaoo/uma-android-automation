@@ -169,7 +169,6 @@ const SelectButton: React.FC<SelectButtonProps> = ({
             StyleSheet.create({
                 container: {
                     flexDirection: "row",
-                    overflow: "hidden",
                     alignItems: "center",
                 },
                 button: {
