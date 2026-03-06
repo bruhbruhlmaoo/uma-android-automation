@@ -279,6 +279,15 @@ class Racing (private val game: Game) {
         MessageLog.i(TAG, "\n********************")
         MessageLog.i(TAG, "[RACE] Starting Racing process on ${game.currentDate}.")
 
+        // If the races button exists AND is disabled, we can exit early since we
+        // know that we're at the home screen and the bot cannot race.
+        if (ButtonRaces.checkDisabled(imageUtils = game.imageUtils) == true) {
+            MessageLog.i(TAG, "[RACE] Races are locked. Canceling the racing process and doing something else.")
+            clearRacingRequirementFlags()
+            MessageLog.i(TAG, "********************")
+            return false
+        }
+
         // If there are no races available, cancel the racing process.
         if (game.imageUtils.findImage("race_none_available", tries = 1, region = game.imageUtils.regionMiddle, suppressError = true).first != null) {
             MessageLog.i(TAG, "[RACE] There are no races to compete in. Canceling the racing process and doing something else.")
@@ -299,12 +308,12 @@ class Racing (private val game: Game) {
             // Check for the consecutive race dialog before proceeding.
             game.campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
             return handleMandatoryRace()
-        } else if (!game.trainee.bHasCompletedMaidenRace && !isScheduledRace && ButtonRaceSelectExtra.click(imageUtils = game.imageUtils)) {
+        } else if (!game.trainee.bHasCompletedMaidenRace && !isScheduledRace && ButtonRaces.click(imageUtils = game.imageUtils)) {
             game.wait(1.0, skipWaitingForLoading = true)
             // Check for the consecutive race dialog before proceeding.
             game.campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
             return handleMaidenRace()
-        } else if ((!game.currentDate.bIsPreDebut && ButtonRaceSelectExtra.click(imageUtils = game.imageUtils)) || isScheduledRace) {
+        } else if ((!game.currentDate.bIsPreDebut && ButtonRaces.click(imageUtils = game.imageUtils)) || isScheduledRace) {
             var overrideIgnore = false
             if (hasFanRequirement || hasTrophyRequirement) {
                 MessageLog.i(TAG, "[RACE] Racing requirement is active. Ignoring consecutive race warning.")
@@ -1230,9 +1239,25 @@ class Racing (private val game: Game) {
         }
 
         // Navigate to the race selection screen.
-        if (!ButtonRaceSelectExtra.click(game.imageUtils)) {
-            MessageLog.w(TAG, "[RACE] Could not find the Race Selection button. Skipping loading the user's race agenda.")
-            return
+        // We only proceed if the button is enabled AND we successfully click it.
+        // Everything else returns from this function.
+        when (ButtonRaces.checkDisabled(game.imageUtils)) {
+            true -> {
+                MessageLog.i(TAG, "[RACE] Races button is disabled. Skipping loading the race agenda.")
+                return
+            }
+            false -> {
+                if (ButtonRaces.click(game.imageUtils)) {
+                    MessageLog.i(TAG, "[RACE] Clicked the Races button. Proceeding to load the race agenda...")
+                } else {
+                    MessageLog.w(TAG, "[RACE] Detected the Races button but failed to click it. Skipping loading the race agenda.")
+                    return
+                }
+            }
+            null -> {
+                MessageLog.w(TAG, "[RACE] Failed to detect the Races button. Skipping loading the race agenda.")
+                return
+            }
         }
 
         game.waitForLoading()
@@ -1549,7 +1574,7 @@ class Racing (private val game: Game) {
         if (game.checkFinals()) {
             MessageLog.i(TAG, "[RACE] It is UMA Finals right now so there will be no extra races. Stopping extra race check.")
             return false
-        } else if (game.imageUtils.findImageWithBitmap("race_select_extra_locked", sourceBitmap, region = game.imageUtils.regionBottomHalf) != null) {
+        } else if (ButtonRaces.checkDisabled(game.imageUtils, sourceBitmap) == true) {
             MessageLog.i(TAG, "[RACE] Extra Races button is currently locked. Stopping extra race check.")
             return false
         } else if (game.currentDate.isSummer()) {
@@ -1843,17 +1868,26 @@ class Racing (private val game: Game) {
             val bitmap: Bitmap = game.imageUtils.getSourceBitmap()
 
             when {
-                // Attempt to skip the race.
-                ButtonViewResults.click(game.imageUtils, sourceBitmap = bitmap) -> {
-                    MessageLog.i(TAG, "[RACE] Clicked ViewResults button to skip race.")
-                }
-                // If the race skip is locked.
-                ButtonViewResultsLocked.check(game.imageUtils, sourceBitmap = bitmap) -> {
-                    MessageLog.i(TAG, "[RACE] Skip is locked. Preparing to run the race manually.")
-                    ButtonRaceManual.click(game.imageUtils, sourceBitmap = bitmap)
-                }
-                ButtonRaceManual.click(game.imageUtils, sourceBitmap = bitmap) -> {
-                    MessageLog.i(TAG, "[RACE] Started the manual race.")
+                // Handle the race prep screen.
+                ButtonChangeRunningStyle.check(game.imageUtils, sourceBitmap = bitmap) -> {
+                    MessageLog.i(TAG, "[RACE] Detected ButtonChangeRunningStyle. Handling race prep screen...")
+                    when (ButtonViewResults.checkDisabled(game.imageUtils, bitmap)) {
+                        true -> {
+                            if (ButtonRaceManual.click(game.imageUtils, sourceBitmap = bitmap)) {
+                                MessageLog.i(TAG, "[RACE] Skip is locked. Running race manually.")
+                            } else {
+                                MessageLog.w(TAG, "[RACE] Skip is locked. Failed to click manual race button.")
+                            }
+                        }
+                        false -> {
+                            if (ButtonViewResults.click(game.imageUtils, sourceBitmap = bitmap)) {
+                                MessageLog.i(TAG, "[RACE] Clicked ViewResults button to skip race.")
+                            } else {
+                                MessageLog.w(TAG, "[RACE] Failed to click ViewResults button to skip race.")
+                            }
+                        }
+                        null -> MessageLog.w(TAG, "[RACE] At Race prep screen but failed to detect ViewResults button.")
+                    }
                 }
                 ButtonRace.click(game.imageUtils, sourceBitmap = bitmap) -> {
                     MessageLog.i(TAG, "[RACE] Dismissed the list of participants.")
@@ -1869,7 +1903,10 @@ class Racing (private val game: Game) {
                     return true
                 }
                 // Otherwise click to progress through screens.
-                else -> game.tap(350.0, 450.0, "ok", taps = 3)
+                else -> {
+                    MessageLog.d(TAG, "[RACE] runRaceWithRetries: No components detected. Tapping to progress...")
+                    game.tap(350.0, 450.0, "ok", taps = 3)
+                }
             }
         } while (raceRetries >= 0)
 
