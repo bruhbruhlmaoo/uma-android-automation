@@ -259,9 +259,9 @@ const Home = () => {
                             }}
                             onPress={handleButtonPress}
                         />
-                        {renderStatus()}
                     </View>
                 }
+                rightComponent={renderStatus()}
             />
 
             <View style={styles.contentContainer}>
