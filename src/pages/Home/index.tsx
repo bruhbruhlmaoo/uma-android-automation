@@ -255,22 +255,20 @@ where width and height of the screen is in pixels, and diagonal is the diagonal 
                 title=""
                 showHomeButton={false}
                 style={{ width: "100%" }}
-                centerComponent={
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <SelectButton
-                            variant={getSelectButtonVariant()}
-                            iconName={getSelectButtonIconName()}
-                            options={scenarios}
-                            placeholder={deviceMetrics ? "Select a Scenario" : "Not Ready"}
-                            value={bsc.settings.general.scenario}
-                            onValueChange={(value) => {
-                                const newScenario = value || ""
-                                bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
-                                bsc.setReadyStatus(newScenario !== "")
-                            }}
-                            onPress={handleButtonPress}
-                        />
-                    </View>
+                leftComponent={
+                    <SelectButton
+                        variant={getSelectButtonVariant()}
+                        iconName={getSelectButtonIconName()}
+                        options={scenarios}
+                        placeholder={deviceMetrics ? "Select a Scenario" : "Not Ready"}
+                        value={bsc.settings.general.scenario}
+                        onValueChange={(value) => {
+                            const newScenario = value || ""
+                            bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
+                            bsc.setReadyStatus(newScenario !== "")
+                        }}
+                        onPress={handleButtonPress}
+                    />
                 }
                 rightComponent={renderStatus()}
             />
