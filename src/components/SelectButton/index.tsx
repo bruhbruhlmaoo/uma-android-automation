@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo } from "react"
 import { View, LayoutChangeEvent, StyleSheet } from "react-native"
 import { useTheme } from "../../context/ThemeContext"
 import { Option, Select, SelectContent, SelectGroup, SelectItem, SelectLabel, NativeSelectScrollView } from "../ui/select"
+import { Separator } from "../ui/separator"
 import CustomButton from "../CustomButton"
 import { Ionicons } from "@expo/vector-icons"
 import * as SelectPrimitive from "@rn-primitives/select"
@@ -180,16 +181,6 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                     borderTopLeftRadius: 0,
                     borderBottomLeftRadius: 0,
                 },
-                verticalRuleContainer: {
-                    flex: 1,
-                    justifyContent: "center",
-                    alignItems: "center",
-                },
-                verticalRule: {
-                    width: 1,
-                    height: "70%",
-                    backgroundColor: colors.border,
-                },
             }),
         [colors]
     )
@@ -246,9 +237,7 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                 <CustomButton style={styles.button} variant={variant as any} icon={getIcon()} iconPosition={iconPosition} size={size} isLoading={false} onPress={onPressButton}>
                     {currentLabel ?? placeholder}
                 </CustomButton>
-                <View style={styles.verticalRuleContainer}>
-                    <View style={styles.verticalRule} />
-                </View>
+                <Separator orientation="vertical" />
                 <SelectPrimitive.Trigger asChild>
                     <CustomButton style={styles.buttonDropdown} variant={variant as any} size={size} isLoading={false}>
                         <Ionicons name="caret-down" size={20} color={getTextColor()} />
