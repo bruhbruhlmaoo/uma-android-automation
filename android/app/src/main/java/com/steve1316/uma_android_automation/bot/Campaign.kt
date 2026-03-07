@@ -460,7 +460,10 @@ open class Campaign(game: Game) : DialogHandler(game) {
                 }
                 MessageLog.i(TAG, "[TRAINEE] Skills Updated: ${game.trainee.getStatsString()}")
                 MessageLog.i(TAG, "[TRAINEE] Mood Updated: ${game.trainee.mood}")
-                if (game.trainee.bHasUpdatedAptitudes) game.trainee.logInfo()
+                if (game.trainee.bHasUpdatedAptitudes) {
+                    game.trainee.logInfo()
+                    game.trainee.logDetailedPlayerInfo()
+                }
 
                 // Now check if we need to handle skills before finals.
                 if (game.currentDate.day == 72 && game.skillPlan.skillPlans["preFinals"]?.bIsEnabled ?: false) {

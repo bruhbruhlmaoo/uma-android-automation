@@ -916,9 +916,9 @@ class Game(val myContext: Context) {
 					val port = SettingsHelper.getIntSetting("debug", "remoteLogViewerPort", 9000)
 					val ipAddress = com.steve1316.uma_android_automation.utils.LogStreamServer.getDeviceIpAddress(myContext)
 					val finalIpAddress = if (ipAddress == "10.0.2.15") "localhost" else ipAddress
-					logViewerString = "\n+ Remote Log Viewer is enabled at http://$finalIpAddress:$port"
+					logViewerString = "Remote Log Viewer is enabled at http://$finalIpAddress:$port"
 				}
-				DiscordUtils.queue.add("```diff\n+ ${MessageLog.getSystemTimeString()} Bot run started! Scenario: $scenario$logViewerString\n```")
+				DiscordUtils.queue.add("```diff\n+ ${MessageLog.getSystemTimeString()} Bot run started! Scenario: $scenario```$logViewerString")
 			}
 			wait(5.0)
             campaign.start()

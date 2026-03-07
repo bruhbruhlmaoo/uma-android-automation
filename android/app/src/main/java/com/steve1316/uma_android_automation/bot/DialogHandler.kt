@@ -379,6 +379,7 @@ open class DialogHandler(val game: Game) {
 
 				// Print the trainee info with the updated fan count.
 				game.trainee.logInfo()
+				game.trainee.logDetailedPlayerInfo()
 			}
 			"umamusume_details" -> {
 				val prevTrackSurface = game.trainee.trackSurface
