@@ -193,7 +193,7 @@ object LogStreamServer {
 		private val bufferLock = Object()
 
 		// Maximum number of messages to retain in the history buffer.
-		private val maxBufferSize = 5000
+		private val maxBufferSize = 15000
 
 		/**
 		 * Clears all messages from the history buffer.
