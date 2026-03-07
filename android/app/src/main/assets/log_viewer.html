@@ -1309,7 +1309,17 @@
             // Listen for input changes in the search field to filter logs in real-time.
             searchInput.addEventListener("input", function () {
                 searchQuery = this.value.toLowerCase().trim()
+                searchClear.classList.toggle("visible", this.value.length > 0)
                 applyFilters()
+            })
+
+            // Listen for click on the clear button to reset search.
+            searchClear.addEventListener("click", function () {
+                searchInput.value = ""
+                searchQuery = ""
+                this.classList.remove("visible")
+                applyFilters()
+                searchInput.focus()
             })
 
             // ==============================================
