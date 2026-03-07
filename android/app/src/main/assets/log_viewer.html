@@ -1053,6 +1053,9 @@
                 var parsed = parseMessage(rawMessage)
                 allMessages.push({ raw: rawMessage, parsed: parsed })
 
+                // Handle special messages for dashboard updates
+                processSpecialLogs(parsed)
+
                 var entry = createLogEntry(rawMessage, parsed)
                 logContainer.appendChild(entry)
 
@@ -1086,6 +1089,7 @@
                 validMessages.forEach(function (rawMessage) {
                     var parsed = parseMessage(rawMessage)
                     allMessages.push({ raw: rawMessage, parsed: parsed })
+                    processSpecialLogs(parsed)
                     var entry = createLogEntry(rawMessage, parsed)
                     fragment.appendChild(entry)
                 })
@@ -1244,6 +1248,9 @@
                 messageCount = 0
                 messageCountEl.textContent = "0"
 
+                // Reset the trainee name display.
+                document.getElementById("dashboardName").textContent = "-"
+
                 // Show empty state again.
                 if (emptyState) {
                     emptyState.style.display = "flex"
@@ -1335,6 +1342,70 @@
                 }
             })
 
+            // ==============================================
+            // Dashboard
+            // ==============================================
+
+            /**
+             * Processes logs for special dashboard updates.
+             * @param {object} parsed - The parsed log object.
+             */
+            function processSpecialLogs(parsed) {
+                const text = parsed.text
+
+                // Detect and extract Turn number from any string like "(Turn 33)" or "Turn 33"
+                const turnMatch = text.match(/(?:\(|Turn\s*)(\d+)\)?/i)
+                if (turnMatch && (text.includes("[DATE]") || text.includes("fromDateString"))) {
+                    document.getElementById("dashboardTurn").textContent = turnMatch[1]
+                }
+
+                // Parse clean date: "[DEBUG] fromDateString:: Detected CLASSIC YEAR EARLY MAY (Turn 33)"
+                if (text.includes("fromDateString:: Detected")) {
+                    const dateMatch = text.match(/fromDateString:: Detected (.*?) (?:\(Turn|\d)/)
+                    if (dateMatch) {
+                        const dateStr = dateMatch[1].trim().replace(/^FINALS\s+/i, "")
+                        document.getElementById("dashboardDate").textContent = idToTitleCase(dateStr)
+                    }
+                }
+                // Fallback for generic [DATE] logs
+                else if (text.includes("[DATE]") && !text.includes("getFinalsDay")) {
+                    // Match generic date skipping "New date:" and "(Turn X)"
+                    const dateMatch = text.match(/\[DATE\]\s*(?:New date:\s*)?(.*?)(\s*\(Turn|$)/)
+                    if (dateMatch) {
+                        const dateStr = dateMatch[1].trim().replace(/^FINALS\s+/i, "")
+                        document.getElementById("dashboardDate").textContent = idToTitleCase(dateStr)
+                    }
+                }
+
+                // Parse detailed trainee info: "[TRAINEE_DETAILED] Stats: Spd=764, Sta=910, Pow=679, Gut=355, Wit=280"
+                if (text.includes("[TRAINEE_DETAILED]")) {
+                    const typeMatch = text.match(/\[TRAINEE_DETAILED\]\s*([^:]+):\s*(.*)/)
+                    if (typeMatch) {
+                        updateDashboard(typeMatch[1], typeMatch[2])
+                    }
+                }
+            }
+
+            /**
+             * Helper to convert uppercase strings to Title Case and shorten months.
+             */
+            function idToTitleCase(str) {
+                const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+                return str
+                    .toLowerCase()
+                    .split(" ")
+                    .map((word) => {
+                        let titleCase = word.charAt(0).toUpperCase() + word.slice(1)
+                        // Shorten month if it's a full month name
+                        const monthIndex = months.findIndex((m) => m === titleCase)
+                        if (monthIndex !== -1) {
+                            return months[monthIndex].slice(0, 3)
+                        }
+                        return titleCase
+                    })
+                    .join(" ")
+            }
 
             /**
              * Updates the dashboard with new trainee data.
