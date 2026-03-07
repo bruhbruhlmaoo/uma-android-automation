@@ -368,6 +368,7 @@ const DebugSettings = () => {
                                                 debugMode_startDateOCRTest: false,
                                                 debugMode_startRaceListDetectionTest: false,
                                                 debugMode_startAptitudesDetectionTest: false,
+                                                debugMode_startTraineeNameOCRTest: false,
                                             },
                                         })
                                     } else {
@@ -398,6 +399,7 @@ const DebugSettings = () => {
                                                 debugMode_startDateOCRTest: false,
                                                 debugMode_startRaceListDetectionTest: false,
                                                 debugMode_startAptitudesDetectionTest: false,
+                                                debugMode_startTraineeNameOCRTest: false,
                                             },
                                         })
                                     } else {
@@ -428,6 +430,7 @@ const DebugSettings = () => {
                                                 debugMode_startDateOCRTest: false,
                                                 debugMode_startRaceListDetectionTest: false,
                                                 debugMode_startAptitudesDetectionTest: false,
+                                                debugMode_startTraineeNameOCRTest: false,
                                             },
                                         })
                                     } else {
@@ -458,6 +461,7 @@ const DebugSettings = () => {
                                                 debugMode_startDateOCRTest: true,
                                                 debugMode_startRaceListDetectionTest: false,
                                                 debugMode_startAptitudesDetectionTest: false,
+                                                debugMode_startTraineeNameOCRTest: false,
                                             },
                                         })
                                     } else {
@@ -488,6 +492,7 @@ const DebugSettings = () => {
                                                 debugMode_startDateOCRTest: false,
                                                 debugMode_startRaceListDetectionTest: true,
                                                 debugMode_startAptitudesDetectionTest: false,
+                                                debugMode_startTraineeNameOCRTest: false,
                                             },
                                         })
                                     } else {
@@ -518,6 +523,7 @@ const DebugSettings = () => {
                                                 debugMode_startDateOCRTest: false,
                                                 debugMode_startRaceListDetectionTest: false,
                                                 debugMode_startAptitudesDetectionTest: true,
+                                                debugMode_startTraineeNameOCRTest: false,
                                             },
                                         })
                                     } else {
@@ -531,6 +537,40 @@ const DebugSettings = () => {
                                 description="Disables normal bot operations and starts the Aptitudes detection test. Only on the Main screen and tests detecting the current aptitudes."
                                 style={{ marginTop: 10 }}
                             />
+
+                            <CustomCheckbox
+                                searchId="debug-trainee-name-ocr-test"
+                                checked={bsc.settings.debug.debugMode_startTraineeNameOCRTest}
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        // Disable other tests when enabling this one.
+                                        bsc.setSettings({
+                                            ...bsc.settings,
+                                            debug: {
+                                                ...bsc.settings.debug,
+                                                debugMode_startTemplateMatchingTest: false,
+                                                debugMode_startSingleTrainingOCRTest: false,
+                                                debugMode_startComprehensiveTrainingOCRTest: false,
+                                                debugMode_startDateOCRTest: false,
+                                                debugMode_startRaceListDetectionTest: false,
+                                                debugMode_startAptitudesDetectionTest: false,
+                                                debugMode_startTraineeNameOCRTest: true,
+                                                debugMode_startMainScreenOCRTest: false,
+                                                debugMode_startTrainingScreenOCRTest: false,
+                                            },
+                                        })
+                                    } else {
+                                        bsc.setSettings({
+                                            ...bsc.settings,
+                                            debug: { ...bsc.settings.debug, debugMode_startTraineeNameOCRTest: false },
+                                        })
+                                    }
+                                }}
+                                label="Start Trainee Name OCR Test"
+                                description="Disables normal bot operations and starts the Trainee Name OCR test. Only on the Aptitude dialog and tests detecting the trainee's name using color filtering."
+                                style={{ marginTop: 10 }}
+                            />
+
                         </View>
                     </View>
                 </ScrollView>

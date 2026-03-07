@@ -161,6 +161,7 @@ export interface Settings {
         debugMode_startDateOCRTest: boolean
         debugMode_startRaceListDetectionTest: boolean
         debugMode_startAptitudesDetectionTest: boolean
+        debugMode_startTraineeNameOCRTest: boolean
         debugMode_startMainScreenOCRTest: boolean
         debugMode_startTrainingScreenOCRTest: boolean
         enableHideOCRComparisonResults: boolean
@@ -354,6 +355,7 @@ export const defaultSettings: Settings = {
         debugMode_startDateOCRTest: false,
         debugMode_startRaceListDetectionTest: false,
         debugMode_startAptitudesDetectionTest: false,
+        debugMode_startTraineeNameOCRTest: false,
         debugMode_startMainScreenOCRTest: false,
         debugMode_startTrainingScreenOCRTest: false,
         enableHideOCRComparisonResults: true,
