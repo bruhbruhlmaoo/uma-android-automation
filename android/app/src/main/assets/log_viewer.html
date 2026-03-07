@@ -172,12 +172,81 @@
             .toolbar {
                 background: var(--bg-secondary);
                 border-bottom: 1px solid var(--border-color);
-                padding: 8px 20px;
+                display: flex;
+                flex-direction: column;
+                flex-shrink: 0;
+                position: relative;
+            }
+
+            .toolbar-animator {
+                display: grid;
+                grid-template-rows: 1fr;
+                transition: grid-template-rows 0.33s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .toolbar.collapsed .toolbar-animator {
+                grid-template-rows: 0fr;
+            }
+
+            .toolbar-content {
+                min-height: 0; /* Required for grid track animation */
                 display: flex;
                 align-items: center;
                 gap: 10px;
-                flex-shrink: 0;
+                padding: 8px 20px;
                 flex-wrap: wrap;
+                overflow: hidden;
+                transition: padding 0.33s ease, opacity 0.2s ease;
+                opacity: 1;
+            }
+
+            .toolbar.collapsed .toolbar-content {
+                padding-top: 0;
+                padding-bottom: 0;
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .toolbar-toggle-container {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+                height: 0;
+                position: relative;
+                z-index: 5;
+            }
+
+            .toolbar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 16px;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-color);
+                border-top: none;
+                border-bottom-left-radius: 8px;
+                border-bottom-right-radius: 8px;
+                color: var(--text-muted);
+                cursor: pointer;
+                transition: all var(--transition);
+                font-size: 8px;
+                line-height: 1;
+            }
+
+            .toolbar-toggle:hover {
+                background: var(--bg-hover);
+                color: var(--text-primary);
+                height: 18px;
+            }
+
+            .toolbar-toggle span {
+                transition: transform 0.3s ease;
+                display: inline-block;
+            }
+
+            .toolbar.collapsed .toolbar-toggle span {
+                transform: rotate(180deg);
             }
 
             .search-container {
@@ -199,7 +268,7 @@
 
             .search-input {
                 width: 100%;
-                padding: 6px 10px 6px 32px;
+                padding: 6px 32px 6px 32px;
                 background: var(--bg-tertiary);
                 border: 1px solid var(--border-color);
                 border-radius: var(--radius);
@@ -894,44 +963,55 @@
         </div>
 
         <!-- Toolbar -->
-        <div class="toolbar">
-            <div class="search-container">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="Filter logs..." />
-                <span id="searchClear" class="search-clear">✕</span>
+        <div id="toolbar" class="toolbar">
+            <div class="toolbar-animator">
+                <div id="toolbarContent" class="toolbar-content">
+                    <div class="search-container">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Filter logs..." />
+                        <span id="searchClear" class="search-clear">✕</span>
+                    </div>
+
+                    <div class="toolbar-separator"></div>
+
+                    <!-- Log level filtering buttons. -->
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-level="VERBOSE" onclick="toggleFilter('VERBOSE', this)">V</button>
+                        <button class="filter-btn active" data-level="DEBUG" onclick="toggleFilter('DEBUG', this)">D</button>
+                        <button class="filter-btn active" data-level="INFO" onclick="toggleFilter('INFO', this)">I</button>
+                        <button class="filter-btn active" data-level="WARN" onclick="toggleFilter('WARN', this)">W</button>
+                        <button class="filter-btn active" data-level="ERROR" onclick="toggleFilter('ERROR', this)">E</button>
+                    </div>
+
+                    <div class="toolbar-separator"></div>
+
+                    <!-- Log action buttons. -->
+                    <button id="autoScrollBtn" class="toolbar-btn active" onclick="toggleAutoScroll()">⬇ Auto-scroll</button>
+
+                    <div class="font-size-container">
+                        <button class="size-btn" onclick="adjustFontSize(-0.5)" title="Decrease font size">-</button>
+                        <input type="number" id="fontSizeInput" class="font-size-input" min="8" max="24" step="0.5" value="12.5" />
+                        <span>px</span>
+                        <button class="size-btn" onclick="adjustFontSize(0.5)" title="Increase font size">+</button>
+                    </div>
+
+                    <button class="toolbar-btn" onclick="copyAllLogs()">📋 Copy</button>
+
+                    <button class="toolbar-btn" onclick="downloadLogs()">📥 Download</button>
+
+                    <button class="toolbar-btn" onclick="clearDisplay()">🗑 Clear</button>
+
+                    <!-- Message counter. -->
+                    <div class="message-count">Messages: <span id="messageCount">0</span></div>
+                </div>
             </div>
 
-            <div class="toolbar-separator"></div>
-
-            <!-- Log level filtering buttons. -->
-            <div class="filter-group">
-                <button class="filter-btn active" data-level="VERBOSE" onclick="toggleFilter('VERBOSE', this)">V</button>
-                <button class="filter-btn active" data-level="DEBUG" onclick="toggleFilter('DEBUG', this)">D</button>
-                <button class="filter-btn active" data-level="INFO" onclick="toggleFilter('INFO', this)">I</button>
-                <button class="filter-btn active" data-level="WARN" onclick="toggleFilter('WARN', this)">W</button>
-                <button class="filter-btn active" data-level="ERROR" onclick="toggleFilter('ERROR', this)">E</button>
+            <!-- Toolbar Toggle Button -->
+            <div class="toolbar-toggle-container">
+                <button id="toolbarToggle" class="toolbar-toggle" onclick="toggleToolbar()" title="Toggle Toolbar">
+                    <span id="toolbarToggleIcon">▲</span>
+                </button>
             </div>
-
-            <div class="toolbar-separator"></div>
-
-            <!-- Log action buttons. -->
-            <button id="autoScrollBtn" class="toolbar-btn active" onclick="toggleAutoScroll()">⬇ Auto-scroll</button>
-
-            <div class="font-size-container">
-                <button class="size-btn" onclick="adjustFontSize(-0.5)" title="Decrease font size">-</button>
-                <input type="number" id="fontSizeInput" class="font-size-input" min="8" max="24" step="0.5" value="12.5" />
-                <span>px</span>
-                <button class="size-btn" onclick="adjustFontSize(0.5)" title="Increase font size">+</button>
-            </div>
-
-            <button class="toolbar-btn" onclick="copyAllLogs()">📋 Copy</button>
-
-            <button class="toolbar-btn" onclick="downloadLogs()">📥 Download</button>
-
-            <button class="toolbar-btn" onclick="clearDisplay()">🗑 Clear</button>
-
-            <!-- Message counter. -->
-            <div class="message-count">Messages: <span id="messageCount">0</span></div>
         </div>
 
         <!-- Log container -->
@@ -1526,6 +1606,25 @@
             }
 
             /**
+             * Collapses or expands the toolbar section.
+             */
+            function toggleToolbar() {
+                const toolbar = document.getElementById("toolbar")
+                const isCollapsed = toolbar.classList.toggle("collapsed")
+                localStorage.setItem("toolbarCollapsed", isCollapsed)
+            }
+
+            /**
+             * Loads the toolbar collapse state from local storage.
+             */
+            function initToolbar() {
+                const isCollapsed = localStorage.getItem("toolbarCollapsed") === "true"
+                if (isCollapsed) {
+                    document.getElementById("toolbar").classList.add("collapsed")
+                }
+            }
+
+            /**
              * Handles log downloading in .txt format.
              */
             function downloadLogs() {
@@ -1556,6 +1655,7 @@
 
             // Initiate the connection and settings when the page loads.
             initFontSize()
+            initToolbar()
             connect()
         </script>
     </body>
