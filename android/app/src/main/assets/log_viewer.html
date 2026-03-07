@@ -467,6 +467,16 @@
                 flex-shrink: 0;
             }
 
+            .footer-left {
+                flex: 1;
+                text-align: left;
+            }
+
+            .footer-right {
+                flex: 1;
+                text-align: right;
+            }
+
             .dashboard {
                 background: var(--bg-secondary);
                 border-bottom: 1px solid var(--border-color);
@@ -842,8 +852,8 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <span>Uma Android Automation — Remote Log Viewer</span>
-            <span id="footerInfo"></span>
+            <span class="footer-left">Uma Android Automation - Remote Log Viewer</span>
+            <span id="footerInfo" class="footer-right"></span>
         </footer>
 
         <script>
