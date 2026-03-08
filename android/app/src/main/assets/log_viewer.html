@@ -1039,6 +1039,7 @@
             let ws = null
             let autoScroll = true
             let messageCount = 0
+            let visibleMessageCount = 0
             let allMessages = []
             let activeFilters = new Set(["VERBOSE", "DEBUG", "INFO", "WARN", "ERROR"])
             let searchQuery = ""
@@ -1061,6 +1062,17 @@
             const footerInfo = document.getElementById("footerInfo")
 
             let currentFontSize = 12.5 // Default font size in pixels.
+
+            /**
+             * Updates the message count display.
+             */
+            function updateMessageCountDisplay() {
+                if (visibleMessageCount === messageCount) {
+                    messageCountEl.textContent = messageCount
+                } else {
+                    messageCountEl.textContent = visibleMessageCount + " / " + messageCount
+                }
+            }
 
             // ==============================================
             // WebSocket Connection
@@ -1211,7 +1223,6 @@
             function appendLogMessage(rawMessage) {
                 if (!rawMessage) return
                 messageCount++
-                messageCountEl.textContent = messageCount
 
                 // Hide empty state on first message.
                 if (emptyState) {
@@ -1225,7 +1236,11 @@
                 processSpecialLogs(parsed)
 
                 var entry = createLogEntry(rawMessage, parsed)
+                if (!entry.classList.contains("hidden")) {
+                    visibleMessageCount++
+                }
                 logContainer.appendChild(entry)
+                updateMessageCountDisplay()
 
                 // Auto-scroll to bottom.
                 if (autoScroll) {
@@ -1246,7 +1261,6 @@
                 if (validMessages.length === 0) return
 
                 messageCount += validMessages.length
-                messageCountEl.textContent = messageCount
 
                 if (emptyState) {
                     emptyState.style.display = "none"
@@ -1272,6 +1286,9 @@
                         processSpecialLogs(parsed, batchState)
                         
                         var entry = createLogEntry(rawMessage, parsed)
+                        if (!entry.classList.contains("hidden")) {
+                            visibleMessageCount++
+                        }
                         fragment.appendChild(entry)
                     } catch (e) {
                         console.error("Error processing log in batch:", e, rawMessage)
@@ -1279,6 +1296,7 @@
                 })
 
                 logContainer.appendChild(fragment)
+                updateMessageCountDisplay()
                 
                 // Apply the final accumulated state from this batch to the DOM.
                 applyBatchStateToDashboard(batchState)
@@ -1301,7 +1319,6 @@
                 if (validMessages.length === 0) return
 
                 messageCount += validMessages.length
-                messageCountEl.textContent = messageCount
 
                 if (emptyState) {
                     emptyState.style.display = "none"
@@ -1319,6 +1336,9 @@
                         batchArray.push({ raw: rawMessage, parsed: parsed })
                         
                         var entry = createLogEntry(rawMessage, parsed)
+                        if (!entry.classList.contains("hidden")) {
+                            visibleMessageCount++
+                        }
                         fragment.appendChild(entry)
                     } catch (e) {
                         console.error("Error processing log in history batch:", e, rawMessage)
@@ -1338,6 +1358,7 @@
                 } else {
                     logContainer.appendChild(fragment)
                 }
+                updateMessageCountDisplay()
                 
                 // Adjust scroll position to counteract the prepended elements
                 // so the current view doesn't jump around.
@@ -1445,16 +1466,22 @@
                 // doesn't falsely disable auto-scroll due to the container resizing.
                 isFiltering = true
 
+                var visibleCount = 0
+
                 entries.forEach(function (entry) {
                     var level = entry.dataset.level
                     var matchesLevel = activeFilters.has(level)
                     var matchesSearch = !searchQuery || entry.textContent.toLowerCase().includes(searchQuery)
                     if (matchesLevel && matchesSearch) {
                         entry.classList.remove("hidden")
+                        visibleCount++
                     } else {
                         entry.classList.add("hidden")
                     }
                 })
+
+                visibleMessageCount = visibleCount
+                updateMessageCountDisplay()
 
                 if (autoScroll) {
                     scrollToBottom()
@@ -1517,7 +1544,8 @@
                 })
                 allMessages = []
                 messageCount = 0
-                messageCountEl.textContent = "0"
+                visibleMessageCount = 0
+                updateMessageCountDisplay()
 
                 // Reset the trainee name display.
                 document.getElementById("dashboardName").textContent = "-"
