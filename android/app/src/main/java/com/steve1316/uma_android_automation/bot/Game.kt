@@ -512,10 +512,10 @@ class Game(val myContext: Context) {
 		if (!suppressLogging) MessageLog.i(TAG, "[LOADING] Now checking if the game is still loading...")
         val sourceBitmap = imageUtils.getSourceBitmap()
 		return if (imageUtils.findImageWithBitmap("connecting", sourceBitmap, region = imageUtils.regionTopHalf, suppressError = true) != null) {
-			MessageLog.i(TAG, "[LOADING] Detected that the game is awaiting a response from the server from the \"Connecting\" text at the top of the screen. Waiting...")
+			if (!suppressLogging) MessageLog.i(TAG, "[LOADING] Detected that the game is awaiting a response from the server from the \"Connecting\" text at the top of the screen. Waiting...")
 			true
 		} else if (imageUtils.findImageWithBitmap("now_loading", sourceBitmap, region = imageUtils.regionBottomHalf, suppressError = true) != null) {
-			MessageLog.i(TAG, "[LOADING] Detected that the game is still loading from the \"Now Loading\" text at the bottom of the screen. Waiting...")
+			if (!suppressLogging) MessageLog.i(TAG, "[LOADING] Detected that the game is still loading from the \"Now Loading\" text at the bottom of the screen. Waiting...")
 			true
 		} else {
 			false
