@@ -69,6 +69,10 @@ class Racing (private val game: Game) {
     private var detectedOriginalStrategy: String? = null
     private var bHasSetStrategyJunior: Boolean = false
     private var bHasSetStrategyOriginal: Boolean = false
+    // Control flag used between dialog handler and [selectRaceStrategy].
+    // Only set when strategy is selected in dialog handler.
+    // Unset at the beginning of [selectRaceStrategy]
+    var bHasSetTemporaryRunningStyle: Boolean = false
 
     // Cached race plan data loaded once per class instance.
     private val raceData: Map<String, RaceData> = loadRaceData()
@@ -389,10 +393,6 @@ class Racing (private val game: Game) {
 
         game.waitForLoading()
 
-        // Handle race strategy override if enabled.
-        selectRaceStrategy()
-        game.wait(1.0)
-
         // Skip the race if possible, otherwise run it manually.
         runRaceWithRetries()
         finalizeRaceResults()
@@ -592,10 +592,6 @@ class Racing (private val game: Game) {
         }
         game.wait(2.0)
 
-        // Handle race strategy override if enabled.
-        selectRaceStrategy()
-        game.wait(1.0)
-
         // Skip the race if possible, otherwise run it manually.
         runRaceWithRetries()
         finalizeRaceResults(isExtra = true)
@@ -742,6 +738,18 @@ class Racing (private val game: Game) {
                 return false
             }
         } else if (isScheduledRace) {
+            // Now that we're at the race list screen, we need to attempt to update
+            // the date if the day==1. This means we somehow got here without
+            // ever checking the date. This can happen if the bot is started
+            // at the race prep screen, then when it returns from the race it gets
+            // a scheduled race dialog and immediately enters the race list screen
+            // without ever detecting the home screen.
+            // For the next steps to be accurate, we should at least try to read the
+            // date before continuing.
+            if (game.currentDate.day == 1) {
+                game.updateDate(isOnMainScreen = false)
+            }
+
             MessageLog.i(TAG, "[RACE] Confirming the scheduled race dialog...")
             ButtonRace.click(game.imageUtils, tries = 30)
             game.wait(game.dialogWaitDelay)
@@ -752,10 +760,6 @@ class Racing (private val game: Game) {
         game.wait(1.0)
         game.findAndTapImage("race_confirm", tries = 10, region = game.imageUtils.regionBottomHalf)
         game.wait(2.0)
-
-        // Handle race strategy override if enabled.
-        selectRaceStrategy()
-        game.wait(1.0)
 
         // Skip the race if possible, otherwise run it manually.
         runRaceWithRetries()
@@ -1847,9 +1851,22 @@ class Racing (private val game: Game) {
      * as racing in late december of junior year. This could cause us to incorrectly
      * determine that we set the Original race strategy in the previous turn since
      * we have no idea how many turns have passed since setting the initial strategy.
+     *
+     * @param timeoutMs The max time (in milliseconds) for this operation to run.
+     *
+     * @return If no change needed to be made to running style, returns True.
+     * Otherwise, returns whether a running style was successfully selected.
 	 */
-	fun selectRaceStrategy() {
-		val isJuniorYear = game.currentDate.year == DateYear.JUNIOR
+	fun selectRaceStrategy(timeoutMs: Int = 30000): Boolean {
+        // Unset this flag so that we can validate that the dialog handler completed
+        // the operation successfully. If this isn't set by the end of this function,
+        // then we know we failed to set the strategy.
+        // We can't use [game.trainee.bHasSetRunningStyle] since that flag isn't
+        // set when day==1 and we need to be able to handle cases where we don't
+        // know the date in this function.
+        bHasSetTemporaryRunningStyle = false
+
+		val isJuniorYear = game.currentDate.day != 1 && game.currentDate.year == DateYear.JUNIOR
 		val isPastJuniorYear = game.currentDate.year.ordinal > DateYear.JUNIOR.ordinal
 
 		// Determine if a strategy override or reversion is needed.
@@ -1860,16 +1877,10 @@ class Racing (private val game: Game) {
             bShouldSetStrategyJunior -> MessageLog.i(TAG, "[RACE] Junior Year detected. Applying Junior race strategy override: $juniorYearRaceStrategy")
             bShouldSetStrategyOriginal -> MessageLog.i(TAG, "[RACE] Past Junior Year detected. Reverting to original race strategy: $userSelectedOriginalStrategy")
             !game.trainee.bHasSetRunningStyle -> MessageLog.i(TAG, "[RACE] Setting initial race strategy for unknown date.")
-            else -> return
+            else -> return true
         }
 
-        // Unset this flag so that we can validate that the dialog handler completed
-        // the operation successfully. If this isn't set by the end of this function,
-        // then we know we failed to set the strategy.
-        game.trainee.bHasSetRunningStyle = false
-
         var numTries: Int = 0
-        val timeoutMs: Int = 30000 // 30 sec
         val startTime: Long = System.currentTimeMillis()
         while (System.currentTimeMillis() - startTime < timeoutMs) {
             MessageLog.d(TAG, "[RACE] Changing race strategy. Attempt #${numTries + 1}")
@@ -1879,7 +1890,7 @@ class Racing (private val game: Game) {
 
             game.campaign.handleDialogs()
 
-            if (game.trainee.bHasSetRunningStyle) {
+            if (bHasSetTemporaryRunningStyle) {
                 break
             }
 
@@ -1887,7 +1898,7 @@ class Racing (private val game: Game) {
         }
 
         when {
-            !game.trainee.bHasSetRunningStyle -> {
+            !bHasSetTemporaryRunningStyle -> {
                 MessageLog.w(TAG, "[RACE] Timed out setting the race strategy after ${numTries} tries.")
             }
             bShouldSetStrategyJunior -> {
@@ -1902,6 +1913,8 @@ class Racing (private val game: Game) {
                 MessageLog.i(TAG, "[RACE] Successfully set race strategy for unknown date.")
             }
         }
+
+        return bHasSetTemporaryRunningStyle
 	}
 
     /**
@@ -1912,6 +1925,10 @@ class Racing (private val game: Game) {
     fun runRaceWithRetries(): Boolean {
         MessageLog.i(TAG, "[RACE] Proceeding to handle the race...")
 
+        // Flag used to prevent us from attempting to select a running style after
+        // we've already successfully selected a running style once.
+        var bDidSelectRaceStrategy: Boolean = false
+
         do {
             if (game.tryHandleAllDialogs()) {
                 continue
@@ -1921,8 +1938,19 @@ class Racing (private val game: Game) {
 
             when {
                 // Handle the race prep screen.
-                ButtonChangeRunningStyle.check(game.imageUtils, sourceBitmap = bitmap) -> {
+                // Check for both of these buttons in case one of them fails detection.
+                // This helps prevent us from accidentally clicking the Race button.
+                ButtonChangeRunningStyle.check(game.imageUtils, sourceBitmap = bitmap) ||
+                ButtonViewResults.check(game.imageUtils, sourceBitmap = bitmap) -> {
                     MessageLog.i(TAG, "[RACE] Detected ButtonChangeRunningStyle. Handling race prep screen...")
+
+                    // Always handle race strategy at this screen in case it hasn't
+                    // been handled yet.
+                    // Latch the result so we don't continuously try to handle strategy.
+                    if (!bDidSelectRaceStrategy) {
+                        bDidSelectRaceStrategy = selectRaceStrategy()
+                    }
+
                     when (ButtonViewResults.checkDisabled(game.imageUtils, bitmap)) {
                         true -> {
                             if (ButtonRaceManual.click(game.imageUtils, sourceBitmap = bitmap)) {
