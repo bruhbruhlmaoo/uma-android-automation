@@ -87,6 +87,40 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     @ReactMethod
     fun start() {
         if (readyCheck()) {
+            // Initialize SQLite settings.
+            Log.d(TAG, "Starting SQLite settings initialization...")
+            
+            // Check if the database file exists.
+            val dbFile = java.io.File(context.filesDir, "SQLite/settings.db")
+            Log.d(TAG, "Database file path: ${dbFile.absolutePath}")
+            Log.d(TAG, "Database file exists: ${dbFile.exists()}")
+            Log.d(TAG, "Database file can read: ${dbFile.canRead()}")
+            Log.d(TAG, "Database file size: ${if (dbFile.exists()) dbFile.length() else "N/A"} bytes")
+            
+            // List the contents of the files directory to see what's actually there.
+            val filesDir = context.filesDir
+            Log.d(TAG, "Files directory: ${filesDir.absolutePath}")
+            val files = filesDir.listFiles()
+            if (files != null) {
+                Log.d(TAG, "Files in files directory:")
+                for (file in files) {
+                    Log.d(TAG, "  - ${file.name} (${if (file.isDirectory) "dir" else "file"})")
+                }
+            }
+            
+            // Check if SQLite subdirectory exists.
+            val sqliteDir = java.io.File(context.filesDir, "SQLite")
+            Log.d(TAG, "SQLite directory exists: ${sqliteDir.exists()}")
+            if (sqliteDir.exists()) {
+                val sqliteFiles = sqliteDir.listFiles()
+                if (sqliteFiles != null) {
+                    Log.d(TAG, "Files in SQLite directory:")
+                    for (file in sqliteFiles) {
+                        Log.d(TAG, "  - ${file.name} (${file.length()} bytes)")
+                    }
+                }
+            }
+            
             SettingsHelper.refresh(context)
 
             // Start the remote log stream server if enabled in settings.
@@ -265,40 +299,6 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     @Subscribe
     fun onStartEvent(event: StartEvent) {
         if (event.message == "Entry Point ON") {
-            // Initialize SQLite settings with detailed debugging.
-            Log.d(TAG, "Starting SQLite settings initialization...")
-            
-            // Check if the database file exists.
-            val dbFile = java.io.File(context.filesDir, "SQLite/settings.db")
-            Log.d(TAG, "Database file path: ${dbFile.absolutePath}")
-            Log.d(TAG, "Database file exists: ${dbFile.exists()}")
-            Log.d(TAG, "Database file can read: ${dbFile.canRead()}")
-            Log.d(TAG, "Database file size: ${if (dbFile.exists()) dbFile.length() else "N/A"} bytes")
-            
-            // List the contents of the files directory to see what's actually there.
-            val filesDir = context.filesDir
-            Log.d(TAG, "Files directory: ${filesDir.absolutePath}")
-            val files = filesDir.listFiles()
-            if (files != null) {
-                Log.d(TAG, "Files in files directory:")
-                for (file in files) {
-                    Log.d(TAG, "  - ${file.name} (${if (file.isDirectory) "dir" else "file"})")
-                }
-            }
-            
-            // Check if SQLite subdirectory exists.
-            val sqliteDir = java.io.File(context.filesDir, "SQLite")
-            Log.d(TAG, "SQLite directory exists: ${sqliteDir.exists()}")
-            if (sqliteDir.exists()) {
-                val sqliteFiles = sqliteDir.listFiles()
-                if (sqliteFiles != null) {
-                    Log.d(TAG, "Files in SQLite directory:")
-                    for (file in sqliteFiles) {
-                        Log.d(TAG, "  - ${file.name} (${file.length()} bytes)")
-                    }
-                }
-            }
-
             val entryPoint = Game(context)
 
             val botThread = Thread {
