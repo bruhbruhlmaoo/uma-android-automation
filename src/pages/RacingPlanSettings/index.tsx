@@ -408,17 +408,18 @@ const RacingPlanSettings = () => {
                         }}
                         onBlur={() => {
                             // Parse and save when user finishes editing.
-                            const value = parseFloat(minimumQualityThresholdInput) || 0
+                            let value = parseFloat(minimumQualityThresholdInput) || 0
+                            value = Math.max(0, Math.min(100, value))
                             setMinimumQualityThresholdInput(value.toString())
                             updateRacingSetting("minimumQualityThreshold", value)
                         }}
                         keyboardType="decimal-pad"
-                        placeholder="70.0"
+                        placeholder="50.0"
                     />
                     <Text style={styles.inputDescription}>
                         The minimum score a race must have to be considered acceptable. Races scoring below this will be skipped even if no better options are available soon.
                         {"\n\n"}
-                        Example: If set to 70, a race scoring 65 will be skipped, but a race scoring 75 will be considered.
+                        Example: If set to 50, a race scoring 45 will be skipped, but a race scoring 55 will be considered.
                     </Text>
                 </SearchableItem>
 
@@ -442,17 +443,18 @@ const RacingPlanSettings = () => {
                         }}
                         onBlur={() => {
                             // Parse and save when user finishes editing.
-                            const value = parseFloat(timeDecayFactorInput) || 0
+                            let value = parseFloat(timeDecayFactorInput) || 0
+                            value = Math.max(0, Math.min(1, value))
                             setTimeDecayFactorInput(value.toString())
                             updateRacingSetting("timeDecayFactor", value)
                         }}
                         keyboardType="decimal-pad"
-                        placeholder="0.90"
+                        placeholder="0.70"
                     />
                     <Text style={styles.inputDescription}>
                         Future races are worth this percentage of their raw score. Lower values mean future races are discounted more heavily, making the bot less willing to wait.
                         {"\n\n"}
-                        Example: If set to 0.90, a future race scoring 100 becomes 90 after discounting. If set to 0.70, the same race becomes 70.
+                        Example: If set to 0.70, a future race scoring 100 becomes 70 after discounting. If set to 0.90, the same race becomes 90.
                     </Text>
                 </SearchableItem>
 
@@ -476,17 +478,18 @@ const RacingPlanSettings = () => {
                         }}
                         onBlur={() => {
                             // Parse and save when user finishes editing.
-                            const value = parseFloat(improvementThresholdInput) || 0
+                            let value = parseFloat(improvementThresholdInput) || 0
+                            value = Math.max(0, Math.min(100, value))
                             setImprovementThresholdInput(value.toString())
                             updateRacingSetting("improvementThreshold", value)
                         }}
                         keyboardType="decimal-pad"
-                        placeholder="25.0"
+                        placeholder="50.0"
                     />
                     <Text style={styles.inputDescription}>
                         The minimum improvement (in points) needed from waiting for a future race to make waiting worthwhile. Only wait if the improvement exceeds this value.
                         {"\n\n"}
-                        Example: If set to 25, the bot will only wait if the discounted future race score is at least 25 points better than the current best race.
+                        Example: If set to 50, the bot will only wait if the discounted future race score is at least 50 points better than the current best race.
                     </Text>
                 </SearchableItem>
 

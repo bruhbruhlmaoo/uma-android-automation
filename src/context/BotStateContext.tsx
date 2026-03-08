@@ -222,9 +222,9 @@ export const defaultSettings: Settings = {
         smartRacingCheckInterval: 2,
         juniorYearRaceStrategy: "Default",
         originalRaceStrategy: "Default",
-        minimumQualityThreshold: 70.0,
-        timeDecayFactor: 0.8,
-        improvementThreshold: 25.0,
+        minimumQualityThreshold: 50.0,
+        timeDecayFactor: 0.7,
+        improvementThreshold: 50.0,
     },
     skills: {
         enableSkillPointCheck: false,
