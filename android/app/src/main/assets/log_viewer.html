@@ -1044,6 +1044,7 @@
             let activeFilters = new Set(["VERBOSE", "DEBUG", "INFO", "WARN", "ERROR"])
             let searchQuery = ""
             let isFiltering = false
+            let messageCache = []
             let reconnectAttempts = 0
             let reconnectInterval = null
             const maxReconnectDelay = 30000
@@ -1071,6 +1072,17 @@
                     messageCountEl.textContent = messageCount
                 } else {
                     messageCountEl.textContent = visibleMessageCount + " / " + messageCount
+                }
+            }
+
+            /**
+             * Debounce helper to delay execution of a function.
+             */
+            function debounce(func, wait) {
+                let timeout
+                return function (...args) {
+                    clearTimeout(timeout)
+                    timeout = setTimeout(() => func.apply(this, args), wait)
                 }
             }
 
@@ -1236,6 +1248,14 @@
                 processSpecialLogs(parsed)
 
                 var entry = createLogEntry(rawMessage, parsed)
+                
+                // Add to message cache for fast filtering.
+                messageCache.push({
+                    el: entry,
+                    text: rawMessage.toLowerCase(),
+                    level: parsed.level
+                })
+
                 if (!entry.classList.contains("hidden")) {
                     visibleMessageCount++
                 }
@@ -1286,6 +1306,14 @@
                         processSpecialLogs(parsed, batchState)
                         
                         var entry = createLogEntry(rawMessage, parsed)
+                        
+                        // Add to message cache for fast filtering.
+                        messageCache.push({
+                            el: entry,
+                            text: rawMessage.toLowerCase(),
+                            level: parsed.level
+                        })
+
                         if (!entry.classList.contains("hidden")) {
                             visibleMessageCount++
                         }
@@ -1460,23 +1488,21 @@
              * Iterates through all log entries and applies visibility based on active filters and search.
              */
             function applyFilters() {
-                var entries = logContainer.querySelectorAll(".log-entry")
-
                 // Temporarily flag that we are filtering so the scroll listener
                 // doesn't falsely disable auto-scroll due to the container resizing.
                 isFiltering = true
 
                 var visibleCount = 0
 
-                entries.forEach(function (entry) {
-                    var level = entry.dataset.level
-                    var matchesLevel = activeFilters.has(level)
-                    var matchesSearch = !searchQuery || entry.textContent.toLowerCase().includes(searchQuery)
+                messageCache.forEach(function (cached) {
+                    var matchesLevel = activeFilters.has(cached.level)
+                    var matchesSearch = !searchQuery || cached.text.includes(searchQuery)
+                    
                     if (matchesLevel && matchesSearch) {
-                        entry.classList.remove("hidden")
+                        cached.el.classList.remove("hidden")
                         visibleCount++
                     } else {
-                        entry.classList.add("hidden")
+                        cached.el.classList.add("hidden")
                     }
                 })
 
@@ -1492,6 +1518,11 @@
                     isFiltering = false
                 }, 50)
             }
+
+            /**
+             * Debounced version of applyFilters for search input performance.
+             */
+            const debouncedApplyFilters = debounce(applyFilters, 200)
 
             /**
              * Enables or disables the automatic scrolling behavior for new logs.
@@ -1543,6 +1574,7 @@
                     entry.remove()
                 })
                 allMessages = []
+                messageCache = []
                 messageCount = 0
                 visibleMessageCount = 0
                 updateMessageCountDisplay()
@@ -1609,7 +1641,7 @@
             searchInput.addEventListener("input", function () {
                 searchQuery = this.value.toLowerCase().trim()
                 searchClear.classList.toggle("visible", this.value.length > 0)
-                applyFilters()
+                debouncedApplyFilters()
             })
 
             // Listen for click on the clear button to reset search.
@@ -1617,7 +1649,7 @@
                 searchInput.value = ""
                 searchQuery = ""
                 this.classList.remove("visible")
-                applyFilters()
+                applyFilters() // Apply immediately on clear.
                 searchInput.focus()
             })
 
