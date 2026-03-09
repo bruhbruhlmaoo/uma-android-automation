@@ -299,6 +299,9 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     @Subscribe
     fun onStartEvent(event: StartEvent) {
         if (event.message == "Entry Point ON") {
+            // Reset the log stream mute to ensure logs for the new run are broadcasted.
+            LogStreamServer.resetMute()
+
             val entryPoint = Game(context)
 
             val botThread = Thread {
