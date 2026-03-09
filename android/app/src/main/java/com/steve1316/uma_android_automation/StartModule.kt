@@ -120,8 +120,6 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                     }
                 }
             }
-            
-            SettingsHelper.refresh(context)
 
             // Start the remote log stream server if enabled in settings.
             val enableRemoteLogViewer = SettingsHelper.getBooleanSetting("debug", "enableRemoteLogViewer", false)
