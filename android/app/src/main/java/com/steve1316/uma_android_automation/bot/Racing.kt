@@ -2046,18 +2046,18 @@ class Racing (private val game: Game) {
      */
     private fun lookupRaceInDatabase(turnNumber: Int, detectedName: String): ArrayList<RaceData> {
         val settingsManager = SQLiteSettingsManager(game.myContext)
-        if (!settingsManager.initialize()) {
+        if (!settingsManager.isAvailable()) {
             MessageLog.e(TAG, "[ERROR] Database not available for race lookup.")
+            settingsManager.close()
             return arrayListOf()
         }
 
         return try {
             MessageLog.i(TAG, "[RACE] Looking up race for turn $turnNumber with detected name: \"$detectedName\".")
 
-            val database = settingsManager.getDatabase()
+            val database = settingsManager.readableDatabase
             if (database == null) {
                 MessageLog.e(TAG, "[RACE] Database not available for race lookup.")
-                settingsManager.close()
                 return arrayListOf()
             }
 
@@ -2096,7 +2096,6 @@ class Racing (private val game: Game) {
                 } while (exactCursor.moveToNext())
 
                 exactCursor.close()
-                settingsManager.close()
 
                 if (matches.size == 1) {
                     MessageLog.i(TAG, "[RACE] Found exact match: \"${matches[0].name}\" AKA \"${matches[0].nameFormatted}\" (Fans: ${matches[0].fans}).")
@@ -2129,7 +2128,6 @@ class Racing (private val game: Game) {
 
             if (!fuzzyCursor.moveToFirst()) {
                 fuzzyCursor.close()
-                settingsManager.close()
                 MessageLog.i(TAG, "[RACE] No match found for turn $turnNumber with name \"$detectedName\".")
                 return arrayListOf()
             }
@@ -2160,7 +2158,6 @@ class Racing (private val game: Game) {
             } while (fuzzyCursor.moveToNext())
 
             fuzzyCursor.close()
-            settingsManager.close()
 
             // Return all matches with the best similarity score.
             val bestMatches = ArrayList(fuzzyMatches.filter { it.second == bestScore }.map { it.first })
@@ -2181,8 +2178,9 @@ class Racing (private val game: Game) {
             arrayListOf()
         } catch (e: Exception) {
             MessageLog.e(TAG, "[ERROR] Error looking up race: ${e.message}.")
-            settingsManager.close()
             arrayListOf()
+        } finally {
+            settingsManager.close()
         }
     }
 
@@ -2256,13 +2254,14 @@ class Racing (private val game: Game) {
      */
     private fun queryRacesFromDatabase(currentTurn: Int, lookAheadDays: Int): List<RaceData> {
         val settingsManager = SQLiteSettingsManager(game.myContext)
-        if (!settingsManager.initialize()) {
+        if (!settingsManager.isAvailable()) {
             MessageLog.e(TAG, "[ERROR] Database not available for race lookup.")
+            settingsManager.close()
             return emptyList()
         }
 
         return try {
-            val database = settingsManager.getDatabase()
+            val database = settingsManager.readableDatabase
             if (database == null) {
                 MessageLog.e(TAG, "[ERROR] Database is null for race lookup.")
                 return emptyList()
@@ -2301,14 +2300,14 @@ class Racing (private val game: Game) {
                 } while (cursor.moveToNext())
             }
             cursor.close()
-            settingsManager.close()
             
             MessageLog.i(TAG, "[RACE] Found ${races.size} races in look-ahead window (turns $currentTurn to $endTurn).")
             races
         } catch (e: Exception) {
             MessageLog.e(TAG, "[ERROR] Error getting races from database: ${e.message}")
-            settingsManager.close()
             emptyList()
+        } finally {
+            settingsManager.close()
         }
     }
 
@@ -2320,13 +2319,14 @@ class Racing (private val game: Game) {
      */
     private fun hasG1RacesAtTurn(turnNumber: Int): Boolean {
         val settingsManager = SQLiteSettingsManager(game.myContext)
-        if (!settingsManager.initialize()) {
+        if (!settingsManager.isAvailable()) {
             MessageLog.e(TAG, "[ERROR] Database not available for G1 race check.")
+            settingsManager.close()
             return false
         }
 
         return try {
-            val database = settingsManager.getDatabase()
+            val database = settingsManager.readableDatabase
             if (database == null) {
                 MessageLog.e(TAG, "[ERROR] Database is null for G1 race check.")
                 return false
@@ -2342,13 +2342,13 @@ class Racing (private val game: Game) {
 
             val hasG1 = cursor.count > 0
             cursor.close()
-            settingsManager.close()
             
             hasG1
         } catch (e: Exception) {
             MessageLog.e(TAG, "[ERROR] Error checking for G1 races: ${e.message}")
-            settingsManager.close()
             false
+        } finally {
+            settingsManager.close()
         }
     }
 
