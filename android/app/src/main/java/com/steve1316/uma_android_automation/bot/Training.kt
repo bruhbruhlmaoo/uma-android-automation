@@ -55,6 +55,7 @@ class Training(private val game: Game) {
 	) {
 		var statGains: Map<StatName, Int> = mapOf()
 		var statGainRowValues: Map<StatName, List<Int>> = emptyMap()
+		var correctedStats: List<StatName> = emptyList()
 		var failureChance: Int = -1
 		var relationshipBars: ArrayList<CustomImageUtils.BarFillResult> = arrayListOf()
 		var numRainbow: Int = 0
@@ -66,6 +67,7 @@ class Training(private val game: Game) {
 	data class TrainingOption(
 		val name: StatName,
 		val statGains: Map<StatName, Int>,
+		val correctedStats: List<StatName> = emptyList(),
 		val failureChance: Int,
 		val relationshipBars: ArrayList<CustomImageUtils.BarFillResult>,
 		val numRainbow: Int,
@@ -82,6 +84,7 @@ class Training(private val game: Game) {
 			if (failureChance != other.failureChance) return false
 			if (name != other.name) return false
 			if (!statGains.equals(other.statGains)) return false
+			if (correctedStats != other.correctedStats) return false
 			if (relationshipBars != other.relationshipBars) return false
 			if (numRainbow != other.numRainbow) return false
 			if (numSpiritGaugesCanFill != other.numSpiritGaugesCanFill) return false
@@ -95,6 +98,7 @@ class Training(private val game: Game) {
 			var result = failureChance
 			result = 31 * result + name.hashCode()
 			result = 31 * result + statGains.entries.hashCode()
+			result = 31 * result + correctedStats.hashCode()
 			result = 31 * result + relationshipBars.hashCode()
 			result = 31 * result + numRainbow
 			result = 31 * result + numSpiritGaugesCanFill
@@ -875,15 +879,18 @@ class Training(private val game: Game) {
                             val statGainResult = game.imageUtils.determineStatGainFromTraining(statName, sourceBitmap, skillPointsLocation)
                             result.statGains = statGainResult.statGains
                             result.statGainRowValues = statGainResult.rowValuesMap
+                            result.correctedStats = statGainResult.correctedStats
                         } else {
                             MessageLog.w(TAG, "[TRAINING] Skill points location was not found during OCR. Skipping stat gain detection for $statName.")
                             result.statGains = StatName.entries.associateWith { 0 }.toMap()
                             result.statGainRowValues = emptyMap()
+                            result.correctedStats = emptyList()
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "[ERROR] Error in determineStatGainFromTraining: ${e.stackTraceToString()}")
                         result.statGains = StatName.entries.associateWith { 0 }.toMap()
                         result.statGainRowValues = emptyMap()
+                        result.correctedStats = emptyList()
                     } finally {
                         latch.countDown()
                         val elapsedTime = System.currentTimeMillis() - startTimeStatGains
@@ -1013,6 +1020,7 @@ class Training(private val game: Game) {
                     val newTraining = TrainingOption(
                         name = result.name,
                         statGains = result.statGains,
+                        correctedStats = result.correctedStats,
                         failureChance = result.failureChance,
                         relationshipBars = result.relationshipBars,
                         numRainbow = result.numRainbow,
@@ -1083,6 +1091,7 @@ class Training(private val game: Game) {
                         val skippedTraining = TrainingOption(
                             name = result.name,
                             statGains = result.statGains,
+                            correctedStats = result.correctedStats,
                             failureChance = result.failureChance,
                             relationshipBars = result.relationshipBars,
                             numRainbow = result.numRainbow,
@@ -1097,6 +1106,7 @@ class Training(private val game: Game) {
                     val newTraining = TrainingOption(
                         name = result.name,
                         statGains = result.statGains,
+                        correctedStats = result.correctedStats,
                         failureChance = result.failureChance,
                         relationshipBars = result.relationshipBars,
                         numRainbow = result.numRainbow,
@@ -1398,6 +1408,11 @@ class Training(private val game: Game) {
 			keyFactors.forEach { factor ->
 				sb.appendLine("Key factor: $factor")
 			}
+
+		// Only show the manual stat correction notice if there were actually any corrections.
+		val anyCorrections = scores.keys.any { it.correctedStats.isNotEmpty() } || skippedScores.keys.any { it.correctedStats.isNotEmpty() }
+		if (anyCorrections) {
+			sb.appendLine("* means manual stat correction")
 		}
 
 		sb.appendLine("================================================")
@@ -1448,7 +1463,17 @@ class Training(private val game: Game) {
 	private fun appendSingleTrainingDetails(sb: StringBuilder, name: StatName, training: TrainingOption, selected: TrainingOption? = null) {
 		// Build the basic training info line with optional selected indicator.
 		val selectedIndicator = if (training == selected) " <---- SELECTED" else ""
-		val basicInfo = "$name Training: stats=${training.statGains.toSortedMap(compareBy { it.ordinal }).toString()}, fail=${training.failureChance}%, rainbows=${training.numRainbow}$selectedIndicator"
+		
+		// Create a formatted string for stat gains, appending an asterisk to any corrected stats.
+		val formattedStatGains = training.statGains.toSortedMap(compareBy { it.ordinal }).map { (stat, gain) ->
+			if (stat in training.correctedStats) {
+				"$stat=$gain*"
+			} else {
+				"$stat=$gain"
+			}
+		}.joinToString(", ", "{", "}")
+		
+		val basicInfo = "$name Training: stats=$formattedStatGains, fail=${training.failureChance}%, rainbows=${training.numRainbow}$selectedIndicator"
 		sb.appendLine(basicInfo)
 
 		// Print relationship bars if any.
@@ -1479,6 +1504,12 @@ class Training(private val game: Game) {
 		val sb = StringBuilder()
 		sb.appendLine("\n========== Training Analysis Results ==========")
 		appendTrainingDetails(sb, emptyList())
+		
+		val anyCorrections = trainingMap.values.any { it.correctedStats.isNotEmpty() } || skippedTrainingMap.values.any { it.correctedStats.isNotEmpty() }
+		if (anyCorrections) {
+			sb.appendLine("* means manual stat correction")
+		}
+		
 		sb.appendLine("================================================")
 		MessageLog.i(TAG, sb.toString())
 	}
