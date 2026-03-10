@@ -232,16 +232,19 @@ export const defaultSettings: Settings = {
         preferredRunningStyle: "inherit",
         preferredTrackDistance: "inherit",
         preferredTrackSurface: "no_preference",
-        plans: Object.keys(skillPlanSettingsPages).reduce((acc, curr) => {
-            acc[curr] = {
-                enabled: false,
-                strategy: "default",
-                enableBuyInheritedUniqueSkills: false,
-                enableBuyNegativeSkills: false,
-                plan: "",
-            }
-            return acc
-        }, {} as Record<string, SkillPlanSettingsConfig>),
+        plans: Object.keys(skillPlanSettingsPages).reduce(
+            (acc, curr) => {
+                acc[curr] = {
+                    enabled: false,
+                    strategy: "default",
+                    enableBuyInheritedUniqueSkills: false,
+                    enableBuyNegativeSkills: false,
+                    plan: "",
+                }
+                return acc
+            },
+            {} as Record<string, SkillPlanSettingsConfig>
+        ),
     },
     trainingEvent: {
         enablePrioritizeEnergyOptions: false,
