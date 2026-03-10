@@ -1432,7 +1432,24 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 */
 	private fun applyStatGainBoost(trainingName: StatName, statGains: Map<StatName, Int>, trainingToAffectedStatNames: Map<StatName, List<StatName>>): Map<StatName, Int> {
 		val boostedResults: MutableMap<StatName, Int> = statGains.toMutableMap()
+		val correctedStats: MutableList<StatName> = mutableListOf()
 		
+		// Specific manual correction for GUTS training where POWER gain should be greater than SPEED gain.
+		if (trainingName == StatName.GUTS) {
+			val speedGain = boostedResults[StatName.SPEED] ?: 0
+			var powerGain = boostedResults[StatName.POWER] ?: 0
+			
+			if (powerGain < speedGain) {
+				val originalPowerGain = powerGain
+				while (powerGain <= speedGain) {
+					powerGain += 10
+				}
+				boostedResults[StatName.POWER] = powerGain
+				correctedStats.add(StatName.POWER)
+				Log.d(TAG, "[DEBUG] Artificially increased POWER stat gain for GUTS training from $originalPowerGain to $powerGain to be greater than SPEED gain ($speedGain).")
+			}
+		}
+
 		// Get the stat indices affected by this training type and filter out the main stat to get side-effects.
 		val affectedStats: List<StatName> = trainingToAffectedStatNames[trainingName] ?: return boostedResults
 		val sideEffectStats: List<StatName> = affectedStats.filter { it != trainingName }
