@@ -688,6 +688,10 @@
                 border: 1px solid var(--border-color);
             }
 
+            .stats-container.session-stats {
+                border-color: rgba(155, 109, 255, 0.3);
+            }
+
             .stat-box {
                 display: flex;
                 flex-direction: column;
@@ -956,6 +960,25 @@
                         <div class="stat-box">
                             <div class="stat-label">WIT</div>
                             <div id="statWit" class="stat-value">-</div>
+                        </div>
+                    </div>
+                    <!-- Session Action Counters -->
+                    <div class="stats-container session-stats">
+                        <div class="stat-box" title="Total Training Sessions">
+                            <div class="stat-label">TRN</div>
+                            <div id="countTraining" class="stat-value">0</div>
+                        </div>
+                        <div class="stat-box" title="Total Races">
+                            <div class="stat-label">RCE</div>
+                            <div id="countRace" class="stat-value">0</div>
+                        </div>
+                        <div class="stat-box" title="Total Injury Recoveries">
+                            <div class="stat-label">INJ</div>
+                            <div id="countInjury" class="stat-value">0</div>
+                        </div>
+                        <div class="stat-box" title="Total Mood Recoveries">
+                            <div class="stat-label">MOD</div>
+                            <div id="countMood" class="stat-value">0</div>
                         </div>
                     </div>
                 </div>
@@ -1313,7 +1336,13 @@
                     date: null,
                     turn: null,
                     stats: {},
-                    apts: {}
+                    apts: {},
+                    actions: {
+                        training: 0,
+                        race: 0,
+                        injury: 0,
+                        mood: 0
+                    }
                 }
 
                 validMessages.forEach(function (rawMessage) {
@@ -1363,7 +1392,13 @@
                     date: null,
                     turn: null,
                     stats: {},
-                    apts: {}
+                    apts: {},
+                    actions: {
+                        training: 0,
+                        race: 0,
+                        injury: 0,
+                        mood: 0
+                    }
                 }
                 
                 // allMessages is guaranteed to be in chronological order at this point.
@@ -1536,6 +1571,12 @@
                 visibleMessageCount = 0
                 updateMessageCountDisplay()
 
+                // Reset dashboard counters.
+                document.getElementById("countTraining").textContent = "0"
+                document.getElementById("countRace").textContent = "0"
+                document.getElementById("countInjury").textContent = "0"
+                document.getElementById("countMood").textContent = "0"
+
                 // Reset the trainee name display.
                 document.getElementById("dashboardName").textContent = "-"
 
@@ -1667,6 +1708,37 @@
              */
             function processSpecialLogs(parsed, stateTarget = null) {
                 const text = parsed.text
+
+                // Detect action patterns for counters.
+                if (text.includes("[TRAINING] Executing the ")) {
+                    if (stateTarget) {
+                        stateTarget.actions.training++
+                    } else {
+                        const el = document.getElementById("countTraining")
+                        el.textContent = parseInt(el.textContent || "0") + 1
+                    }
+                } else if (text.includes("Race is completed")) {
+                    if (stateTarget) {
+                        stateTarget.actions.race++
+                    } else {
+                        const el = document.getElementById("countRace")
+                        el.textContent = parseInt(el.textContent || "0") + 1
+                    }
+                } else if (text.includes("Injury detected and attempted to heal")) {
+                    if (stateTarget) {
+                        stateTarget.actions.injury++
+                    } else {
+                        const el = document.getElementById("countInjury")
+                        el.textContent = parseInt(el.textContent || "0") + 1
+                    }
+                } else if (text.includes("Recovering mood now")) {
+                    if (stateTarget) {
+                        stateTarget.actions.mood++
+                    } else {
+                        const el = document.getElementById("countMood")
+                        el.textContent = parseInt(el.textContent || "0") + 1
+                    }
+                }
 
                 // Detect and extract Turn information.
                 const turnMatch = text.match(/(?:\(|Turn\s*)(\d+)\)?/i)
@@ -1804,6 +1876,14 @@
                         el.textContent = grade
                         el.className = "grade-badge grade-" + (grade || "G")
                     }
+                }
+                
+                // Batch update action counters.
+                if (state.actions) {
+                    if (state.actions.training !== undefined) document.getElementById("countTraining").textContent = state.actions.training
+                    if (state.actions.race !== undefined) document.getElementById("countRace").textContent = state.actions.race
+                    if (state.actions.injury !== undefined) document.getElementById("countInjury").textContent = state.actions.injury
+                    if (state.actions.mood !== undefined) document.getElementById("countMood").textContent = state.actions.mood
                 }
             }
 
