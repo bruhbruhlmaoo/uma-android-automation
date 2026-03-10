@@ -111,7 +111,7 @@ const REGEX = {
     trainingExecution: /\[TRAINING\]\s+Executing\s+the\s+(\w+)\s+Training/i,
     // Extract stat gains: "[INFO] Speed Training stat gains: [14, 0, 6, 0, 0]"
     // New Example: "SPEED Training: stats={SPEED=10, STAMINA=0, POWER=6, GUTS=0, WIT=0}"
-    trainingStatGains: /(?:\[INFO\]\s+)?(\w+)\s+Training(?:.*?stat\s+gains:\s+\[([\d,\s]+)\]|:\s+stats=\{SPEED=(-?\d+),\s*STAMINA=(-?\d+),\s*POWER=(-?\d+),\s*GUTS=(-?\d+),\s*WIT=(-?\d+)\})/i,
+    trainingStatGains: /(?:\[INFO\]\s+)?(\w+)\s+Training(?:.*?stat\s+gains:\s+\[([\d,\s]+)\]|:\s+stats=\{SPEED=(-?\d+)\*?,\s*STAMINA=(-?\d+)\*?,\s*POWER=(-?\d+)\*?,\s*GUTS=(-?\d+)\*?,\s*WIT=(-?\d+)\*?\})/i,
     // Extract timestamp: "00:12:22.190" or "00:00:14.810"
     timestamp: /^(\d{2}):(\d{2}):(\d{2})\.(\d{3})/,
     // Extract trainee name from content: "[TRAINEE] Detected trainee name: Special Week"
