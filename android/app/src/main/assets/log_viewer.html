@@ -980,6 +980,10 @@
                             <div class="stat-label">MOD</div>
                             <div id="countMood" class="stat-value">0</div>
                         </div>
+                        <div class="stat-box" title="Energy Recovery">
+                            <div class="stat-label">ENG</div>
+                            <div id="countEnergy" class="stat-value">0</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1302,7 +1306,8 @@
                         training: 0,
                         race: 0,
                         injury: 0,
-                        mood: 0
+                        mood: 0,
+                        energy: 0
                     }
                 }
 
@@ -1357,7 +1362,8 @@
                         training: 0,
                         race: 0,
                         injury: 0,
-                        mood: 0
+                        mood: 0,
+                        energy: 0
                     }
                 }
                 
@@ -1542,6 +1548,7 @@
                 document.getElementById("countRace").textContent = "0"
                 document.getElementById("countInjury").textContent = "0"
                 document.getElementById("countMood").textContent = "0"
+                document.getElementById("countEnergy").textContent = "0"
 
                 // Reset the trainee name display.
                 document.getElementById("dashboardName").textContent = "-"
@@ -1677,7 +1684,8 @@
                         training: "countTraining",
                         race: "countRace",
                         injury: "countInjury",
-                        mood: "countMood"
+                        mood: "countMood",
+                        energy: "countEnergy"
                     }[action]
                     if (elId) {
                         const el = document.getElementById(elId)
@@ -1785,10 +1793,11 @@
                 
                 // Batch update action counters.
                 if (state.actions) {
-                    if (state.actions.training !== undefined) document.getElementById("countTraining").textContent = state.actions.training
-                    if (state.actions.race !== undefined) document.getElementById("countRace").textContent = state.actions.race
-                    if (state.actions.injury !== undefined) document.getElementById("countInjury").textContent = state.actions.injury
-                    if (state.actions.mood !== undefined) document.getElementById("countMood").textContent = state.actions.mood
+                    document.getElementById("countTraining").textContent = state.actions.training
+                    document.getElementById("countRace").textContent = state.actions.race
+                    document.getElementById("countMood").textContent = state.actions.mood
+                    document.getElementById("countEnergy").textContent = state.actions.energy
+                    document.getElementById("countInjury").textContent = state.actions.injury
                 }
             }
 

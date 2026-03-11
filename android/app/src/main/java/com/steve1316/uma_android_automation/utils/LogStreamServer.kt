@@ -508,8 +508,9 @@ object LogStreamServer {
 		return when {
 			actionTrainingPattern.matcher(text).find() -> "training"
 			actionRacePattern.matcher(text).find() -> "race"
-			actionInjuryPattern.matcher(text).find() -> "injury"
 			actionMoodPattern.matcher(text).find() -> "mood"
+			actionEnergyPattern.matcher(text).find() -> "energy"
+			actionInjuryPattern.matcher(text).find() -> "injury"
 			else -> null
 		}
 	}
