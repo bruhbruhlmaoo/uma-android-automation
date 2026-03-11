@@ -690,6 +690,7 @@ open class Campaign(game: Game) : DialogHandler(game) {
                     ButtonDetails.click(game.imageUtils)
                     game.wait(1.0)
                     handleDialogs()
+                    game.trainee.logDetailedPlayerInfo()
 
                     throw InterruptedException("Bot had reached end of run. Stopping bot...")
                 } else if (checkCampaignSpecificConditions()) {
