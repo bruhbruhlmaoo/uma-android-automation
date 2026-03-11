@@ -65,16 +65,13 @@ object LogStreamServer {
 	private val logPattern = Pattern.compile("^(\\n?)([\\d]{2}:[\\d]{2}:[\\d]{2}\\.[\\d]{3})\\s*\\[(VERBOSE|DEBUG|INFO|WARN|ERROR)\\]\\s*(.*)", Pattern.DOTALL)
 
 	// Regex patterns for structured detail extraction.
-	private val actionTrainingPattern = Pattern.compile("\\[TRAINING\\] Executing the ")
-	private val actionRacePattern = Pattern.compile("Race is completed")
-	private val actionInjuryPattern = Pattern.compile("Injury detected and attempted to heal")
-	private val actionMoodPattern = Pattern.compile("Recovering mood now")
+	private val actionTrainingPattern = Pattern.compile("\\[TRAINING\\] Now starting process to execute training")
+	private val actionRacePattern = Pattern.compile("\\[RACE\\] Racing process for .*? Race is completed")
+	private val actionMoodPattern = Pattern.compile("Recovering mood now", Pattern.CASE_INSENSITIVE)
+	private val actionEnergyPattern = Pattern.compile("\\[ENERGY\\] Successfully recovered energy")
+	private val actionInjuryPattern = Pattern.compile("\\[INJURY\\] Injury detected and attempted to heal")
 	private val traineeDetailedPattern = Pattern.compile("\\[TRAINEE_DETAILED\\] ([^:]+): (.*)")
-	private val turnPattern = Pattern.compile("(?:\\(|Turn\\s*)(\\d+)\\)?", Pattern.CASE_INSENSITIVE)
-	private val dateFromDayPattern = Pattern.compile("fromDateString:: Detected (.*?) (?:\\(Turn|\\d)")
-	private val dateDetectedPattern = Pattern.compile("Detected date:\\s*(.*?)(\\s*\\(Turn|$)", Pattern.CASE_INSENSITIVE)
-	private val dateLogPattern = Pattern.compile("\\[DATE\\]\\s*(?:New date:\\s*)?(.*?)(\\s*\\(Turn\\s*\\d+\\))", Pattern.CASE_INSENSITIVE)
-	private val turnsRemainingPattern = Pattern.compile("Detected day for extra racing: (\\d+)", Pattern.CASE_INSENSITIVE)
+	private val dateNewPattern = Pattern.compile("\\[DATE\\] New date: (.*?) \\(Turn (\\d+)\\)", Pattern.CASE_INSENSITIVE)
 
 	/**
 	 * Represents a parsed log entry for structured transmission.
