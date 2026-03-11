@@ -438,10 +438,9 @@ object LogStreamServer {
 				messageBuffer.toList() // Send chronological (oldest to newest)
 			}
 
-			val batched = historyToSync.chunked(200)
-			for (batch in batched) {
+			if (historyToSync.isNotEmpty()) {
 				val jsonArray = JSONArray()
-				for (msg in batch) {
+				for (msg in historyToSync) {
 					jsonArray.put(parseLogToJSON(msg))
 				}
 				session.send(Frame.Text("HB:$jsonArray"))
