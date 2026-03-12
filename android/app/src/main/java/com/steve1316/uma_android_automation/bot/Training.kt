@@ -3,7 +3,7 @@ package com.steve1316.uma_android_automation.bot
 import android.util.Log
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.automation_library.utils.SettingsHelper
-import com.steve1316.uma_android_automation.bot.campaigns.Campaign
+import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.utils.CustomImageUtils
 import com.steve1316.uma_android_automation.types.StatName
 import com.steve1316.uma_android_automation.types.Aptitude

@@ -1,4 +1,4 @@
-package com.steve1316.uma_android_automation.bot.campaigns
+package com.steve1316.uma_android_automation.bot
 
 import android.util.Log
 import android.graphics.Bitmap
