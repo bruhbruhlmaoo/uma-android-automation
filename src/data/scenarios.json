@@ -8,5 +8,10 @@
         "value": "Unity Cup",
         "label": "Unity Cup",
         "disabled": false
+    },
+    {
+        "value": "Trackblazer",
+        "label": "Trackblazer",
+        "disabled": true
     }
 ]

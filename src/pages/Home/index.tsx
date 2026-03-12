@@ -8,13 +8,14 @@ import { Animated, DeviceEventEmitter, StyleSheet, View, NativeModules } from "r
 import { Snackbar } from "react-native-paper"
 import { MessageLogContext } from "../../context/MessageLogContext"
 import { useTheme } from "../../context/ThemeContext"
-import CustomButton from "../../components/CustomButton"
 import { Text } from "../../components/ui/text"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../../components/ui/alert-dialog"
 import { Ionicons } from "@expo/vector-icons"
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip"
 import PageHeader from "../../components/PageHeader"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
+import SelectButton from "../../components/SelectButton"
+import scenarios from "../../data/scenarios.json"
 
 const styles = StyleSheet.create({
     root: {
@@ -164,28 +165,33 @@ const Home = () => {
         }
     }
 
-    return (
-        <View style={styles.root}>
-            <PageHeader
-                title=""
-                showHomeButton={false}
-                style={{ width: "100%" }}
-                centerComponent={
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <CustomButton variant={isRunning ? "destructive" : isDark ? "default" : "secondary"} onPress={handleButtonPress} isLoading={isRunning} style={styles.button}>
-                            {isRunning ? "Stop" : bsc.readyStatus ? "Start" : "Not Ready"}
-                        </CustomButton>
-                        {unsupportedReason ? (
-                            <Tooltip delayDuration={150}>
-                                <TooltipTrigger>
-                                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                        <Ionicons name="alert-circle-outline" size={24} color={colors.warningBorder} />
-                                    </Animated.View>
-                                </TooltipTrigger>
-                                <TooltipContent sideOffset={12} side="bottom" style={{ maxWidth: 350, backgroundColor: colors.warningBg, borderColor: colors.warningBorder, borderWidth: 1 }}>
-                                    <Text
-                                        style={{ color: colors.warningText }}
-                                    >{`Current Display: ${deviceMetrics?.width}x${deviceMetrics?.height} (${deviceMetrics?.dpi} DPI).
+    /** Gets the appropriate icon name for the SelectButton based on device state. */
+    const getSelectButtonIconName = (): React.ComponentProps<typeof Ionicons>["name"] | undefined => {
+        if (bsc.settings.general.scenario === "") {
+            return undefined
+        } else if (isRunning) {
+            return "stop-outline"
+        } else {
+            return "play-outline"
+        }
+    }
+
+    /** Gets the SelectButton variant based on device state. */
+    const getSelectButtonVariant = (): any => {
+        if (unsupportedReason) {
+            return "warning"
+        } else if (isRunning) {
+            return "error"
+        } else if (deviceMetrics && bsc.settings.general.scenario !== "") {
+            return "success"
+        } else {
+            return isDark ? "default" : "secondary"
+        }
+    }
+
+    /** Returns a status indicator based on the device state. */
+    const renderStatus = (): React.ReactElement | null => {
+        const warningText = `Current Display: ${deviceMetrics?.width}x${deviceMetrics?.height} (${deviceMetrics?.dpi} DPI).
 
 Warning: Performance may be degraded due to ${unsupportedReason}.
 
@@ -197,26 +203,74 @@ Note: Height is not as important to meet as the width. In addition, DPI is tied 
 
 DPI = sqrt(width^2 + height^2) / diagonal
 
-where width and height of the screen is in pixels, and diagonal is the diagonal size of the physical screen in inches.`}</Text>
-                                </TooltipContent>
-                            </Tooltip>
-                        ) : deviceMetrics ? (
-                            <Ionicons name="checkmark-circle-outline" size={24} color="green" />
-                        ) : (
-                            !bsc.readyStatus &&
-                            !isRunning && (
-                                <Tooltip delayDuration={150}>
-                                    <TooltipTrigger>
-                                        <Ionicons name="information-circle-outline" size={24} color={colors.foreground} />
-                                    </TooltipTrigger>
-                                    <TooltipContent sideOffset={12} side="bottom">
-                                        <Text>Select a Scenario in Settings to start</Text>
-                                    </TooltipContent>
-                                </Tooltip>
-                            )
-                        )}
-                    </View>
+where width and height of the screen is in pixels, and diagonal is the diagonal size of the physical screen in inches.`
+
+        if (unsupportedReason) {
+            return (
+                <Tooltip delayDuration={150}>
+                    <TooltipTrigger>
+                        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                            <Ionicons name="alert-circle-outline" size={24} color={colors.warning} />
+                        </Animated.View>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={12} side="bottom" style={{ maxWidth: 350, backgroundColor: colors.warningBg, borderColor: colors.warningBorder, borderWidth: 1 }}>
+                        <Text style={{ color: colors.warningText }}>{warningText}</Text>
+                    </TooltipContent>
+                </Tooltip>
+            )
+        }
+
+        if (!bsc.readyStatus && !isRunning) {
+            return (
+                <Tooltip delayDuration={150}>
+                    <TooltipTrigger>
+                        <Ionicons name="information-circle-outline" size={24} color={colors.info} />
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={12} side="bottom" style={{ width: 200 }}>
+                        <Text>Select a Scenario to start from the center button dropdown.</Text>
+                    </TooltipContent>
+                </Tooltip>
+            )
+        }
+
+        if (deviceMetrics) {
+            return (
+                <Tooltip delayDuration={150}>
+                    <TooltipTrigger>
+                        <Ionicons name="checkmark-circle-outline" size={24} color={colors.success} />
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={12} side="bottom">
+                        <Text>Everything looks good and ready to go!</Text>
+                    </TooltipContent>
+                </Tooltip>
+            )
+        }
+
+        return null
+    }
+
+    return (
+        <View style={styles.root}>
+            <PageHeader
+                title=""
+                showHomeButton={false}
+                style={{ width: "100%" }}
+                leftComponent={
+                    <SelectButton
+                        variant={getSelectButtonVariant()}
+                        iconName={getSelectButtonIconName()}
+                        options={scenarios}
+                        placeholder={deviceMetrics ? "Select a Scenario" : "Not Ready"}
+                        value={bsc.settings.general.scenario}
+                        onValueChange={(value) => {
+                            const newScenario = value || ""
+                            bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
+                            bsc.setReadyStatus(newScenario !== "")
+                        }}
+                        onPress={handleButtonPress}
+                    />
                 }
+                rightComponent={renderStatus()}
             />
 
             <View style={styles.contentContainer}>

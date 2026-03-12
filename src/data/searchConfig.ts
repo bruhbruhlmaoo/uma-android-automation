@@ -17,12 +17,6 @@ const searchConfig: SearchOption[] = [
     // Settings (SettingsMain)
     // ============================================================
     {
-        id: "settings-scenario-picker",
-        title: "Scenario",
-        description: "Choose a scenario that will dictate the bot's logic and behavior.",
-        page: "SettingsMain",
-    },
-    {
         id: "settings-popup-check",
         title: "Enable Popup Check",
         description: "Enables check for warning popups like lack of fans or lack of trophies gained. Stops the bot if detected for the user to deal with them manually.",
@@ -348,21 +342,22 @@ const searchConfig: SearchOption[] = [
     {
         id: "minimum-quality-threshold",
         title: "Minimum Quality Threshold",
-        description: "The minimum score a race must have to be considered acceptable. Races scoring below this will be skipped even if no better options are available soon.",
+        description:
+            'The core "Quality Floor" for a race today. If the best race available right now scores below this value, the bot will choose to wait for a future opportunity instead (even if the future looks worse).',
         page: "RacingPlanSettings",
         parentId: "enable-racing-plan",
     },
     {
         id: "time-decay-factor",
         title: "Time Decay Factor",
-        description: "Future races are worth this percentage of their raw score. Lower values mean future races are discounted more heavily, making the bot less willing to wait.",
+        description: 'A multiplier applied to future race scores to account for the risk of waiting. Lower values make the bot more "impatient" by discounting future rewards more heavily.',
         page: "RacingPlanSettings",
         parentId: "enable-racing-plan",
     },
     {
         id: "improvement-threshold",
         title: "Improvement Threshold",
-        description: "The minimum improvement (in points) needed from waiting for a future race to make waiting worthwhile. Only wait if the improvement exceeds this value.",
+        description: 'The "Surplus Value" required to justify waiting. The bot will only wait if a discounted future race scores at least this many points higher than the best race today.',
         page: "RacingPlanSettings",
         parentId: "enable-racing-plan",
     },
@@ -436,7 +431,7 @@ const searchConfig: SearchOption[] = [
     // Skill Plan Settings — Skill Point Check
     // ============================================================
     {
-        id: "enable-career-complete-skill-plan-skillPointCheck",
+        id: "enable-skill-plan-skillPointCheck",
         title: "Enable Skill Point Check Plan (Beta)",
         description: "When enabled, the bot will attempt to purchase skills based on the following configuration.",
         page: "SkillPlanSettingsSkillPointCheck",
@@ -446,21 +441,21 @@ const searchConfig: SearchOption[] = [
         title: "Purchase All Inherited Unique Skills",
         description: "When enabled, the bot will attempt to purchase all inherited unique skills regardless of their evaluated rating or community tier list rating.",
         page: "SkillPlanSettingsSkillPointCheck",
-        parentId: "enable-career-complete-skill-plan-skillPointCheck",
+        parentId: "enable-skill-plan-skillPointCheck",
     },
     {
         id: "enable-buy-negative-skills-SkillPlanSettingsSkillPointCheck",
         title: "Purchase All Negative Skills",
         description: "When enabled, the bot will attempt to purchase all negative skills (i.e. Firm Conditions ×).",
         page: "SkillPlanSettingsSkillPointCheck",
-        parentId: "enable-career-complete-skill-plan-skillPointCheck",
+        parentId: "enable-skill-plan-skillPointCheck",
     },
 
     // ============================================================
     // Skill Plan Settings — Pre-Finals
     // ============================================================
     {
-        id: "enable-career-complete-skill-plan-preFinals",
+        id: "enable-skill-plan-preFinals",
         title: "Enable Pre-Finals Plan (Beta)",
         description: "When enabled, the bot will attempt to purchase skills based on the following configuration.",
         page: "SkillPlanSettingsPreFinals",
@@ -470,21 +465,21 @@ const searchConfig: SearchOption[] = [
         title: "Purchase All Inherited Unique Skills",
         description: "When enabled, the bot will attempt to purchase all inherited unique skills regardless of their evaluated rating or community tier list rating.",
         page: "SkillPlanSettingsPreFinals",
-        parentId: "enable-career-complete-skill-plan-preFinals",
+        parentId: "enable-skill-plan-preFinals",
     },
     {
         id: "enable-buy-negative-skills-SkillPlanSettingsPreFinals",
         title: "Purchase All Negative Skills",
         description: "When enabled, the bot will attempt to purchase all negative skills (i.e. Firm Conditions ×).",
         page: "SkillPlanSettingsPreFinals",
-        parentId: "enable-career-complete-skill-plan-preFinals",
+        parentId: "enable-skill-plan-preFinals",
     },
 
     // ============================================================
     // Skill Plan Settings — Career Complete
     // ============================================================
     {
-        id: "enable-career-complete-skill-plan-careerComplete",
+        id: "enable-skill-plan-careerComplete",
         title: "Enable Career Complete Plan (Beta)",
         description: "When enabled, the bot will attempt to purchase skills based on the following configuration.",
         page: "SkillPlanSettingsCareerComplete",
@@ -494,14 +489,14 @@ const searchConfig: SearchOption[] = [
         title: "Purchase All Inherited Unique Skills",
         description: "When enabled, the bot will attempt to purchase all inherited unique skills regardless of their evaluated rating or community tier list rating.",
         page: "SkillPlanSettingsCareerComplete",
-        parentId: "enable-career-complete-skill-plan-careerComplete",
+        parentId: "enable-skill-plan-careerComplete",
     },
     {
         id: "enable-buy-negative-skills-SkillPlanSettingsCareerComplete",
         title: "Purchase All Negative Skills",
         description: "When enabled, the bot will attempt to purchase all negative skills (i.e. Firm Conditions ×).",
         page: "SkillPlanSettingsCareerComplete",
-        parentId: "enable-career-complete-skill-plan-careerComplete",
+        parentId: "enable-skill-plan-careerComplete",
     },
 
     // ============================================================
@@ -592,6 +587,24 @@ const searchConfig: SearchOption[] = [
         id: "debug-aptitudes-detection-test",
         title: "Start Aptitudes Detection Test",
         description: "Disables normal bot operations and starts the Aptitudes detection test. Only on the Main screen and tests detecting the current aptitudes.",
+        page: "DebugSettings",
+    },
+    {
+        id: "debug-trainee-name-ocr-test",
+        title: "Start Trainee Name OCR Test",
+        description: "Disables normal bot operations and starts the Trainee Name OCR test. Only on the Aptitude dialog and tests detecting the trainee's name using color filtering.",
+        page: "DebugSettings",
+    },
+    {
+        id: "debug-main-screen-ocr-test",
+        title: "Start Main Screen OCR Test",
+        description: "Disables normal bot operations and starts the Main screen OCR test. Only on the Main screen and tests detecting various components on the screen.",
+        page: "DebugSettings",
+    },
+    {
+        id: "debug-training-screen-ocr-test",
+        title: "Start Training Screen OCR Test",
+        description: "Disables normal bot operations and starts the Training screen OCR test. Only on the Training screen and tests detecting various components on the screen.",
         page: "DebugSettings",
     },
 ]

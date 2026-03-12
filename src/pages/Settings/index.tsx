@@ -1,4 +1,3 @@
-import scenarios from "../../data/scenarios.json"
 import { useMemo, useContext, useEffect, useState, useRef, useCallback } from "react"
 import { SearchPageProvider } from "../../context/SearchPageContext"
 import { BotStateContext } from "../../context/BotStateContext"
@@ -122,29 +121,6 @@ const Settings = () => {
         },
         [bsc]
     )
-
-    const renderCampaignPicker = () => {
-        return (
-            <View>
-                <CustomSelect
-                    searchId="settings-scenario-picker"
-                    label="Scenario"
-                    description="Choose a scenario that will dictate the bot's logic and behavior."
-                    placeholder="Select a Scenario"
-                    width="100%"
-                    groupLabel="Scenarios"
-                    options={scenarios}
-                    value={bsc.settings.general.scenario}
-                    onValueChange={(value) => {
-                        const newScenario = value || ""
-                        bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, scenario: newScenario } })
-                        bsc.setReadyStatus(newScenario !== "")
-                    }}
-                />
-                {!bsc.settings.general.scenario && <WarningContainer>⚠️ A scenario must be selected before starting the bot.</WarningContainer>}
-            </View>
-        )
-    }
 
     const renderTrainingLink = () => {
         return (
@@ -363,7 +339,27 @@ const Settings = () => {
                     labelUnit="s"
                     showValue={true}
                     showLabels={true}
-                    description="Sets the delay between actions and imaging operations. Lowering this will make the bot run much faster."
+                    description="Sets the delay between actions and imaging operations. Lowering this will make the bot run much faster at the risk of the bot losing track of its location after loading/connecting screens."
+                />
+
+                <CustomSlider
+                    searchId="settings-dialog-wait-delay"
+                    value={bsc.settings.general.dialogWaitDelay}
+                    placeholder={bsc.defaultSettings.general.dialogWaitDelay}
+                    onValueChange={(value) => {
+                        bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, dialogWaitDelay: value } })
+                    }}
+                    onSlidingComplete={(value) => {
+                        bsc.setSettings({ ...bsc.settings, general: { ...bsc.settings.general, dialogWaitDelay: value } })
+                    }}
+                    min={0.0}
+                    max={1.0}
+                    step={0.1}
+                    label="Dialog Wait Delay"
+                    labelUnit="s"
+                    showValue={true}
+                    showLabels={true}
+                    description="Sets the delay between clicking a button that opens dialog and actually handling the dialog. Lowering this will make the bot run faster at an increased risk of the bot incorrectly handling dialogs that pop up."
                 />
 
                 <CustomSlider
@@ -432,7 +428,6 @@ const Settings = () => {
             <SearchPageProvider page="SettingsMain" scrollViewRef={scrollViewRef}>
                 <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
                     <View className="m-1">
-                        {renderCampaignPicker()}
                         {renderTrainingLink()}
                         {renderTrainingEventLink()}
                         {renderOCRLink()}

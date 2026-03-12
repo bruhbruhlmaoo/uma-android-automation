@@ -288,7 +288,6 @@ const MessageLog = () => {
 🌈 Enable Rainbow Training Bonus: ${settings.training.enableRainbowTrainingBonus ? "✅" : "❌"}
 💡 Prioritize Skill Hints: ${settings.training.enablePrioritizeSkillHints ? "✅" : "❌"}
 ☀️ Must Rest Before Summer: ${settings.training.mustRestBeforeSummer ? "✅" : "❌"}
-📏 Manual Stat Cap: ${settings.training.manualStatCap}
 🎯 Train Wit During Finale: ${settings.training.trainWitDuringFinale ? "✅" : "❌"}
 
 ---------- Training Stat Targets by Distance ----------
@@ -306,6 +305,7 @@ ${longTargetsString}
 ---------- Racing Options ----------
 👥 Prioritize Farming Fans: ${settings.racing.enableFarmingFans ? "✅" : "❌"}
 ⏰ Modulo Days to Farm Fans: ${settings.racing.enableFarmingFans ? `${settings.racing.daysToRunExtraRaces} days` : "❌"}
+🚫 Ignore Consecutive Race Warning: ${settings.racing.ignoreConsecutiveRaceWarning ? "✅" : "❌"}
 🔄 Disable Race Retries: ${settings.racing.disableRaceRetries ? "✅" : "❌"}
 \t🔄 Allow Daily Free Race Retry: ${settings.racing.enableFreeRaceRetry ? "✅" : "❌"}
 🏁 Stop on Mandatory Race: ${settings.racing.enableStopOnMandatoryRaces ? "✅" : "❌"}
@@ -353,6 +353,7 @@ ${longTargetsString}
 🛑 Stop Before Finals: ${settings.general.enableStopBeforeFinals ? "✅" : "❌"}
 🛑 Stop At Date: ${settings.general.enableStopAtDate ? "✅" : "❌"}
 ⏰ Wait Delay: ${settings.general.waitDelay}s
+⏰ Dialog Wait Delay: ${settings.general.dialogWaitDelay}s
 
 ---------- Debug Options ----------
 🐛 Debug Mode: ${settings.debug.enableDebugMode ? "✅" : "❌"}
@@ -368,6 +369,7 @@ ${longTargetsString}
 🔍 Start Date OCR Test: ${settings.debug.debugMode_startDateOCRTest ? "✅" : "❌"}
 🔍 Start Race List Detection Test: ${settings.debug.debugMode_startRaceListDetectionTest ? "✅" : "❌"}
 🔍 Start Aptitudes Detection Test: ${settings.debug.debugMode_startAptitudesDetectionTest ? "✅" : "❌"}
+🔍 Start Trainee Name OCR Test: ${settings.debug.debugMode_startTraineeNameOCRTest ? "✅" : "❌"}
 🔍 Start Main Screen OCR Test: ${settings.debug.debugMode_startMainScreenOCRTest ? "✅" : "❌"}
 🔍 Start Training Screen OCR Test: ${settings.debug.debugMode_startTrainingScreenOCRTest ? "✅" : "❌"}
 🔍 Hide String Comparison Results: ${settings.debug.enableHideOCRComparisonResults ? "✅" : "❌"}

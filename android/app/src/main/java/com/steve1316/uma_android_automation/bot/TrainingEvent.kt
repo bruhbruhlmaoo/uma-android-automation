@@ -1,14 +1,21 @@
 package com.steve1316.uma_android_automation.bot
 
-import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.automation_library.utils.MessageLog
+
+import com.steve1316.uma_android_automation.MainActivity
+import com.steve1316.uma_android_automation.bot.Campaign
+
+import com.steve1316.uma_android_automation.components.ButtonClose
+import com.steve1316.uma_android_automation.components.ButtonNext
+import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
+
 import net.ricecode.similarity.JaroWinklerStrategy
 import net.ricecode.similarity.StringSimilarityServiceImpl
 import org.opencv.core.Point
 import org.json.JSONObject
 
-class TrainingEvent(private val game: Game) {
+class TrainingEvent(private val game: Game, private val campaign: Campaign) {
     private val TAG: String = "[${MainActivity.loggerTag}]TrainingEvent"
 
     private val trainingEventRecognizer: TrainingEventRecognizer = TrainingEventRecognizer(game, game.imageUtils)
@@ -189,6 +196,12 @@ class TrainingEvent(private val game: Game) {
             return 0
         }
 
+        // If user selected "Team Carrot (Last Option)", always select the last option.
+        if (selectedPreference == "Team Carrot (Last Option)") {
+            MessageLog.i(TAG, "[TRAINING_EVENT] Using Team Carrot preference, selecting last option.")
+            return numOptions - 1
+        }
+
         // Define the possible team name options (excluding "Team Carrot" which is always last).
         val teamNameOptions = listOf(
             "Happy Hoppers, like Taiki suggested",
@@ -303,10 +316,10 @@ class TrainingEvent(private val game: Game) {
      */
     fun handleTrainingEvent() {
         MessageLog.i(TAG, "\n********************")
-        MessageLog.i(TAG, "[TRAINING_EVENT] Starting Training Event process on ${game.currentDate}.")
+        MessageLog.i(TAG, "[TRAINING_EVENT] Starting Training Event process on ${campaign.date}.")
 
         // Double check if the bot is at the Main screen or not.
-        if (game.checkMainScreen()) {
+        if (campaign.checkMainScreen()) {
             MessageLog.i(TAG, "[TRAINING_EVENT] Bot is at the Main Screen. Ending the Training Event process.")
             MessageLog.i(TAG, "********************")
             return
@@ -327,7 +340,7 @@ class TrainingEvent(private val game: Game) {
         if (eventTitle == "Tutorial") {
             isTutorialEvent = true
             // Detect the number of event options on the screen.
-            val trainingOptionLocations: ArrayList<Point> = game.imageUtils.findAll("training_event_active")
+            val trainingOptionLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
             tutorialOptionCount = trainingOptionLocations.size
             
             MessageLog.i(TAG, "[TRAINING_EVENT] Tutorial event detected for Unity Cup. Found $tutorialOptionCount option(s) on screen.")
@@ -349,7 +362,7 @@ class TrainingEvent(private val game: Game) {
         } else if (eventTitle == "A Team at Last") {
             // Handle "A Team at Last" Unity Cup event specially.
             MessageLog.i(TAG, "[TRAINING_EVENT] \"A Team at Last\" event detected for Unity Cup.")
-            val trainingOptionLocations: ArrayList<Point> = game.imageUtils.findAll("training_event_active")
+            val trainingOptionLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
             optionSelected = selectUnityCupTeamNameEvent(trainingOptionLocations)
             specialEventHandled = true
         } else if (specialEventResult != null) {
@@ -501,7 +514,7 @@ class TrainingEvent(private val game: Game) {
                                 selectionWeight[optionSelected] += finalSkillPoints
                             } else {
                                 // Apply inflated weights to the prioritized stats based on their order.
-                                game.training.statPrioritization.forEachIndexed { index, stat ->
+                                campaign.training.statPrioritization.forEachIndexed { index, stat ->
                                     if (line.lowercase().contains(stat.name.lowercase())) {
                                         // Calculate weight bonus based on position (higher priority = higher bonus).
                                         val priorityBonus = when (index) {
@@ -601,7 +614,7 @@ class TrainingEvent(private val game: Game) {
         // Wait briefly for the UI to fully render all option buttons.
         game.wait(0.1)
         
-        val trainingOptionLocations: ArrayList<Point> = game.imageUtils.findAll("training_event_active")
+        val trainingOptionLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
         
         // Handle Tutorial events specially.
         if (isTutorialEvent && trainingOptionLocations.isNotEmpty()) {
@@ -613,17 +626,17 @@ class TrainingEvent(private val game: Game) {
                     trainingOptionLocations[trainingOptionLocations.size - 1]
                 }
                 
-                game.tap(lastOptionLocation.x + game.imageUtils.relWidth(100), lastOptionLocation.y, "training_event_active")
+                game.tap(lastOptionLocation.x + game.imageUtils.relWidth(100), lastOptionLocation.y, IconTrainingEventHorseshoe.template.path)
                 MessageLog.i(TAG, "[TRAINING_EVENT] Selected last option (option 5) for Tutorial to back out.")
                 
                 game.wait(1.0)
                 
                 // Find the training option locations again.
-                val updatedTrainingOptionLocations: ArrayList<Point> = game.imageUtils.findAll("training_event_active")
+                val updatedTrainingOptionLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
                 if (updatedTrainingOptionLocations.isNotEmpty()) {
                     // Now select the first option to close.
                     val firstOptionLocation = updatedTrainingOptionLocations[0]
-                    game.tap(firstOptionLocation.x + game.imageUtils.relWidth(100), firstOptionLocation.y, "training_event_active")
+                    game.tap(firstOptionLocation.x + game.imageUtils.relWidth(100), firstOptionLocation.y, IconTrainingEventHorseshoe.template.path)
                     MessageLog.i(TAG, "[TRAINING_EVENT] Selected first option (option 1) to close Tutorial.")
                 } else {
                     MessageLog.w(TAG, "[TRAINING_EVENT] Could not find training event options after waiting. Tutorial may have already closed.")
@@ -636,7 +649,7 @@ class TrainingEvent(private val game: Game) {
                     trainingOptionLocations[trainingOptionLocations.size - 1]
                 }
                 
-                game.tap(selectedLocation.x + game.imageUtils.relWidth(100), selectedLocation.y, "training_event_active")
+                game.tap(selectedLocation.x + game.imageUtils.relWidth(100), selectedLocation.y, IconTrainingEventHorseshoe.template.path)
                 MessageLog.i(TAG, "[TRAINING_EVENT] Selected option ${optionSelected + 1} for Tutorial.")
             }
             
@@ -653,14 +666,14 @@ class TrainingEvent(private val game: Game) {
                 iterationCount++
                 
                 // First check for Close button.
-                if (game.findAndTapImage("close", tries = 1, region = game.imageUtils.regionBottomHalf, suppressError = true)) {
+                if (ButtonClose.click(game.imageUtils)) {
                     MessageLog.i(TAG, "[TRAINING_EVENT] Close button found and clicked. Tutorial event handling complete.")
                     closeButtonFound = true
                     break
                 }
                 
                 // If Close button not found, look for Next button.
-                if (game.findAndTapImage("next", tries = 1, region = game.imageUtils.regionBottomHalf, suppressError = true)) {
+                if (ButtonNext.click(game.imageUtils)) {
                     MessageLog.i(TAG, "[TRAINING_EVENT] Next button found and clicked. Waiting for next screen...")
                     game.wait(1.0)
                 } else {
@@ -684,11 +697,11 @@ class TrainingEvent(private val game: Game) {
                     trainingOptionLocations[0]
                 }
             } else {
-                game.imageUtils.findImage("training_event_active", tries = 5, region = game.imageUtils.regionMiddle).first
+                IconTrainingEventHorseshoe.find(game.imageUtils, tries = 5).first
             }
 
             if (selectedLocation != null) {
-                game.tap(selectedLocation.x + game.imageUtils.relWidth(100), selectedLocation.y, "training_event_active")
+                game.tap(selectedLocation.x + game.imageUtils.relWidth(100), selectedLocation.y, IconTrainingEventHorseshoe.template.path)
                 
                 // Check if this special event requires confirmation.
                 if (specialEventResult != null) {
@@ -700,10 +713,10 @@ class TrainingEvent(private val game: Game) {
                         game.wait(1.0)
                         
                         // Look for confirmation options and select the first one (Yes).
-                        val confirmationLocations: ArrayList<Point> = game.imageUtils.findAll("training_event_active")
+                        val confirmationLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
                         if (confirmationLocations.isNotEmpty()) {
                             val confirmLocation = confirmationLocations[0]
-                            game.tap(confirmLocation.x + game.imageUtils.relWidth(100), confirmLocation.y, "training_event_active")
+                            game.tap(confirmLocation.x + game.imageUtils.relWidth(100), confirmLocation.y, IconTrainingEventHorseshoe.template.path)
                             MessageLog.i(TAG, "[TRAINING_EVENT] Special event confirmed.")
                         } else {
                             MessageLog.w(TAG, "Could not find confirmation options for special event.")

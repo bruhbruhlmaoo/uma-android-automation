@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.automation_library.utils.SettingsHelper
+import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.utils.CustomImageUtils
 import com.steve1316.uma_android_automation.types.StatName
 import com.steve1316.uma_android_automation.types.Aptitude
@@ -13,26 +14,30 @@ import com.steve1316.uma_android_automation.types.TrackSurface
 import com.steve1316.uma_android_automation.types.TrackDistance
 import com.steve1316.uma_android_automation.types.Mood
 import com.steve1316.uma_android_automation.types.DateYear
-import com.steve1316.uma_android_automation.utils.GameDate
+import com.steve1316.uma_android_automation.types.GameDate
 import com.steve1316.automation_library.data.SharedData
 import com.steve1316.automation_library.utils.BotService
 import com.steve1316.automation_library.utils.MessageLog
-import com.steve1316.uma_android_automation.components.ComponentInterface
+
+import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ButtonOk
+import com.steve1316.uma_android_automation.components.ButtonTraining
+import com.steve1316.uma_android_automation.components.ButtonTrainingGuts
+import com.steve1316.uma_android_automation.components.ButtonTrainingPower
 import com.steve1316.uma_android_automation.components.ButtonTrainingSpeed
 import com.steve1316.uma_android_automation.components.ButtonTrainingStamina
-import com.steve1316.uma_android_automation.components.ButtonTrainingPower
-import com.steve1316.uma_android_automation.components.ButtonTrainingGuts
 import com.steve1316.uma_android_automation.components.ButtonTrainingWit
-import com.steve1316.uma_android_automation.components.ButtonTraining
-import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ComponentInterface
+import com.steve1316.uma_android_automation.components.IconStatSkillHint
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderGuts
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderPower
 import com.steve1316.uma_android_automation.components.IconTrainingHeaderSpeed
 import com.steve1316.uma_android_automation.components.IconTrainingHeaderStamina
-import com.steve1316.uma_android_automation.components.IconTrainingHeaderPower
-import com.steve1316.uma_android_automation.components.IconTrainingHeaderGuts
 import com.steve1316.uma_android_automation.components.IconTrainingHeaderWit
-import com.steve1316.uma_android_automation.components.LabelTrainingFailureChance
-import com.steve1316.uma_android_automation.components.LabelTrainingCannotPerform
 import com.steve1316.uma_android_automation.components.LabelStatTableHeaderSkillPoints
+import com.steve1316.uma_android_automation.components.LabelTrainingCannotPerform
+import com.steve1316.uma_android_automation.components.LabelTrainingFailureChance
+
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
@@ -42,7 +47,7 @@ import kotlin.intArrayOf
 import kotlin.math.pow
 import org.opencv.core.Point
 
-class Training(private val game: Game) {
+class Training(private val game: Game, private val campaign: Campaign) {
 	/**
 	 * Class to store analysis results for a training during parallel processing.
 	 * Uses mutable properties so threads can update them.
@@ -54,6 +59,7 @@ class Training(private val game: Game) {
 	) {
 		var statGains: Map<StatName, Int> = mapOf()
 		var statGainRowValues: Map<StatName, List<Int>> = emptyMap()
+		var correctedStats: List<StatName> = emptyList()
 		var failureChance: Int = -1
 		var relationshipBars: ArrayList<CustomImageUtils.BarFillResult> = arrayListOf()
 		var numRainbow: Int = 0
@@ -65,6 +71,7 @@ class Training(private val game: Game) {
 	data class TrainingOption(
 		val name: StatName,
 		val statGains: Map<StatName, Int>,
+		val correctedStats: List<StatName> = emptyList(),
 		val failureChance: Int,
 		val relationshipBars: ArrayList<CustomImageUtils.BarFillResult>,
 		val numRainbow: Int,
@@ -81,6 +88,7 @@ class Training(private val game: Game) {
 			if (failureChance != other.failureChance) return false
 			if (name != other.name) return false
 			if (!statGains.equals(other.statGains)) return false
+			if (correctedStats != other.correctedStats) return false
 			if (relationshipBars != other.relationshipBars) return false
 			if (numRainbow != other.numRainbow) return false
 			if (numSpiritGaugesCanFill != other.numSpiritGaugesCanFill) return false
@@ -94,6 +102,7 @@ class Training(private val game: Game) {
 			var result = failureChance
 			result = 31 * result + name.hashCode()
 			result = 31 * result + statGains.entries.hashCode()
+			result = 31 * result + correctedStats.hashCode()
 			result = 31 * result + relationshipBars.hashCode()
 			result = 31 * result + numRainbow
 			result = 31 * result + numSpiritGaugesCanFill
@@ -119,7 +128,6 @@ class Training(private val game: Game) {
 		val focusOnSparkStatTarget: List<StatName>,
 		val blacklist: List<StatName?> = emptyList(),
 		val disableTrainingOnMaxedStat: Boolean = false,
-		val currentStatCap: Int = 1200,
 		val trainingOptions: List<TrainingOption>,
 		val skillHintsPerLocation: Map<StatName, Int> = StatName.entries.associateWith { 0 },
 		val enablePrioritizeSkillHints: Boolean = false,
@@ -140,7 +148,6 @@ class Training(private val game: Game) {
 			if (focusOnSparkStatTarget != other.focusOnSparkStatTarget) return false
 			if (blacklist != other.blacklist) return false
 			if (disableTrainingOnMaxedStat != other.disableTrainingOnMaxedStat) return false
-			if (currentStatCap != other.currentStatCap) return false
 			if (trainingOptions != other.trainingOptions) return false
 			if (!skillHintsPerLocation.equals(other.skillHintsPerLocation)) return false
 			if (enablePrioritizeSkillHints != other.enablePrioritizeSkillHints) return false
@@ -159,7 +166,6 @@ class Training(private val game: Game) {
 			result = 31 * result + focusOnSparkStatTarget.hashCode()
 			result = 31 * result + blacklist.hashCode()
 			result = 31 * result + disableTrainingOnMaxedStat.hashCode()
-			result = 31 * result + currentStatCap
 			result = 31 * result + trainingOptions.hashCode()
 			result = 31 * result + skillHintsPerLocation.hashCode()
 			result = 31 * result + enablePrioritizeSkillHints.hashCode()
@@ -170,6 +176,23 @@ class Training(private val game: Game) {
 
 	companion object {
 		private val TAG: String = "[${MainActivity.loggerTag}]Training"
+
+		fun getScenarioStatCap(scenario: String, statName: StatName): Int {
+			return when (scenario) {
+				"Trackblazer" -> when (statName) {
+					StatName.SPEED -> 1200
+					StatName.STAMINA -> 1900
+					StatName.POWER -> 1200
+					StatName.GUTS -> 1200
+					StatName.WIT -> 1500
+				}
+				else -> 1200
+			}
+		}
+
+		fun getCurrentStatCap(statName: StatName, config: TrainingConfig): Int {
+			return getScenarioStatCap(config.scenario, statName)
+		}
 
 		/**
 		 * Scores the training option based on friendship bar progress.
@@ -493,10 +516,11 @@ class Training(private val game: Game) {
 
             val currentStat: Int = config.currentStats.getOrDefault(training.name, 0)
             val potentialStat: Int = currentStat + training.statGains.getOrElse(training.name) { 0 }
-            val effectiveStatCap = config.currentStatCap - 100
+            val statCap = getCurrentStatCap(training.name, config)
+            val effectiveStatCap = statCap - 100
 
 			// Don't score for stats that are close to the absolute cap.
-			if (currentStat >= config.currentStatCap) {
+			if (currentStat >= statCap) {
 				return 0.0
 			}
 
@@ -583,10 +607,10 @@ class Training(private val game: Game) {
 	private val riskyTrainingMaxFailureChance: Int = SettingsHelper.getIntSetting("training", "riskyTrainingMaxFailureChance")
 	private val trainWitDuringFinale: Boolean = SettingsHelper.getBooleanSetting("training", "trainWitDuringFinale")
 	private val enablePrioritizeSkillHints: Boolean = SettingsHelper.getBooleanSetting("training", "enablePrioritizeSkillHints")
-	private val manualStatCap: Int = SettingsHelper.getIntSetting("training", "manualStatCap")
 	var firstTrainingCheck = true
-	private val currentStatCap: Int
-		get() = if (disableTrainingOnMaxedStat) manualStatCap else 1200
+	private fun getCurrentStatCap(statName: StatName): Int {
+		return getScenarioStatCap(game.scenario, statName)
+	}
 
 	////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////
@@ -619,11 +643,11 @@ class Training(private val game: Game) {
 	 */
 	fun handleTraining() {
 		MessageLog.i(TAG, "\n********************")
-		MessageLog.i(TAG, "[TRAINING] Starting Training process on ${game.currentDate}.")
+		MessageLog.i(TAG, "[TRAINING] Starting Training process on ${campaign.date}.")
         val startTime = System.currentTimeMillis()
 
 		// Enter the Training screen.
-		if (ButtonTraining.click(imageUtils = game.imageUtils)) {
+		if (ButtonTraining.click(game.imageUtils)) {
             // Upon going to the training screen, there is a short animation
             // on the training header icon. We need to make sure this is finished
             // before we can properly begin analyzing the screen.
@@ -634,34 +658,40 @@ class Training(private val game: Game) {
 
 			if (trainingMap.isEmpty()) {
 				// Check if we should force Wit training during the Finale instead of recovering energy.
-				if (trainWitDuringFinale && game.currentDate.day > 72) {
-					MessageLog.i(TAG, "[TRAINING] There is not enough energy for training to be done but the setting to train Wit during the Finale is enabled. Forcing Wit training...")
+				// Always force Wit on turn 75 since recovering energy on the very last turn is completely useless.
+				if ((trainWitDuringFinale && campaign.date.day > 72) || campaign.date.day == 75) {
+					if (campaign.date.day == 75) {
+						MessageLog.i(TAG, "[TRAINING] It is the final turn. Forcing Wit training instead of recovering energy since resting provides zero benefit now.")
+					} else {
+						MessageLog.i(TAG, "[TRAINING] There is not enough energy for training to be done but the setting to train Wit during the Finale is enabled. Forcing Wit training...")
+					}
 					// Directly attempt to tap Wit training.
-					if (ButtonTrainingWit.click(imageUtils = game.imageUtils, taps = 3)) {
+					if (ButtonTrainingWit.click(game.imageUtils, taps = 3)) {
+                        game.waitForLoading()
 						MessageLog.i(TAG, "[TRAINING] Successfully forced Wit training during the Finale instead of recovering energy.")
 						firstTrainingCheck = false
 					} else {
 						MessageLog.w(TAG, "[WARNING] Could not find Wit training button. Falling back to recovering energy...")
-						ButtonBack.click(imageUtils = game.imageUtils)
+						ButtonBack.click(game.imageUtils)
 						game.wait(1.0)
-						if (game.checkMainScreen()) {
-							game.recoverEnergy()
+						if (campaign.checkMainScreen()) {
+							campaign.recoverEnergy()
 						} else {
 							MessageLog.w(TAG, "[WARNING] Could not head back to the Main screen in order to recover energy.")
 						}
 					}
 				} else {
 					MessageLog.i(TAG, "[TRAINING] Backing out of Training and returning on the Main screen.")
-					ButtonBack.click(imageUtils = game.imageUtils)
+					ButtonBack.click(game.imageUtils)
 					game.wait(1.0)
 
-					if (game.checkMainScreen()) {
+					if (campaign.checkMainScreen()) {
 						if (restrictedTrainingNames.size == StatName.entries.size || (restrictedTrainingNames.size + blacklist.size) >= StatName.entries.size) {
 							MessageLog.i(TAG, "[TRAINING] Will recover energy due to all available trainings being restricted or blacklisted.")
 						} else {
 							MessageLog.i(TAG, "[TRAINING] Will recover energy due to either failure chance was high enough to do so or no failure chances were detected via OCR.")
 						}
-						game.recoverEnergy()
+						campaign.recoverEnergy()
 					} else {
 						MessageLog.w(TAG, "[WARNING] Could not head back to the Main screen in order to recover energy.")
 					}
@@ -838,7 +868,7 @@ class Training(private val game: Game) {
         }
         val isWithinRegularThreshold = failureChance <= maximumFailureChance
         val isWithinRiskyThreshold = enableRiskyTraining && failureChance <= riskyTrainingMaxFailureChance
-        val isFinals = game.checkFinals()
+        val isFinals = campaign.checkFinals()
         if (test || isWithinRegularThreshold || isWithinRiskyThreshold || isFinals) {
             if (!test) {
                 if (isFinals) {
@@ -854,11 +884,11 @@ class Training(private val game: Game) {
             // This ensures skill hints are detected even if some trainings are blacklisted.
             if (enablePrioritizeSkillHints) {
                 MessageLog.i(TAG, "[TRAINING] Skill hint prioritization is enabled. Scanning for skill hints before training analysis...")
-                val skillHintLocations = game.imageUtils.findAll("stat_skill_hint", region = game.imageUtils.regionBottomHalf)
+                val skillHintLocations: ArrayList<Point> = IconStatSkillHint.findAll(game.imageUtils, region = game.imageUtils.regionBottomHalf)
                 if (skillHintLocations.isNotEmpty()) {
                     MessageLog.i(TAG, "[TRAINING] Found ${skillHintLocations.size} skill hint(s) on the training screen. Tapping on the first skill hint location and skipping training analysis.")
                     val firstHint = skillHintLocations.first()
-                    game.tap(firstHint.x, firstHint.y, "stat_skill_hint", taps = 3)
+                    game.tap(firstHint.x, firstHint.y, IconStatSkillHint.template.path, taps = 3)
                     game.wait(1.0)
                     MessageLog.i(TAG, "[TRAINING] Process to execute skill hint training completed.")
                     return
@@ -877,7 +907,7 @@ class Training(private val game: Game) {
                 // Keep iterating until the current training is found.
                 if (singleTraining) {
                     val iconTrainingHeader = iconTrainingHeaders[statName]!!
-                    if (!iconTrainingHeader.check(imageUtils = game.imageUtils)) {
+                    if (!iconTrainingHeader.check(game.imageUtils)) {
                         continue
                     }
                     MessageLog.i(TAG, "[TRAINING] The $statName training is currently selected on the screen.")
@@ -898,8 +928,8 @@ class Training(private val game: Game) {
 
                 // Get bitmaps and locations before starting threads to make them safe for parallel processing.
                 val sourceBitmap = game.imageUtils.getSourceBitmap()
-                val skillPointsLocation = LabelStatTableHeaderSkillPoints.find(imageUtils = game.imageUtils).first
-                val failureChanceLocation = LabelTrainingFailureChance.find(imageUtils = game.imageUtils).first
+                val skillPointsLocation = LabelStatTableHeaderSkillPoints.find(game.imageUtils).first
+                val failureChanceLocation = LabelTrainingFailureChance.find(game.imageUtils).first
 
                 // Record start time for elapsed time measurement.
                 val startTime = System.currentTimeMillis()
@@ -947,15 +977,18 @@ class Training(private val game: Game) {
                             val statGainResult = game.imageUtils.determineStatGainFromTraining(statName, sourceBitmap, skillPointsLocation)
                             result.statGains = statGainResult.statGains
                             result.statGainRowValues = statGainResult.rowValuesMap
+                            result.correctedStats = statGainResult.correctedStats
                         } else {
                             MessageLog.w(TAG, "[TRAINING] Skill points location was not found during OCR. Skipping stat gain detection for $statName.")
                             result.statGains = StatName.entries.associateWith { 0 }.toMap()
                             result.statGainRowValues = emptyMap()
+                            result.correctedStats = emptyList()
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "[ERROR] Error in determineStatGainFromTraining: ${e.stackTraceToString()}")
                         result.statGains = StatName.entries.associateWith { 0 }.toMap()
                         result.statGainRowValues = emptyMap()
+                        result.correctedStats = emptyList()
                     } finally {
                         latch.countDown()
                         val elapsedTime = System.currentTimeMillis() - startTimeStatGains
@@ -1003,7 +1036,11 @@ class Training(private val game: Game) {
                 Thread {
                     val startTimeSkillHints = System.currentTimeMillis()
                     try {
-                        val skillHintLocations = game.imageUtils.findAllWithBitmap("stat_skill_hint", sourceBitmap, region = game.imageUtils.regionTopHalf)
+                        val skillHintLocations: ArrayList<Point> = IconStatSkillHint.findAll(
+                            game.imageUtils,
+                            sourceBitmap = sourceBitmap,
+                            region = game.imageUtils.regionTopHalf,
+                        )
                         result.numSkillHints = skillHintLocations.size
                     } catch (e: Exception) {
                         Log.e(TAG, "[ERROR] Error in skill hint detection: ${e.stackTraceToString()}")
@@ -1049,6 +1086,9 @@ class Training(private val game: Game) {
                         MessageLog.i(TAG, "All 5 stat regions processed for $statName training. Results: ${result.statGains.toSortedMap(compareBy { it.ordinal }).toString()}")
                     }
 
+                    applyContextualStatGainBoost(result)
+                    MessageLog.i(TAG, "Contextually boosted results: ${result.statGains.toSortedMap(compareBy { it.ordinal }).toString()}")
+
                     // Determine which failure chance threshold to use.
                     val effectiveFailureChance = if (enableRiskyTraining) {
                         riskyTrainingMaxFailureChance
@@ -1081,6 +1121,7 @@ class Training(private val game: Game) {
                     val newTraining = TrainingOption(
                         name = result.name,
                         statGains = result.statGains,
+                        correctedStats = result.correctedStats,
                         failureChance = result.failureChance,
                         relationshipBars = result.relationshipBars,
                         numRainbow = result.numRainbow,
@@ -1129,6 +1170,11 @@ class Training(private val game: Game) {
                     return
                 }
 
+                // Apply secondary stat gain boosts based on context for all results.
+                for (result in analysisResults) {
+                    applyContextualStatGainBoost(result)
+                }
+
                 // Process results and output logs in training order.
                 for (result in analysisResults) {
                     // Check if risky training logic should apply based on main stat gain.
@@ -1151,6 +1197,7 @@ class Training(private val game: Game) {
                         val skippedTraining = TrainingOption(
                             name = result.name,
                             statGains = result.statGains,
+                            correctedStats = result.correctedStats,
                             failureChance = result.failureChance,
                             relationshipBars = result.relationshipBars,
                             numRainbow = result.numRainbow,
@@ -1165,6 +1212,7 @@ class Training(private val game: Game) {
                     val newTraining = TrainingOption(
                         name = result.name,
                         statGains = result.statGains,
+                        correctedStats = result.correctedStats,
                         failureChance = result.failureChance,
                         relationshipBars = result.relationshipBars,
                         numRainbow = result.numRainbow,
@@ -1220,16 +1268,15 @@ class Training(private val game: Game) {
 
 		// Build a TrainingConfig using the current game state for use with companion object scoring functions.
 		val trainingConfig = TrainingConfig(
-			currentStats = game.trainee.stats.asMap(),
+			currentStats = campaign.trainee.stats.asMap(),
 			statPrioritization = statPrioritization,
-			statTargets = game.trainee.getStatTargetsByDistance(),
-			currentDate = game.currentDate,
+			statTargets = campaign.trainee.getStatTargetsByDistance(),
+			currentDate = campaign.date,
 			scenario = game.scenario,
 			enableRainbowTrainingBonus = enableRainbowTrainingBonus,
 			focusOnSparkStatTarget = focusOnSparkStatTarget,
 			blacklist = blacklist,
 			disableTrainingOnMaxedStat = disableTrainingOnMaxedStat,
-			currentStatCap = currentStatCap,
 			trainingOptions = trainingMap.values.toList(),
 			skillHintsPerLocation = skillHintsPerLocation,
 			enablePrioritizeSkillHints = enablePrioritizeSkillHints,
@@ -1242,13 +1289,13 @@ class Training(private val game: Game) {
 		val skippedScores: Map<TrainingOption, Double>
 		val best: TrainingOption?
 
-		if (game.scenario == "Unity Cup" && game.currentDate.year < DateYear.SENIOR) {
+		if (game.scenario == "Unity Cup" && campaign.date.year < DateYear.SENIOR) {
 			// Unity Cup (Year < 3): Use Spirit Explosion Gauge priority system.
 			scoringMode = "Unity Cup (Spirit Gauge)"
 			trainingScores = trainingMap.values.associateWith { scoreUnityCupTraining(trainingConfig, it) }
 			skippedScores = skippedTrainingMap.values.associateWith { scoreUnityCupTraining(trainingConfig, it) }
 			best = trainingScores.maxByOrNull { it.value }?.key
-		} else if (game.currentDate.bIsPreDebut || game.currentDate.year == DateYear.JUNIOR) {
+		} else if (campaign.date.bIsPreDebut || campaign.date.year == DateYear.JUNIOR) {
 			// Junior Year: Focus on building relationship bars.
 			scoringMode = "Friendship (Pre-Debut/Junior)"
 			trainingScores = trainingMap.values.associateWith { scoreFriendshipTraining(it) }
@@ -1282,9 +1329,10 @@ class Training(private val game: Game) {
 			// Check if this training is a rainbow training that exceeds the stat cap buffer.
 			val training = trainingMap[trainingSelected]
 			if (training != null && training.numRainbow > 0) {
-				val currentStat = game.trainee.stats.asMap()[trainingSelected] ?: 0
+				val currentStat = campaign.trainee.stats.asMap()[trainingSelected] ?: 0
 				val potentialStat = currentStat + (training.statGains[trainingSelected] ?: 0)
-				val effectiveStatCap = currentStatCap - 100
+				val statCap = getCurrentStatCap(trainingSelected)
+				val effectiveStatCap = statCap - 100
 				
 				if ((currentStat >= effectiveStatCap || potentialStat >= effectiveStatCap) && trainingSelected !in statsTrainedOverBuffer) {
 					MessageLog.i(TAG, "[TRAINING] [${trainingSelected}] One-time stat cap buffer allowance used for this stat.")
@@ -1292,11 +1340,22 @@ class Training(private val game: Game) {
 				}
 			}
 
-			game.findAndTapImage("training_${trainingSelected.name.lowercase()}", region = game.imageUtils.regionBottomHalf, taps = 3)
-            game.wait(1.0)
+            val trainingButtons: Map<StatName, ComponentInterface> = mapOf(
+                StatName.SPEED to ButtonTrainingSpeed,
+                StatName.STAMINA to ButtonTrainingStamina,
+                StatName.POWER to ButtonTrainingPower,
+                StatName.GUTS to ButtonTrainingGuts,
+                StatName.WIT to ButtonTrainingWit,
+            )
+
+            // These values are hardcoded and exhaustive. A KeyError would be a programmer error.
+            val trainingButton: ComponentInterface = trainingButtons[trainingSelected]!!
+            trainingButton.click(game.imageUtils, taps = 3)
+            game.wait(game.dialogWaitDelay)
 
             // Dismiss any popup warning about a scheduled race.
-            game.findAndTapImage("ok", tries = 1, region = game.imageUtils.regionMiddle, suppressError = true)
+            ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
+            game.waitForLoading()
 
 			MessageLog.i(TAG, "[TRAINING] Process to execute training completed.")
 		} else {
@@ -1325,7 +1384,7 @@ class Training(private val game: Game) {
 
 		// Show scoring context.
 		sb.appendLine("Scoring Mode: $scoringMode")
-		sb.appendLine("Current Date: ${game.currentDate}")
+		sb.appendLine("Current Date: ${campaign.date}")
 
 		// Show current stats.
 		val currentStats = config.currentStats
@@ -1333,7 +1392,7 @@ class Training(private val game: Game) {
 
 		// Show stat targets for context.
 		val targets = config.statTargets
-		val preferredDistance = game.trainee.trackDistance
+		val preferredDistance = campaign.trainee.trackDistance
 		sb.appendLine("Stat Targets ($preferredDistance): Speed=${targets[StatName.SPEED]}, Stam=${targets[StatName.STAMINA]}, Pow=${targets[StatName.POWER]}, Guts=${targets[StatName.GUTS]}, Wit=${targets[StatName.WIT]}")
 
 		// Compute completion percentages for each stat.
@@ -1455,6 +1514,27 @@ class Training(private val game: Game) {
 			keyFactors.forEach { factor ->
 				sb.appendLine("Key factor: $factor")
 			}
+		} else if (scores.isNotEmpty() || skippedScores.isNotEmpty()) {
+			sb.appendLine("")
+			sb.appendLine("--- Selection Explanation ---")
+			val numSkipped = skippedScores.size
+			val numBlacklisted = config.blacklist.filterNotNull().size
+			val reasons = mutableListOf<String>()
+			if (numSkipped > 0) reasons.add("$numSkipped skipped due to high failure chance")
+			if (numBlacklisted > 0) reasons.add("$numBlacklisted blacklisted")
+			if (restrictedTrainingNames.isNotEmpty()) reasons.add("${restrictedTrainingNames.size} restricted")
+			
+			if (reasons.isNotEmpty()) {
+				sb.appendLine("No training was selected (${reasons.joinToString(", ")}).")
+			} else {
+				sb.appendLine("No training was selected.")
+			}
+		}
+
+		// Only show the manual stat correction notice if there were actually any corrections.
+		val anyCorrections = scores.keys.any { it.correctedStats.isNotEmpty() } || skippedScores.keys.any { it.correctedStats.isNotEmpty() }
+		if (anyCorrections) {
+			sb.appendLine("* means manual stat correction")
 		}
 
 		sb.appendLine("================================================")
@@ -1469,6 +1549,15 @@ class Training(private val game: Game) {
 	 * @param selected The selected training option to mark with an indicator, or null if none selected.
 	 */
 	private fun appendTrainingDetails(sb: StringBuilder, blacklistedStats: List<StatName?> = emptyList(), selected: TrainingOption? = null) {
+		if (trainingMap.isEmpty() && skippedTrainingMap.isEmpty()) {
+			if (trainWitDuringFinale && campaign.date.day > 72) {
+				sb.appendLine("Energy recovery needed. No analysis performed. Bot will force Wit training during Finale.")
+			} else {
+				sb.appendLine("Energy recovery needed. No analysis performed.")
+			}
+			return
+		}
+
 		val blacklistedStatNames = blacklistedStats.filterNotNull()
 
 		// Iterate over all stats in order (Speed, Stamina, Power, Guts, Wit).
@@ -1505,7 +1594,17 @@ class Training(private val game: Game) {
 	private fun appendSingleTrainingDetails(sb: StringBuilder, name: StatName, training: TrainingOption, selected: TrainingOption? = null) {
 		// Build the basic training info line with optional selected indicator.
 		val selectedIndicator = if (training == selected) " <---- SELECTED" else ""
-		val basicInfo = "$name Training: stats=${training.statGains.toSortedMap(compareBy { it.ordinal }).toString()}, fail=${training.failureChance}%, rainbows=${training.numRainbow}$selectedIndicator"
+		
+		// Create a formatted string for stat gains, appending an asterisk to any corrected stats.
+		val formattedStatGains = training.statGains.toSortedMap(compareBy { it.ordinal }).map { (stat, gain) ->
+			if (stat in training.correctedStats) {
+				"$stat=$gain*"
+			} else {
+				"$stat=$gain"
+			}
+		}.joinToString(", ", "{", "}")
+		
+		val basicInfo = "$name Training: stats=$formattedStatGains, fail=${training.failureChance}%, rainbows=${training.numRainbow}$selectedIndicator"
 		sb.appendLine(basicInfo)
 
 		// Print relationship bars if any.
@@ -1536,7 +1635,167 @@ class Training(private val game: Game) {
 		val sb = StringBuilder()
 		sb.appendLine("\n========== Training Analysis Results ==========")
 		appendTrainingDetails(sb, emptyList())
+		
+		val anyCorrections = trainingMap.values.any { it.correctedStats.isNotEmpty() } || skippedTrainingMap.values.any { it.correctedStats.isNotEmpty() }
+		if (anyCorrections) {
+			sb.appendLine("* means manual stat correction")
+		}
+		
 		sb.appendLine("================================================")
 		MessageLog.i(TAG, sb.toString())
+	}
+
+	/**
+	 * Applies artificial boost to main stat gains when they appear lower than side-effect stats 
+	 * due to OCR failure, utilizing contextual data like relationship bars and the year.
+	 *
+	 * @param result The training analysis result object to process and potentially modify.
+	 */
+	private fun applyContextualStatGainBoost(result: TrainingAnalysisResult) {
+		val currentStat = campaign.trainee.stats.asMap()[result.name] ?: 0
+		val effectiveStatCap = getCurrentStatCap(result.name) - 20
+		
+		val newStatGains = result.statGains.toMutableMap()
+		val sideEffectStats = newStatGains.keys.filter { it != result.name }
+		val maxSideEffectGain = sideEffectStats.maxOfOrNull { newStatGains[it] ?: 0 } ?: 0
+		val mainStatGain = newStatGains[result.name] ?: 0
+
+		var boosted = false
+
+		// Edge case: Specific manual correction for GUTS training where POWER gain should be greater than SPEED gain.
+		if (result.name == StatName.GUTS) {
+			val speedGain = newStatGains[StatName.SPEED] ?: 0
+			var powerGain = newStatGains[StatName.POWER] ?: 0
+			
+			if (powerGain < speedGain) {
+				val originalPowerGain = powerGain
+				while (powerGain <= speedGain) {
+					powerGain += 10
+				}
+				newStatGains[StatName.POWER] = powerGain
+				
+				val newCorrectedStats = result.correctedStats.toMutableList()
+				if (!newCorrectedStats.contains(StatName.POWER)) {
+					newCorrectedStats.add(StatName.POWER)
+					result.correctedStats = newCorrectedStats
+				}
+				
+				if (game.imageUtils.debugMode) {
+					MessageLog.i(TAG, "[DEBUG] Contextual boost: Artificially increased POWER stat gain for GUTS training from $originalPowerGain to $powerGain to be greater than SPEED gain ($speedGain).")
+				} else {
+					Log.d(TAG, "[DEBUG] Contextual boost: Artificially increased POWER stat gain for GUTS training from $originalPowerGain to $powerGain to be greater than SPEED gain ($speedGain).")
+				}
+				boosted = true
+			}
+		}
+
+		// Expected side effects mapping.
+		val affectedStatsMap = mapOf(
+			StatName.SPEED to listOf(StatName.POWER),
+			StatName.STAMINA to listOf(StatName.GUTS),
+			StatName.POWER to listOf(StatName.STAMINA),
+			StatName.GUTS to listOf(StatName.SPEED, StatName.POWER),
+			StatName.WIT to listOf(StatName.SPEED)
+		)
+		val expectedSideEffects = affectedStatsMap[result.name] ?: emptyList()
+
+		// Check if any expected side-effect stat has a higher or equal gain than the main stat (but only if main stat > 0 to not overlap with the edge case below).
+		if (mainStatGain > 0 && mainStatGain in 1..maxSideEffectGain) {
+			val originalGain = mainStatGain
+			newStatGains[result.name] = maxSideEffectGain + 10
+			
+			val newCorrectedStats = result.correctedStats.toMutableList()
+			if (!newCorrectedStats.contains(result.name)) {
+				newCorrectedStats.add(result.name)
+				result.correctedStats = newCorrectedStats
+			}
+			
+			MessageLog.d(TAG, "[DEBUG] Artificially increased ${result.name} stat gain from $originalGain to ${newStatGains[result.name]} due to possible OCR failure. Side-effect stats had higher or equal gains: $sideEffectStats")
+			boosted = true
+		}
+
+		// If the expected side-effect stat gains were zeroes, boost them to half of the main stat gain.
+		val boostedMainStatGain = newStatGains[result.name] ?: 0
+		for (statName in expectedSideEffects) {
+			if ((newStatGains[statName] ?: 0) == 0 && boostedMainStatGain > 0) {
+				newStatGains[statName] = boostedMainStatGain / 2
+				
+				val newCorrectedStats = result.correctedStats.toMutableList()
+				if (!newCorrectedStats.contains(statName)) {
+					newCorrectedStats.add(statName)
+					result.correctedStats = newCorrectedStats
+				}
+				
+				MessageLog.d(TAG, "[DEBUG] Artificially increased $statName side-effect stat gain to ${newStatGains[statName]} because it was 0 due to possible OCR failure. Based on half of boosted ${result.name} = $boostedMainStatGain.")
+				boosted = true
+			}
+		}
+
+		// Edge case: Main stat is 0 but side effect is > 0, and not near stat cap.
+		if (mainStatGain == 0 && maxSideEffectGain > 0 && currentStat < effectiveStatCap) {
+			var newMainGain = mainStatGain
+			while (newMainGain <= maxSideEffectGain) {
+				newMainGain += 10
+			}
+			newStatGains[result.name] = newMainGain
+			
+			val newCorrectedStats = result.correctedStats.toMutableList()
+			if (!newCorrectedStats.contains(result.name)) {
+				newCorrectedStats.add(result.name)
+				result.correctedStats = newCorrectedStats
+			}
+			
+			if (game.imageUtils.debugMode) {
+				MessageLog.i(TAG, "[DEBUG] Contextual boost: Artificially increased ${result.name} stat gain from $mainStatGain to $newMainGain because it was 0, max side effect was $maxSideEffectGain, and current stat $currentStat is not near cap.")
+			} else {
+				Log.d(TAG, "[DEBUG] Contextual boost: Artificially increased ${result.name} stat gain from $mainStatGain to $newMainGain because it was 0, max side effect was $maxSideEffectGain, and current stat $currentStat is not near cap.")
+			}
+			boosted = true
+		}
+
+		// Edge case: Low stat gains with relationship bars in Senior Year.
+		val currentMainStatGain = newStatGains[result.name] ?: 0
+		if (campaign.date.year == DateYear.SENIOR && currentMainStatGain <= 9 && result.relationshipBars.isNotEmpty()) {
+			val boostAmount = result.relationshipBars.size * 5
+			newStatGains[result.name] = currentMainStatGain + boostAmount
+			
+			val newCorrectedStats = result.correctedStats.toMutableList()
+			if (!newCorrectedStats.contains(result.name)) {
+				newCorrectedStats.add(result.name)
+				result.correctedStats = newCorrectedStats
+			}
+			
+			if (game.imageUtils.debugMode) {
+				MessageLog.i(TAG, "[DEBUG] Contextual boost: Artificially increased ${result.name} stat gain from $currentMainStatGain to ${newStatGains[result.name]} due to having ${result.relationshipBars.size} relationship bars in Senior Year.")
+			} else {
+				Log.d(TAG, "[DEBUG] Contextual boost: Artificially increased ${result.name} stat gain from $currentMainStatGain to ${newStatGains[result.name]} due to having ${result.relationshipBars.size} relationship bars in Senior Year.")
+			}
+			boosted = true
+		}
+
+		// Edge case: Side effect is < 9 and difference with main effect is > 20.
+		for (sideEffect in expectedSideEffects) {
+			val sideGain = newStatGains[sideEffect] ?: 0
+			if (sideGain < 9 && (mainStatGain - sideGain) > 20) {
+				newStatGains[sideEffect] = sideGain + 10
+				
+				val newCorrectedStats = result.correctedStats.toMutableList()
+				if (!newCorrectedStats.contains(sideEffect)) {
+					newCorrectedStats.add(sideEffect)
+					result.correctedStats = newCorrectedStats
+				}
+				
+				if (game.imageUtils.debugMode) {
+					MessageLog.i(TAG, "[DEBUG] Contextual boost: Artificially increased $sideEffect side-effect stat gain from $sideGain to ${newStatGains[sideEffect]} due to being less than 9 and having >20 difference with main stat gain of $mainStatGain.")
+				} else {
+					Log.d(TAG, "[DEBUG] Contextual boost: Artificially increased $sideEffect side-effect stat gain from $sideGain to ${newStatGains[sideEffect]} due to being less than 9 and having >20 difference with main stat gain of $mainStatGain.")
+				}
+				boosted = true
+			}
+		}
+
+		if (boosted) {
+			result.statGains = newStatGains
+		}
 	}
 }

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from "rea
 import { Divider } from "react-native-paper"
 import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext, defaultSettings } from "../../context/BotStateContext"
+import { SkillPlanSettingsProps } from "./config"
 import CustomSelect from "../../components/CustomSelect"
 import CustomCheckbox from "../../components/CustomCheckbox"
 import CustomButton from "../../components/CustomButton"
@@ -54,50 +55,8 @@ interface Skill {
     downgrade: number | null
 }
 
-/**
- * Props for the `SkillPlanSettings` component.
- * Each instance configures a specific skill plan (e.g. `skillPointCheck`, `preFinals`, `careerComplete`).
- */
-export interface SkillPlanSettingsProps {
-    /** The key identifying this plan in the settings object. */
-    planKey: string
-    /** The navigation name for this plan's screen. */
-    name: string
-    /** The display title for this plan. */
-    title: string
-    /** The description shown at the top of the plan page. */
-    description: string
-}
-
-/**
- * Dynamic map of plan keys to their settings page props.
- */
-export interface DynamicSkillPlanSettingsProps {
-    [key: string]: SkillPlanSettingsProps
-}
-
-/** Registry of all available skill plan settings pages and their configuration. */
-export const skillPlanSettingsPages: DynamicSkillPlanSettingsProps = {
-    skillPointCheck: {
-        planKey: "skillPointCheck",
-        name: "SkillPlanSettingsSkillPointCheck",
-        title: "Skill Point Check",
-        description:
-            "Configure the skills to buy when the skill point threshold has been reached.\n\nEvaluated ratings are sourced from Umamusume Wiki and community tier list ratings are sourced from Game8.",
-    },
-    preFinals: {
-        planKey: "preFinals",
-        name: "SkillPlanSettingsPreFinals",
-        title: "Pre-Finals",
-        description: "Configure the skills to buy just before the finale season.\n\nEvaluated ratings are sourced from Umamusume Wiki and community tier list ratings are sourced from Game8.",
-    },
-    careerComplete: {
-        planKey: "careerComplete",
-        name: "SkillPlanSettingsCareerComplete",
-        title: "Career Complete",
-        description: "Configure the skills to buy after the career has completed.\n\nEvaluated ratings are sourced from Umamusume Wiki and community tier list ratings are sourced from Game8.",
-    },
-}
+// Convert skills.json to array.
+const skillData: Skill[] = Object.values(skillsData)
 
 /**
  * The Skill Plan Settings page.
@@ -121,6 +80,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
     const { enabled, strategy, enableBuyInheritedUniqueSkills, enableBuyNegativeSkills, plan } = combinedConfig[planKey]
 
     const [searchQuery, setSearchQuery] = useState("")
+    const [showSelected, setShowSelected] = useState(false)
     const scrollViewRef = useRef<ScrollView>(null)
 
     // Parse skill plan from CSV string.
@@ -128,15 +88,18 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
         return plan && plan !== "" && typeof plan === "string" ? plan.split(",").map((s) => Number(s)) : []
     }, [plan])
 
-    // Convert skills.json to array.
-    const skillData: Skill[] = useMemo(() => {
-        return Object.values(skillsData)
-    }, [])
+    // Set showSelected to False whenever we have no selected skills.
+    React.useEffect(() => {
+        if (planIds.length === 0) {
+            setShowSelected(false)
+        }
+    }, [planIds, setShowSelected])
 
     // Filter skills based on search and preferences.
     const filteredSkills = useMemo(() => {
-        return skillData.filter((skill) => skill.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
-    }, [skillData, searchQuery])
+        const skills: Skill[] = showSelected ? skillData.filter((skill: Skill) => planIds.includes(skill.id)) : skillData
+        return skills.filter((skill: Skill) => skill.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
+    }, [searchQuery, planIds, showSelected])
 
     /**
      * Update a skill plan setting.
@@ -340,6 +303,16 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
                     </View>
                 </View>
 
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                    <CustomCheckbox
+                        searchId={`show-selected-skills-${name}`}
+                        checked={planIds.length === 0 ? false : showSelected}
+                        disabled={planIds.length === 0}
+                        onCheckedChange={(checked) => setShowSelected(checked && planIds.length !== 0)}
+                        label="Show Only Selected Skills"
+                    />
+                </View>
+
                 <View style={{ flexDirection: "row", marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
                         <Text style={[styles.inputDescription, { marginTop: 0 }]}>Select skills that the bot will always attempt to buy.</Text>
@@ -394,7 +367,7 @@ const SkillPlanSettings: FC<SkillPlanSettingsProps> = ({ planKey, name, title, d
                         <Text style={styles.description}>{description}</Text>
                         <Divider style={{ marginBottom: 16 }} />
                         <CustomCheckbox
-                            searchId={`enable-career-complete-skill-plan-${planKey}`}
+                            searchId={`enable-skill-plan-${planKey}`}
                             checked={enabled}
                             onCheckedChange={(checked) => updateSkillsSetting("enabled", checked)}
                             label={`Enable ${title} Plan (Beta)`}

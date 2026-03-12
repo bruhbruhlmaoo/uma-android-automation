@@ -1,7 +1,7 @@
 import { createContext, useState, useMemo, useCallback } from "react"
 import { startTiming } from "../lib/performanceLogger"
 import racesData from "../data/races.json"
-import { skillPlanSettingsPages } from "../pages/SkillPlanSettings"
+import { skillPlanSettingsPages } from "../pages/SkillPlanSettings/config"
 
 /**
  * Configuration for an individual skill plan (e.g. preFinals, careerComplete).
@@ -34,6 +34,7 @@ export interface Settings {
         enableStopAtDate: boolean
         stopAtDate: string
         waitDelay: number
+        dialogWaitDelay: number
     }
 
     // Racing settings
@@ -99,7 +100,6 @@ export interface Settings {
         statPrioritization: string[]
         maximumFailureChance: number
         disableTrainingOnMaxedStat: boolean
-        manualStatCap: number
         focusOnSparkStatTarget: string[]
         enableRainbowTrainingBonus: boolean
         preferredDistanceOverride: string
@@ -160,6 +160,7 @@ export interface Settings {
         debugMode_startDateOCRTest: boolean
         debugMode_startRaceListDetectionTest: boolean
         debugMode_startAptitudesDetectionTest: boolean
+        debugMode_startTraineeNameOCRTest: boolean
         debugMode_startMainScreenOCRTest: boolean
         debugMode_startTrainingScreenOCRTest: boolean
         enableHideOCRComparisonResults: boolean
@@ -189,6 +190,7 @@ export const defaultSettings: Settings = {
         enableStopAtDate: false,
         stopAtDate: "Senior January Early",
         waitDelay: 0.5,
+        dialogWaitDelay: 0.5,
     },
     racing: {
         enableFarmingFans: false,
@@ -219,9 +221,9 @@ export const defaultSettings: Settings = {
         smartRacingCheckInterval: 2,
         juniorYearRaceStrategy: "Default",
         originalRaceStrategy: "Default",
-        minimumQualityThreshold: 70.0,
-        timeDecayFactor: 0.8,
-        improvementThreshold: 25.0,
+        minimumQualityThreshold: 50.0,
+        timeDecayFactor: 0.7,
+        improvementThreshold: 50.0,
     },
     skills: {
         enableSkillPointCheck: false,
@@ -229,16 +231,19 @@ export const defaultSettings: Settings = {
         preferredRunningStyle: "inherit",
         preferredTrackDistance: "inherit",
         preferredTrackSurface: "no_preference",
-        plans: Object.keys(skillPlanSettingsPages).reduce((acc, curr) => {
-            acc[curr] = {
-                enabled: false,
-                strategy: "default",
-                enableBuyInheritedUniqueSkills: false,
-                enableBuyNegativeSkills: false,
-                plan: "",
-            }
-            return acc
-        }, {} as Record<string, SkillPlanSettingsConfig>),
+        plans: Object.keys(skillPlanSettingsPages).reduce(
+            (acc, curr) => {
+                acc[curr] = {
+                    enabled: false,
+                    strategy: "default",
+                    enableBuyInheritedUniqueSkills: false,
+                    enableBuyNegativeSkills: false,
+                    plan: "",
+                }
+                return acc
+            },
+            {} as Record<string, SkillPlanSettingsConfig>
+        ),
     },
     trainingEvent: {
         enablePrioritizeEnergyOptions: false,
@@ -304,7 +309,6 @@ export const defaultSettings: Settings = {
         statPrioritization: ["Speed", "Stamina", "Power", "Wit", "Guts"],
         maximumFailureChance: 20,
         disableTrainingOnMaxedStat: true,
-        manualStatCap: 1200,
         focusOnSparkStatTarget: ["Speed", "Stamina", "Power"],
         enableRainbowTrainingBonus: false,
         preferredDistanceOverride: "Auto",
@@ -352,6 +356,7 @@ export const defaultSettings: Settings = {
         debugMode_startDateOCRTest: false,
         debugMode_startRaceListDetectionTest: false,
         debugMode_startAptitudesDetectionTest: false,
+        debugMode_startTraineeNameOCRTest: false,
         debugMode_startMainScreenOCRTest: false,
         debugMode_startTrainingScreenOCRTest: false,
         enableHideOCRComparisonResults: true,

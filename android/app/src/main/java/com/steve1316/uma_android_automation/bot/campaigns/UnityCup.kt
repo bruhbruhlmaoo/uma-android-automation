@@ -1,30 +1,36 @@
 package com.steve1316.uma_android_automation.bot.campaigns
 
+import android.util.Log
 import android.graphics.Bitmap
 
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.bot.Campaign
+import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.automation_library.data.SharedData
 import com.steve1316.automation_library.utils.MessageLog
 
 import com.steve1316.uma_android_automation.components.ButtonNext
-import com.steve1316.uma_android_automation.components.ButtonSkip
-import com.steve1316.uma_android_automation.components.ButtonRace
 import com.steve1316.uma_android_automation.components.ButtonNextRaceEnd
+import com.steve1316.uma_android_automation.components.ButtonRace
 import com.steve1316.uma_android_automation.components.ButtonSelectOpponent
-import com.steve1316.uma_android_automation.components.ButtonViewResultsLocked
+import com.steve1316.uma_android_automation.components.ButtonSkip
+import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
+import com.steve1316.uma_android_automation.components.ButtonUnityCupRace
+import com.steve1316.uma_android_automation.components.ButtonUnityCupRaceFinal
 import com.steve1316.uma_android_automation.components.ButtonUnityCupSeeAllRaceResults
-import com.steve1316.uma_android_automation.components.DialogUtils
+import com.steve1316.uma_android_automation.components.ButtonUnityCupWatchMainRace
 import com.steve1316.uma_android_automation.components.DialogInterface
-import com.steve1316.uma_android_automation.components.LabelUnityCupOpponentSelectionLaurel
+import com.steve1316.uma_android_automation.components.DialogUtils
 import com.steve1316.uma_android_automation.components.IconDoubleCircle
+import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
 import com.steve1316.uma_android_automation.components.IconUnityCupRaceEndLogo
+import com.steve1316.uma_android_automation.components.IconUnityCupTutorialHeader
+import com.steve1316.uma_android_automation.components.LabelUnityCupOpponentSelectionLaurel
 
 import org.opencv.core.Point
 
 class UnityCup(game: Game) : Campaign(game) {
-    override val TAG: String = "[${MainActivity.loggerTag}]UnityCup"
 	private var tutorialDisabled = false
     private var bIsFinals: Boolean = false
     private var selectedOpponentIndex: Int = 0
@@ -45,24 +51,21 @@ class UnityCup(game: Game) : Campaign(game) {
      * The boolean is true when a dialog has been handled by this function.
      * The DialogInterface is the detected dialog, or NULL if no dialogs were found.
      */
-    override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): Pair<Boolean, DialogInterface?> {
-        val (bDialogHandled, dialog) = super.handleDialogs(dialog, args)
-        if (bDialogHandled) {
-            return Pair(bDialogHandled, dialog)
-        }
-        if (dialog == null) {
-            return Pair(false, null)
+    override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
+        val result: DialogHandlerResult = super.handleDialogs(dialog, args)
+        if (result !is DialogHandlerResult.Unhandled) {
+            return result
         }
 
-        when (dialog.name) {
-            "auto_fill" -> dialog.close(imageUtils = game.imageUtils)
+        when (result.dialog.name) {
+            "auto_fill" -> result.dialog.close(game.imageUtils)
             "unity_cup_confirmation" -> {
                 if (bIsFinals) {
-                    dialog.ok(imageUtils = game.imageUtils)
+                    result.dialog.ok(game.imageUtils)
                 } else if (bOverrideOpponentSelection || analyzeOpponentRacePrediction()) {
-                    dialog.ok(imageUtils = game.imageUtils)
+                    result.dialog.ok(game.imageUtils)
                 } else {
-                    dialog.close(imageUtils = game.imageUtils)
+                    result.dialog.close(game.imageUtils)
                     if (selectedOpponentIndex >= 2) {
                         MessageLog.w(TAG, "[UNITY_CUP] Could not determine any opponent with sufficient double circle predictions. Selecting the 2nd opponent as a fallback.")
                         selectedOpponentIndex = 1
@@ -75,16 +78,21 @@ class UnityCup(game: Game) : Campaign(game) {
                 // returning to ensure that we do not accidentally call handleDialogs()
                 // and end up right back in here and instantly increment again before
                 // this dialog has a chance to close.
-                game.wait(0.5, skipWaitingForLoading = true)
-                return Pair(true, dialog)
+                // We also want to wait for loading in case we clicked the OK button.
+                game.wait(0.5)
+                return DialogHandlerResult.Handled(result.dialog)
             }
-            else -> return Pair(false, dialog)
+            else -> {
+				Log.w(TAG, "[DIALOG] Unknown dialog \"${result.dialog.name}\" detected so it will not be handled.")
+				return DialogHandlerResult.Unhandled(result.dialog)
+			}
         }
-        return Pair(true, dialog)
+        game.wait(0.5)
+		return DialogHandlerResult.Handled(result.dialog)
     }
 
     private fun analyzeOpponentRacePrediction(): Boolean {
-        val doubleCircles = IconDoubleCircle.findAll(imageUtils = game.imageUtils, region = game.imageUtils.regionMiddle, confidence = 0.0)
+        val doubleCircles = IconDoubleCircle.findAll(game.imageUtils, region = game.imageUtils.regionMiddle, confidence = 0.0)
         if (doubleCircles.size >= 3) {
             MessageLog.i(TAG, "[UNITY_CUP] Race #${selectedOpponentIndex + 1} has sufficient double circle predictions. Selecting it now...")
             return true
@@ -97,11 +105,11 @@ class UnityCup(game: Game) : Campaign(game) {
 	override fun handleTrainingEvent() {
         MessageLog.i(TAG, "\n[UNITY_CUP] Running handleTrainingEvent() for Unity Cup.")
         if (!tutorialDisabled) {
-            tutorialDisabled = if (game.imageUtils.findImage("unitycup_tutorial_header", tries = 1, region = game.imageUtils.regionTopHalf).first != null) {
+            tutorialDisabled = if (IconUnityCupTutorialHeader.check(game.imageUtils)) {
                 // If the tutorial is detected, select the second option to close it.
                 MessageLog.i(TAG, "\n[UNITY_CUP] Detected tutorial for Unity Cup. Closing it now...")
-                val trainingOptionLocations: ArrayList<Point> = game.imageUtils.findAll("training_event_active")
-                game.gestureUtils.tap(trainingOptionLocations[1].x, trainingOptionLocations[1].y, "training_event_active")
+                val trainingOptionLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
+                game.gestureUtils.tap(trainingOptionLocations[1].x, trainingOptionLocations[1].y, IconTrainingEventHorseshoe.template.path)
                 true
             } else {
                 MessageLog.i(TAG, "\n[UNITY_CUP] Tutorial must have already been dismissed.")
@@ -115,7 +123,7 @@ class UnityCup(game: Game) : Campaign(game) {
 
 	override fun handleRaceEvents(isScheduledRace: Boolean): Boolean {
         MessageLog.i(TAG, "\n[UNITY_CUP] Running handleRaceEvents() for Unity Cup.")
-		if (game.imageUtils.findImage("unitycup_race", tries = 1, region = game.imageUtils.regionBottomHalf).first != null) {
+		if (ButtonUnityCupRace.check(game.imageUtils)) {
             // Handle the Unity Cup race.
             MessageLog.i(TAG, "[UNITY_CUP] Will start the process for Unity Cup race handling.")
 			handleRaceEventsUnityCup()
@@ -129,6 +137,13 @@ class UnityCup(game: Game) : Campaign(game) {
 	override fun checkCampaignSpecificConditions(): Boolean {
         return handleRaceEventsUnityCup()
 	}
+
+    override fun openFansDialog() {
+        MessageLog.d(TAG, "Opening fans dialog...")
+        ButtonHomeFansInfo.click(game.imageUtils, region = game.imageUtils.regionBottomHalf, tries = 10)
+        bHasTriedCheckingFansToday = true
+        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+    }
 	
 	/**
 	 * Handles the Unity Cup race event.
@@ -138,9 +153,9 @@ class UnityCup(game: Game) : Campaign(game) {
 		
         // If none of these exist then we aren't in any unity cup screens at the moment. Abort.
         if (
-            game.imageUtils.findImage("unitycup_race", region = game.imageUtils.regionBottomHalf).first == null &&
-            game.imageUtils.findImage("unitycup_final_race", region = game.imageUtils.regionBottomHalf).first == null &&
-            game.imageUtils.findImage("unitycup_race_manual", region = game.imageUtils.regionBottomHalf).first == null
+            !ButtonUnityCupRace.check(game.imageUtils) &&
+            !ButtonUnityCupRaceFinal.check(game.imageUtils) &&
+            !ButtonUnityCupWatchMainRace.check(game.imageUtils)
         ) {
             return false
         }
@@ -152,19 +167,21 @@ class UnityCup(game: Game) : Campaign(game) {
         while (true) {
             val sourceBitmap: Bitmap = game.imageUtils.getSourceBitmap()
             when {
-                handleDialogs().first -> {}
+                handleDialogs() is DialogHandlerResult.Handled -> {}
                 // Go to opponent selection screen.
-                game.findAndTapImage("unitycup_race", sourceBitmap = sourceBitmap) -> {
+                ButtonUnityCupRace.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
                     MessageLog.d(TAG, "[UNITY_CUP] Going to opponent selection screen...")
                     selectedOpponentIndex = 0
                     bOverrideOpponentSelection = false
+                    game.waitForLoading()
                 }
-                game.findAndTapImage("unitycup_final_race", sourceBitmap = sourceBitmap) -> {
+                ButtonUnityCupRaceFinal.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
                     MessageLog.i(TAG, "[UNITY_CUP] Final race detected with Team Zenith.")
                     bIsFinals = true
+                    game.waitForLoading()
                 }
                 // Handle opponent selection.
-                ButtonSelectOpponent.check(imageUtils = game.imageUtils, sourceBitmap = sourceBitmap) -> {
+                ButtonSelectOpponent.check(game.imageUtils, sourceBitmap = sourceBitmap) -> {
                     val opponents: ArrayList<Point> = LabelUnityCupOpponentSelectionLaurel.findAll(game.imageUtils, sourceBitmap = sourceBitmap)
                     if (opponents.size != 3) {
                         MessageLog.e(TAG, "[UNITY_CUP] Failed to detect all three opponents on opponent selection screen.")
@@ -177,36 +194,58 @@ class UnityCup(game: Game) : Campaign(game) {
                     // Tiny delay to allow the opponent selection click to register fully.
                     game.wait(0.1, skipWaitingForLoading = true)
                     MessageLog.d(TAG, "[UNITY_CUP] Selecting opponent #${selectedOpponentIndex + 1} at ${opponent}")
-                    ButtonSelectOpponent.click(imageUtils = game.imageUtils, sourceBitmap = sourceBitmap)
+                    ButtonSelectOpponent.click(game.imageUtils, sourceBitmap = sourceBitmap)
                     // Clicking SelectOpponent requires connect to server. Don't skip
                     // waiting for loading otherwise we might miss handling a dialog.
-                    game.wait(0.5)
+                    game.wait(game.dialogWaitDelay)
                 }
                 // If the skip button is locked, need to manually run the race.
-                ButtonViewResultsLocked.check(game.imageUtils, sourceBitmap = sourceBitmap) -> {
-                    MessageLog.d(TAG, "[UNITY_CUP] Race skip is locked. Manually running race...")
-                    game.findAndTapImage("unitycup_race_manual", region = game.imageUtils.regionBottomHalf)
-                    game.racing.runRaceWithRetries()
-                }
-                // Skip the race if possible.
-                ButtonUnityCupSeeAllRaceResults.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
-                    MessageLog.d(TAG, "[UNITY_CUP] Skipping to race results.")
+                ButtonUnityCupSeeAllRaceResults.check(game.imageUtils, sourceBitmap = sourceBitmap) -> {
+                    when (ButtonUnityCupSeeAllRaceResults.checkDisabled(game.imageUtils, sourceBitmap)) {
+                        // Manually run the race.
+                        true -> {
+                            MessageLog.d(TAG, "[UNITY_CUP] See All Race Results button is locked. Manually running race...")
+                            if (ButtonUnityCupWatchMainRace.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
+                                MessageLog.i(TAG, "[UNITY_CUP] Clicked Watch Main Race button.")
+                                game.waitForLoading()
+                                racing.runRaceWithRetries()
+                            } else {
+                                MessageLog.w(TAG, "[UNITY_CUP] Failed to click the Watch Main Race button.")
+                            }
+                        }
+                        // Skip the race.
+                        false -> {
+                            if (ButtonUnityCupSeeAllRaceResults.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
+                                MessageLog.i(TAG, "[UNITY_CUP] Clicked the See All Race Results button to skip the race.")
+                                game.waitForLoading()
+                            } else {
+                                MessageLog.w(TAG, "[UNITY_CUP] Failed to click the See All Race Results button.")
+                            }
+                        }
+                        // Shouldn't ever fail this since we already detected it once.
+                        null -> {
+                            MessageLog.e(TAG, "[UNITY_CUP] Detected See All Race Results button, but then failed to check its disabled state.")
+                        }
+                    }
                 }
                 // This is our only natural exit point from this function.
-                IconUnityCupRaceEndLogo.check(imageUtils = game.imageUtils, sourceBitmap = sourceBitmap) && ButtonNext.click(imageUtils = game.imageUtils, sourceBitmap = sourceBitmap) -> {
+                IconUnityCupRaceEndLogo.check(game.imageUtils, sourceBitmap = sourceBitmap) && ButtonNext.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
                     MessageLog.i(TAG, "[UNITY_CUP] Race event completed.")
                     return true
                 }
-                ButtonNext.click(imageUtils = game.imageUtils, sourceBitmap = sourceBitmap) -> {}
-                ButtonSkip.click(imageUtils = game.imageUtils, sourceBitmap = sourceBitmap) -> {}
-                ButtonNextRaceEnd.click(imageUtils = game.imageUtils, sourceBitmap = sourceBitmap) -> {}
+                ButtonNext.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {}
+                ButtonSkip.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {}
+                ButtonNextRaceEnd.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
+                    // Clicking this button triggers connection to server.
+                    game.waitForLoading()
+                }
                 // Exit from function if it runs too long.
                 System.currentTimeMillis() - startTime > executionTimeThresholdMs -> {
                     MessageLog.i(TAG, "[UNITY_CUP] Race event took too long to complete. Aborting...")
                     return false
                 }
                 // Tap on the screen to skip past any intermediate screens.
-                else -> game.tap(350.0, 750.0, "ok", taps = 3)
+                else -> game.tap(350.0, 750.0, taps = 3)
             }
         }
 	}

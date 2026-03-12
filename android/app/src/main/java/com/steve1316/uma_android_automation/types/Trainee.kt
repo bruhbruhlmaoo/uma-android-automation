@@ -1,4 +1,4 @@
-package com.steve1316.uma_android_automation.bot
+package com.steve1316.uma_android_automation.types
 
 import android.graphics.Bitmap
 import android.util.Log
@@ -15,22 +15,33 @@ import com.steve1316.automation_library.utils.BotService
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.utils.CustomImageUtils
-import com.steve1316.uma_android_automation.types.StatName
+import com.steve1316.uma_android_automation.bot.Game
+
 import com.steve1316.uma_android_automation.types.Aptitude
-import com.steve1316.uma_android_automation.types.RunningStyle
-import com.steve1316.uma_android_automation.types.TrackSurface
-import com.steve1316.uma_android_automation.types.TrackDistance
-import com.steve1316.uma_android_automation.types.Mood
 import com.steve1316.uma_android_automation.types.FanCountClass
+import com.steve1316.uma_android_automation.types.Mood
+import com.steve1316.uma_android_automation.types.RunningStyle
+import com.steve1316.uma_android_automation.types.StatName
+import com.steve1316.uma_android_automation.types.TrackDistance
+import com.steve1316.uma_android_automation.types.TrackSurface
+
 import com.steve1316.uma_android_automation.components.ComponentInterface
-import com.steve1316.uma_android_automation.components.IconMoodGreat
-import com.steve1316.uma_android_automation.components.IconMoodGood
-import com.steve1316.uma_android_automation.components.IconMoodNormal
-import com.steve1316.uma_android_automation.components.IconMoodBad
 import com.steve1316.uma_android_automation.components.IconMoodAwful
+import com.steve1316.uma_android_automation.components.IconMoodBad
+import com.steve1316.uma_android_automation.components.IconMoodGood
+import com.steve1316.uma_android_automation.components.IconMoodGreat
+import com.steve1316.uma_android_automation.components.IconMoodNormal
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeA
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeB
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeC
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeD
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeE
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeF
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeG
+import com.steve1316.uma_android_automation.components.LabelStatAptitudeS
 import com.steve1316.uma_android_automation.components.LabelStatDistance
-import com.steve1316.uma_android_automation.components.LabelStatTrackSurface
 import com.steve1316.uma_android_automation.components.LabelStatStyle
+import com.steve1316.uma_android_automation.components.LabelStatTrackSurface
 
 /** Defines a trainee (uma).
  *
@@ -61,6 +72,17 @@ import com.steve1316.uma_android_automation.components.LabelStatStyle
 class Trainee {
     companion object {
         const val TAG: String = "[${MainActivity.loggerTag}]Trainee"
+
+        val aptitudeComponentMap: Map<Aptitude, ComponentInterface> = mapOf(
+            Aptitude.A to LabelStatAptitudeA,
+            Aptitude.B to LabelStatAptitudeB,
+            Aptitude.C to LabelStatAptitudeC,
+            Aptitude.D to LabelStatAptitudeD,
+            Aptitude.E to LabelStatAptitudeE,
+            Aptitude.F to LabelStatAptitudeF,
+            Aptitude.G to LabelStatAptitudeG,
+            Aptitude.S to LabelStatAptitudeS,
+        )
 
         /** Stores the trainee's current stat values. */
         data class Stats(
@@ -136,6 +158,8 @@ class Trainee {
     var skillPoints: Int = 120 // From what I can tell, all trainees start at 120.
     var fans: Int = 1
     var mood: Mood = Mood.NORMAL
+    var name: String = ""
+    var statTrackLocation: Point? = null
 
     var bHasUpdatedAptitudes: Boolean = false
     var bHasUpdatedStats: Boolean = false
@@ -144,6 +168,10 @@ class Trainee {
     var bHasSetRunningStyle: Boolean = false
 
     var fanCountClass: FanCountClass = FanCountClass.DEBUT
+
+    // Track consecutive mismatches for each stat to recover from OCR misreads.
+    private val mismatchCounts: MutableMap<StatName, Int> = mutableMapOf()
+    private val lastMismatchedValues: MutableMap<StatName, Int> = mutableMapOf()
 
     val bIsInitialized: Boolean
         get() = bHasUpdatedAptitudes && bHasUpdatedStats && bHasUpdatedSkillPoints
@@ -355,8 +383,8 @@ class Trainee {
                 MessageLog.e(TAG, "findAptitudesInBitmap<${T::class.simpleName}>:: Failed to create cropped bitmap: ${option}.")
                 return@forEachIndexed
             }
-            for (aptitude in Aptitude.entries) {
-                if (imageUtils.findImageWithBitmap("stat_aptitude_${aptitude.name}", croppedBitmap, suppressError = true) != null) {
+            for ((aptitude, component) in aptitudeComponentMap.entries) {
+                if (component.check(imageUtils, sourceBitmap = croppedBitmap)) {
                     result[option] = aptitude
                     break
                 }
@@ -375,6 +403,11 @@ class Trainee {
             imageUtils = imageUtils,
             label = LabelStatTrackSurface,
         )
+
+        // Cache the location of the label for use with readName().
+        if (statTrackLocation == null) {
+            statTrackLocation = LabelStatTrackSurface.find(imageUtils = imageUtils).first
+        }
 
         if (aptitudes == null) {
             return
@@ -437,6 +470,65 @@ class Trainee {
         bHasUpdatedAptitudes = true
     }
 
+    /** Reads the trainee's name from the Umamusume Details dialog using color-filtered OCR.
+     *
+     * The name text uses a uniform color of #794016 (R=121, G=64, B=22).
+     * This method should only be called while the aptitude dialog is open as it uses the
+     * [LabelStatTrackSurface] as a reference point to calculate the name's position.
+     *
+     * This will also update the [MessageLog]'s log file name prefix to the trainee's name
+     * with spaces replaced by underscores.
+     *
+     * @param imageUtils A reference to a CustomImageUtils instance.
+     */
+    fun readName(imageUtils: CustomImageUtils) {
+        val sourceBitmap = imageUtils.getSourceBitmap()
+
+        // Extract reference point coordinates from cached location or find it if not available.
+        val refPoint = statTrackLocation ?: LabelStatTrackSurface.find(imageUtils = imageUtils).first
+        if (refPoint == null) {
+            name = "null"
+            return
+        }
+
+        // Extract the coordinates from the reference point and cache the location.
+        val refX = refPoint.x.toDouble()
+        val refY = refPoint.y.toDouble()
+        if (statTrackLocation == null && refPoint != null) {
+            statTrackLocation = refPoint
+        }
+
+        // Calculate name position relative to the reference point.
+        val nameX = refX + imageUtils.relWidth(385)
+        val nameY = refY - imageUtils.relHeight(370)
+        val nameWidth = imageUtils.relWidth(335)
+        val nameHeight = imageUtils.relHeight(50)
+
+        // Use color-filtered OCR with the target text color #794016.
+        val detectedName = imageUtils.findTextByColor(
+            sourceBitmap = sourceBitmap,
+            x = nameX.toInt(),
+            y = nameY.toInt(),
+            width = nameWidth,
+            height = nameHeight,
+            targetR = 121,
+            targetG = 64,
+            targetB = 22,
+            debugName = "trainee_name"
+        )
+
+        if (detectedName.isNotEmpty()) {
+            name = detectedName
+            MessageLog.i(TAG, "[TRAINEE] Detected trainee name: $name")
+
+            // Set the log file name prefix to the trainee name with spaces replaced by underscores.
+            // This is done to differentiate which logs belong to which trainee.
+            MessageLog.logFileNamePrefix = name.replace(" ", "_")
+        } else {
+            MessageLog.w(TAG, "[TRAINEE] Could not detect trainee name from the aptitude dialog.")
+        }
+    }
+
     /** Updates the trainee's skill points from the current screen.
      *
      * @param imageUtils A reference to a CustomImageUtils instance.
@@ -461,8 +553,9 @@ class Trainee {
      * @param sourceBitmap Optional pre-captured bitmap to analyze.
      * @param skillPointsLocation Optional pre-determined location of skill points on screen.
      * @param externalLatch Optional external latch for synchronization with other threads.
+     * @param isAptitudeDialog Optional flag to indicate that we are reading stats from the aptitude dialog.
      */
-    fun updateStats(imageUtils: CustomImageUtils, sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null, externalLatch: CountDownLatch? = null) {
+    fun updateStats(imageUtils: CustomImageUtils, sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null, externalLatch: CountDownLatch? = null, isAptitudeDialog: Boolean = false) {
         // If sourceBitmap and skillPointsLocation are provided, use threading for parallel processing.
         if (sourceBitmap != null && skillPointsLocation != null) {
             val statLatch = externalLatch ?: CountDownLatch(5)
@@ -476,7 +569,7 @@ class Trainee {
                         if (!BotService.isRunning) {
                             return@Thread
                         }
-                        val statValue = imageUtils.determineSingleStatValue(statName, sourceBitmap, skillPointsLocation)
+                        val statValue = imageUtils.determineSingleStatValue(statName, sourceBitmap, skillPointsLocation, isAptitudeDialog)
                         threadSafeResults[statName] = statValue
                     } catch (e: Exception) {
                         Log.e(TAG, "[ERROR] Error processing stat $statName: ${e.stackTraceToString()}")
@@ -500,29 +593,89 @@ class Trainee {
             for ((statName, newValue) in statMapping) {
                 val oldValue = getStat(statName)
                 val diff = abs(newValue - oldValue)
+
                 // If our previous stat value is <= 0, that means we haven't set it yet.
+                // Otherwise, it is possible that we misread a stat value. We want to make sure we
+                // don't update our stats if they change too wildly from the previous values.
                 if (oldValue <= 0 || diff < 150) {
                     stats.setStat(statName, newValue)
                     bHasUpdatedStats = true
+
+                    // Reset mismatch tracking for this stat.
+                    mismatchCounts[statName] = 0
+                    lastMismatchedValues[statName] = -1
                 } else {
-                    MessageLog.w(TAG, "New $statName stat value has changed too much since last update: old=$oldValue, new=$newValue")
+                    // Check if this large change is consistent with the previous read to recover from potential past misreads.
+                    val lastMismatchedValue = lastMismatchedValues[statName] ?: -1
+                    val mismatchDiff = abs(newValue - lastMismatchedValue)
+                    val currentCount = mismatchCounts[statName] ?: 0
+
+                    if (mismatchDiff < 50) {
+                        val newCount = currentCount + 1
+                        mismatchCounts[statName] = newCount
+
+                        // If we've seen the same gradual increase, trust it.
+                        if (newCount >= 2) {
+                            MessageLog.i(TAG, "New $statName stat value has been consistent for $newCount updates. Trusting the new value: $newValue (was $oldValue)")
+                            stats.setStat(statName, newValue)
+                            bHasUpdatedStats = true
+                            mismatchCounts[statName] = 0
+                            lastMismatchedValues[statName] = -1
+                        } else {
+                            MessageLog.w(TAG, "New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue). Consecutive mismatch count: $newCount")
+                        }
+                    } else {
+                        // Reset mismatch tracking and update with current mismatched value.
+                        mismatchCounts[statName] = 1
+                        lastMismatchedValues[statName] = newValue
+                        MessageLog.w(TAG, "New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue). Resetting mismatch count.")
+                    }
                 }
             }
         } else {
             // Use the original sequential method.
-            val statMapping: Map<StatName, Int> = imageUtils.determineStatValues()
+            val statMapping: Map<StatName, Int> = imageUtils.determineStatValues(isAptitudeDialog = isAptitudeDialog)
 
             // It is possible that we misread a stat value. We want to make sure we
             // don't update our stats if they change too wildly from the previous values.
             for ((statName, newValue) in statMapping) {
                 val oldValue = getStat(statName)
                 val diff = abs(newValue - oldValue)
+
                 // If our previous stat value is <= 0, that means we haven't set it yet.
                 if (oldValue <= 0 || diff < 150) {
                     stats.setStat(statName, newValue)
                     bHasUpdatedStats = true
+
+                    // Reset mismatch tracking for this stat.
+                    mismatchCounts[statName] = 0
+                    lastMismatchedValues[statName] = -1
                 } else {
-                    MessageLog.w(TAG, "New $statName stat value has changed too much since last update: old=$oldValue, new=$newValue")
+                    // Check if this large change is consistent with the previous read to recover from potential past misreads.
+                    val lastMismatchedValue = lastMismatchedValues[statName] ?: -1
+                    val mismatchDiff = abs(newValue - lastMismatchedValue)
+                    val currentCount = mismatchCounts[statName] ?: 0
+
+                    if (mismatchDiff < 50) {
+                        val newCount = currentCount + 1
+                        mismatchCounts[statName] = newCount
+
+                        // If we've seen the same gradual increase twice, trust it.
+                        if (newCount >= 2) {
+                            MessageLog.i(TAG, "New $statName stat value has been consistent for $newCount updates. Trusting the new value: $newValue (was $oldValue)")
+                            stats.setStat(statName, newValue)
+                            bHasUpdatedStats = true
+                            mismatchCounts[statName] = 0
+                            lastMismatchedValues[statName] = -1
+                        } else {
+                            MessageLog.w(TAG, "New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue). Consecutive mismatch count: $newCount")
+                        }
+                    } else {
+                        // Reset mismatch tracking and update with current mismatched value.
+                        mismatchCounts[statName] = 1
+                        lastMismatchedValues[statName] = newValue
+                        MessageLog.w(TAG, "New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue). Resetting mismatch count.")
+                    }
                 }
             }
         }
@@ -593,6 +746,23 @@ class Trainee {
     /** Logs the trainee's current state to the message log. */
     fun logInfo() {
         MessageLog.i(TAG, "[TRAINEE] Current State:\n${this}")
+    }
+
+    /** Logs the trainee's current state in a structured format for the Remote Log Viewer dashboard. */
+    fun logDetailedPlayerInfo() {
+        val statsString = "Spd=${stats.speed}, Sta=${stats.stamina}, Pow=${stats.power}, Gut=${stats.guts}, Wit=${stats.wit}"
+        val trackString = "Turf=${trackSurfaceAptitudes[TrackSurface.TURF]}, Dirt=${trackSurfaceAptitudes[TrackSurface.DIRT]}"
+        val distanceString = "Sprint=${trackDistanceAptitudes[TrackDistance.SPRINT]}, Mile=${trackDistanceAptitudes[TrackDistance.MILE]}, Medium=${trackDistanceAptitudes[TrackDistance.MEDIUM]}, Long=${trackDistanceAptitudes[TrackDistance.LONG]}"
+        val styleString = "Front=${runningStyleAptitudes[RunningStyle.FRONT_RUNNER]}, Pace=${runningStyleAptitudes[RunningStyle.PACE_CHASER]}, Late=${runningStyleAptitudes[RunningStyle.LATE_SURGER]}, End=${runningStyleAptitudes[RunningStyle.END_CLOSER]}"
+
+        // Log the trainee name if it has been detected.
+        if (name.isNotEmpty()) {
+            MessageLog.i(TAG, "[TRAINEE_DETAILED] Name: $name")
+        }
+        MessageLog.i(TAG, "[TRAINEE_DETAILED] Stats: $statsString")
+        MessageLog.i(TAG, "[TRAINEE_DETAILED] Track: $trackString")
+        MessageLog.i(TAG, "[TRAINEE_DETAILED] Distance: $distanceString")
+        MessageLog.i(TAG, "[TRAINEE_DETAILED] Style: $styleString")
     }
 
     /** Returns a formatted string of the trainee's preferred aptitudes.

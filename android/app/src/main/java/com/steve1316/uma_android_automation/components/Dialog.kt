@@ -12,14 +12,14 @@
  * Example usage:
  * 
  * // Call the centralized handler through the campaign or game.
- * val (bDialogHandled, dialog) = game.campaign.handleDialogs()
+ * val result: DialogHandlerResult = campaign.handleDialogs()
  *
  * // Or pass arguments via the map.
- * game.campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
+ * campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
  *
  * // Example of how logic is implemented within a DialogHandler:
- * open fun handleDialogs(dialog: DialogInterface? = null, args: Map<String, Any> = mapOf()): Pair<Boolean, DialogInterface?> {
- *     val dialog = dialog ?: DialogUtils.getDialog(game.imageUtils) ?: return Pair(false, null)
+ * open fun handleDialogs(dialog: DialogInterface? = null, args: Map<String, Any> = mapOf()): DialogHandlerResult {
+ *     val dialog = dialog ?: DialogUtils.getDialog(game.imageUtils) ?: return DialogHandlerResult.NoDialogDetected
  *     when (dialog.name) {
  *         "open_soon" -> {
  *             game.notificationMessage = "open_soon"
@@ -33,9 +33,10 @@
  *         else -> {
  *             MessageLog.i(TAG, "\n[DIALOG] ${dialog.name}")
  *             dialog.close(imageUtils=game.imageUtils)
+ *             return DialogHandlerResult.Unhandled(dialog)
  *         }
  *     }
- *     return Pair(true, dialog)
+ *     return DialogHandlerResult.Handled(dialog)
  * }
  */
 
@@ -351,6 +352,7 @@ object DialogObjects {
         DialogNotices,                      // Main Screen
         DialogOpenSoon,                     // Shop (only when clicking inactive daily sales button)
         DialogOptions,                      // Anywhere
+        DialogOverwrite,                    // Career -> Agenda
         DialogPerks,                        // Career -> Career Profile dialog
         DialogPlacing,                      // Career -> DialogTryAgain
         DialogPresents,                     // Main Screen (i think?)
@@ -367,6 +369,8 @@ object DialogObjects {
         DialogRestAndRecreation,            // Career
         DialogRewardsCollected,             // Main Screen, Special Events
         DialogRunners,                      // Career -> Race screens
+        DialogScheduleRace,                 // Career -> Agenda
+        DialogScheduleCancellation,         // Career -> Agenda
         DialogScheduledRaceAvailable,       // Career
         DialogScheduledRaces,               // Career
         DialogScheduleSettings,             // Career
@@ -992,6 +996,18 @@ object DialogOptions : DialogInterface {
     )
 }
 
+object DialogOverwrite : DialogInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]DialogOverwrite"
+    override val name: String = "overwrite"
+    override val title: String = "Overwrite"
+    override val closeButton = null
+    override val okButton: ComponentInterface = ButtonOverwrite
+    override val buttons: List<ComponentInterface> = listOf(
+        ButtonCancel,
+        ButtonOverwrite,
+    )
+}
+
 object DialogPerks : DialogInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]DialogPerks"
     override val name: String = "perks"
@@ -1207,6 +1223,28 @@ object DialogRunners : DialogInterface {
     override val closeButton = null
     override val okButton = null
     override val buttons: List<BaseComponentInterface> = listOf(
+        ButtonClose,
+    )
+}
+
+object DialogScheduleRace : DialogInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]DialogScheduleRace"
+    override val name: String = "schedule_race"
+    override val title: String = "Schedule Race"
+    override val closeButton = null
+    override val okButton = null
+    override val buttons: List<ComponentInterface> = listOf(
+        ButtonClose,
+    )
+}
+
+object DialogScheduleCancellation : DialogInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]DialogScheduleCancellation"
+    override val name: String = "schedule_cancellation"
+    override val title: String = "Schedule Cancellation"
+    override val closeButton = null
+    override val okButton = null
+    override val buttons: List<ComponentInterface> = listOf(
         ButtonClose,
     )
 }

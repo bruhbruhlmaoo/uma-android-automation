@@ -1,4 +1,4 @@
-package com.steve1316.uma_android_automation.bot
+package com.steve1316.uma_android_automation.types
 
 import android.util.Log
 import android.graphics.Bitmap
@@ -9,14 +9,18 @@ import java.util.concurrent.TimeUnit
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.data.SharedData
+import com.steve1316.uma_android_automation.bot.DialogHandlerResult
+import com.steve1316.uma_android_automation.bot.Game
+import com.steve1316.uma_android_automation.bot.Campaign
 
-import com.steve1316.uma_android_automation.utils.ScrollList
-import com.steve1316.uma_android_automation.utils.ScrollListEntry
 import com.steve1316.uma_android_automation.types.BoundingBox
-import com.steve1316.uma_android_automation.types.TrackDistance
-import com.steve1316.uma_android_automation.types.TrackSurface
 import com.steve1316.uma_android_automation.types.RunningStyle
 import com.steve1316.uma_android_automation.types.SkillData
+import com.steve1316.uma_android_automation.types.SkillListEntry
+import com.steve1316.uma_android_automation.types.TrackDistance
+import com.steve1316.uma_android_automation.types.TrackSurface
+import com.steve1316.uma_android_automation.utils.ScrollList
+import com.steve1316.uma_android_automation.utils.ScrollListEntry
 
 import com.steve1316.uma_android_automation.components.*
 
@@ -43,7 +47,7 @@ typealias OnEntryDetectedCallback = (
  * Defaults to NULL if not yet detected.
  * The value is set in the [detectSkillPoints] function.
  */
-class SkillList (private val game: Game) {
+class SkillList (private val game: Game, private val campaign: Campaign) {
     private val TAG: String = "[${MainActivity.loggerTag}]SkillList"
 
     private var entries: Map<String, SkillListEntry> = generateSkillListEntries()
@@ -83,7 +87,7 @@ class SkillList (private val game: Game) {
                 }
                 // Because we're building this mapping before we've scanned
                 // the skill list, all entries are virtual.
-                val entry = SkillListEntry(game, skillData, bIsVirtual = true, prev = prevEntry)
+                val entry = SkillListEntry(game, campaign, skillData, bIsVirtual = true, prev = prevEntry)
 
                 // Now add to our mapping.
                 result[name] = entry
@@ -223,12 +227,12 @@ class SkillList (private val game: Game) {
     /** Confirms skill purchases and backs out of the Skill List screen. */
     fun confirmAndExit() {
         ButtonConfirm.click(game.imageUtils)
-        game.wait(0.5, skipWaitingForLoading = true)
+        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
         // Two dialogs will appear if we purchase any skills.
         // First is the purchase confirmation.
-        game.campaign.handleDialogs()
+        campaign.handleDialogs()
         // Second is the Skills Learned dialog.
-        game.campaign.handleDialogs()
+        campaign.handleDialogs()
         // Return to previous screen.
         ButtonBack.click(game.imageUtils)
     }
@@ -238,10 +242,10 @@ class SkillList (private val game: Game) {
         // Reset skills to prevent popup.
         ButtonReset.click(game.imageUtils)
         ButtonBack.click(game.imageUtils)
-        game.wait(0.5, skipWaitingForLoading = true)
+        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
         // As a failsafe, handle dialogs to catch the dialog for
         // aborting spending skill points.
-        game.campaign.handleDialogs()
+        campaign.handleDialogs()
     }
 
     /** Opens the stats dialog and parses it.
@@ -255,8 +259,8 @@ class SkillList (private val game: Game) {
      */
     fun checkStats() {
         ButtonSkillListFullStats.click(game.imageUtils)
-        game.wait(0.5, skipWaitingForLoading = true)
-        game.campaign.handleDialogs()
+        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+        campaign.handleDialogs()
     }
 
     /** Extracts the title (skill name) from a cropped skill list entry bitmap.
@@ -570,6 +574,12 @@ class SkillList (private val game: Game) {
             return null
         }
 
+        // Log each detected skill entry for debugging.
+        MessageLog.d(TAG, "[SKILLS] Detected: \"${skillListEntry.name}\" | " +
+            "price: ${skillListEntry.price} (screen: ${skillListEntry.screenPrice}) | " +
+            "obtained: ${skillListEntry.bIsObtained} | " +
+            "virtual: ${skillListEntry.bIsVirtual}")
+
         // Finally, translate the localPoint to screen space before we return it.
         val point = Point(
             localPoint.x + entry.bbox.x,
@@ -608,6 +618,15 @@ class SkillList (private val game: Game) {
             val res: Pair<SkillListEntry, Point>? = onScrollListEntry(entry)
             if (onEntry != null && res != null) onEntry(this, res.first, res.second) else false
         }
+
+        // Log a summary of all detected skill entries for debugging.
+        MessageLog.d(TAG, "[SKILLS] ===== Scan Complete: ${entries.size} total entries =====")
+        for ((name, entry) in entries) {
+            if (!entry.bIsVirtual) {
+                MessageLog.d(TAG, "[SKILLS] Final: $entry")
+            }
+        }
+        Log.d(TAG, "[SKILLS] ================================================")
 
         return entries
     }
@@ -708,7 +727,7 @@ class SkillList (private val game: Game) {
         }
 
         // Try to handle any skill list specific dialogs that may be up.
-        if (!game.campaign.handleDialogs().first) {
+        if (campaign.handleDialogs() !is DialogHandlerResult.Handled) {
             return false
         }
 
