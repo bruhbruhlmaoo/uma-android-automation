@@ -823,7 +823,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
             }
 
             // If this option isn't enabled, then we just do a fast lazy validation.
-            if (!enableTrainingValidationCheck) {
+            if (!enableTrainingAnalysisValidation) {
                 for (i in 0..2) {
                     button.click(game.imageUtils)
                     // Wait for screen to finish updating before proceeding.
