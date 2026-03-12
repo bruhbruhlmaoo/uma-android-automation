@@ -550,8 +550,9 @@ class Trainee {
      * @param sourceBitmap Optional pre-captured bitmap to analyze.
      * @param skillPointsLocation Optional pre-determined location of skill points on screen.
      * @param externalLatch Optional external latch for synchronization with other threads.
+     * @param isAptitudeDialog Optional flag to indicate that we are reading stats from the aptitude dialog.
      */
-    fun updateStats(imageUtils: CustomImageUtils, sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null, externalLatch: CountDownLatch? = null) {
+    fun updateStats(imageUtils: CustomImageUtils, sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null, externalLatch: CountDownLatch? = null, isAptitudeDialog: Boolean = false) {
         // If sourceBitmap and skillPointsLocation are provided, use threading for parallel processing.
         if (sourceBitmap != null && skillPointsLocation != null) {
             val statLatch = externalLatch ?: CountDownLatch(5)
@@ -565,7 +566,7 @@ class Trainee {
                         if (!BotService.isRunning) {
                             return@Thread
                         }
-                        val statValue = imageUtils.determineSingleStatValue(statName, sourceBitmap, skillPointsLocation)
+                        val statValue = imageUtils.determineSingleStatValue(statName, sourceBitmap, skillPointsLocation, isAptitudeDialog)
                         threadSafeResults[statName] = statValue
                     } catch (e: Exception) {
                         Log.e(TAG, "[ERROR] Error processing stat $statName: ${e.stackTraceToString()}")
@@ -630,7 +631,7 @@ class Trainee {
             }
         } else {
             // Use the original sequential method.
-            val statMapping: Map<StatName, Int> = imageUtils.determineStatValues()
+            val statMapping: Map<StatName, Int> = imageUtils.determineStatValues(isAptitudeDialog = isAptitudeDialog)
 
             // It is possible that we misread a stat value. We want to make sure we
             // don't update our stats if they change too wildly from the previous values.

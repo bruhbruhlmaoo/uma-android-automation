@@ -76,7 +76,9 @@ open class Campaign(game: Game) : DialogHandler(game) {
      */
     fun openAptitudesDialog() {
         MessageLog.d(TAG, "Opening aptitudes dialog...")
-        ButtonHomeFullStats.click(imageUtils = game.imageUtils)
+        if (!ButtonHomeFullStats.click(imageUtils = game.imageUtils)) {
+            ButtonDetails.click(imageUtils = game.imageUtils)
+        }
         game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
     }
 
@@ -201,8 +203,9 @@ open class Campaign(game: Game) : DialogHandler(game) {
 	fun startAptitudesDetectionTest() {
 		MessageLog.i(TAG, "\n[TEST] Now beginning the Aptitudes Detection test on the Main screen.")
 		MessageLog.i(TAG, "[TEST] Note that this test is dependent on having the correct scale.")
-        openAptitudesDialog()
-        handleDialogs()
+		openAptitudesDialog()
+		handleDialogs()
+		game.trainee.logDetailedPlayerInfo()
 	}
 
 	/**
@@ -215,6 +218,7 @@ open class Campaign(game: Game) : DialogHandler(game) {
 		MessageLog.i(TAG, "[TEST] Note that this test is dependent on having the correct scale.")
 		openAptitudesDialog()
 		handleDialogs()
+		game.trainee.logDetailedPlayerInfo()
 	}
 
     /**
@@ -680,6 +684,14 @@ open class Campaign(game: Game) : DialogHandler(game) {
                             MessageLog.w(TAG, "Career End Screen: handleSkillList() failed.")
                         }
                     }
+
+                    // Perform a final update of aptitudes and stats from the details dialog.
+                    game.wait(1.0)
+                    ButtonDetails.click(game.imageUtils)
+                    game.wait(1.0)
+                    handleDialogs()
+                    game.trainee.logDetailedPlayerInfo()
+
                     throw InterruptedException("Bot had reached end of run. Stopping bot...")
                 } else if (checkCampaignSpecificConditions()) {
                     MessageLog.i(TAG, "Campaign-specific checks complete.")

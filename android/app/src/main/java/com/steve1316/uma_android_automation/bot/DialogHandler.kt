@@ -393,6 +393,7 @@ open class DialogHandler(val game: Game) {
 				val prevTrackDistance = game.trainee.trackDistance
 				val prevRunningStyle = game.trainee.runningStyle
 				game.trainee.updateAptitudes(imageUtils = game.imageUtils)
+				game.trainee.updateStats(imageUtils = game.imageUtils, isAptitudeDialog = true)
 				game.trainee.bTemporaryRunningStyleAptitudesUpdated = false
 
 				// Read the trainee's name once per run while the dialog is still open.
