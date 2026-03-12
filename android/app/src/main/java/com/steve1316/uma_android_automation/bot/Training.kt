@@ -607,6 +607,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 	private val riskyTrainingMaxFailureChance: Int = SettingsHelper.getIntSetting("training", "riskyTrainingMaxFailureChance")
 	private val trainWitDuringFinale: Boolean = SettingsHelper.getBooleanSetting("training", "trainWitDuringFinale")
 	private val enablePrioritizeSkillHints: Boolean = SettingsHelper.getBooleanSetting("training", "enablePrioritizeSkillHints")
+    private val enableTrainingAnalysisValidation: Boolean = SettingsHelper.getBooleanSetting("training", "enableTrainingAnalysisValidation")
 	var firstTrainingCheck = true
 	private fun getCurrentStatCap(statName: StatName): Int {
 		return getScenarioStatCap(game.scenario, statName)
@@ -820,6 +821,23 @@ class Training(private val game: Game, private val campaign: Campaign) {
             if (header.check(game.imageUtils)) {
                 return true
             }
+
+            // If this option isn't enabled, then we just do a fast lazy validation.
+            if (!enableTrainingValidationCheck) {
+                for (i in 0..2) {
+                    button.click(game.imageUtils)
+                    // Wait for screen to finish updating before proceeding.
+                    game.wait(0.2, skipWaitingForLoading = true)
+                    if (header.check(game.imageUtils)) {
+                        return true
+                    }
+                }
+
+                MessageLog.w(TAG, "[TRAINING] Failed to go to $statName on training screen after 3 attempts.")
+                return false
+            }
+
+            // Perform full validation.
 
             val activeStat: StatName? = getActiveStat(timeoutMs)
             if (activeStat == null) {

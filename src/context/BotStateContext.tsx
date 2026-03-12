@@ -109,6 +109,7 @@ export interface Settings {
         riskyTrainingMaxFailureChance: number
         trainWitDuringFinale: boolean
         enablePrioritizeSkillHints: boolean
+        enableTrainingAnalysisValidation: boolean
     }
 
     // Training Stat Target settings
@@ -318,6 +319,7 @@ export const defaultSettings: Settings = {
         riskyTrainingMaxFailureChance: 30,
         trainWitDuringFinale: false,
         enablePrioritizeSkillHints: false,
+        enableTrainingAnalysisValidation: false,
     },
     trainingStatTarget: {
         trainingSprintStatTarget_speedStatTarget: 900,
