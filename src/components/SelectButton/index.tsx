@@ -24,7 +24,7 @@ interface SelectOption {
  */
 interface SelectButtonProps {
     /** The visual style variant of the button. */
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "success" | "info" | "warning" | "error"
+    variant?: "default" | "destructive" | "outline" | "primary" | "secondary" | "ghost" | "link" | "success" | "info" | "warning" | "error"
     /** The size preset for the button. */
     size?: "default" | "sm" | "lg" | "icon"
     /** Optional custom icon element. */
@@ -113,8 +113,10 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                 return colors.destructive
             case "outline":
                 return isDark ? "black" : "white"
+            case "primary":
+                return colors.primary
             case "secondary":
-                return isDark ? colors.primary : colors.secondary
+                return colors.secondary
             case "ghost":
                 return "transparent"
             case "link":
@@ -128,7 +130,7 @@ const SelectButton: React.FC<SelectButtonProps> = ({
             case "error":
                 return colors.error
             default:
-                return isDark ? colors.secondary : colors.primary
+                return colors.secondary
         }
     }
 
@@ -139,11 +141,17 @@ const SelectButton: React.FC<SelectButtonProps> = ({
     const getTextColor = () => {
         switch (variant) {
             case "destructive":
-                return "white"
+                return colors.destructiveForeground
             case "outline":
                 return isDark ? "white" : "black"
+            case "primary":
+                return colors.primaryForeground
             case "secondary":
-                return isDark ? "black" : "white"
+                return colors.secondaryForeground
+            case "ghost":
+                return isDark ? "white" : "black"
+            case "link":
+                return isDark ? "white" : "black"
             case "success":
                 return colors.successContent
             case "info":
@@ -153,19 +161,16 @@ const SelectButton: React.FC<SelectButtonProps> = ({
             case "error":
                 return colors.errorContent
             default:
-                return "black"
+                return colors.secondaryForeground
         }
     }
 
-    /**
-     * Determine the background color for the select content based on variant and theme.
-     * @returns The background color for the select dropdown.
-     */
-    const getSelectContentBackgroundColor = () => {
-        if (variant === "default") {
-            return isDark ? colors.primary : colors.secondary
-        } else {
-            return getBackgroundColor()
+    const getSelectContentBorderColor = () => {
+        switch (variant) {
+            case "outline":
+                return isDark ? "white" : "black"
+            default:
+                return getBackgroundColor()
         }
     }
 
@@ -180,10 +185,13 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                     flex: 1,
                     borderTopRightRadius: 0,
                     borderBottomRightRadius: 0,
+                    borderWidth: 0,
                 },
                 buttonDropdown: {
                     borderTopLeftRadius: 0,
                     borderBottomLeftRadius: 0,
+                    borderColor: "transparent",
+                    borderWidth: 0,
                 },
             }),
         [colors]
@@ -241,7 +249,7 @@ const SelectButton: React.FC<SelectButtonProps> = ({
                 <CustomButton style={styles.button} variant={variant as any} icon={getIcon()} iconPosition={iconPosition} size={size} isLoading={false} onPress={onPressButton}>
                     {currentLabel ?? placeholder}
                 </CustomButton>
-                <Separator orientation="vertical" />
+                <Separator orientation="vertical" style={{ backgroundColor: "transparent" }} />
                 <SelectPrimitive.Trigger asChild>
                     <CustomButton style={styles.buttonDropdown} variant={variant as any} size={"icon"} isLoading={false}>
                         <Ionicons name="caret-down" size={20} color={getTextColor()} />
@@ -251,8 +259,8 @@ const SelectButton: React.FC<SelectButtonProps> = ({
             <SelectContent
                 style={{
                     width: triggerWidth,
-                    backgroundColor: getSelectContentBackgroundColor(),
-                    borderColor: getSelectContentBackgroundColor(),
+                    backgroundColor: getBackgroundColor(),
+                    borderColor: getSelectContentBorderColor(),
                 }}
                 align="end"
                 sideOffset={1}
