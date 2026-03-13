@@ -551,6 +551,12 @@ const searchConfig: SearchOption[] = [
         parentId: "enable-screen-recording",
     },
     {
+        id: "debug-accessibility-service-check",
+        title: "Accessibility Service Check",
+        description: "The Accessibility Service allows the bot to perform clicks and gestures on your behalf. Check the current registration and initialization status here.",
+        page: "DebugSettings",
+    },
+    {
         id: "debug-template-matching-test",
         title: "Start Basic Template Matching Test",
         description:
