@@ -1,6 +1,6 @@
 import * as Application from "expo-application"
 import MessageLog from "../../components/MessageLog"
-import { useContext, useEffect, useRef, useState } from "react"
+import { useContext, useEffect, useRef, useState, useMemo } from "react"
 import { BotStateContext } from "../../context/BotStateContext"
 import { useSettings } from "../../context/SettingsContext"
 import { logWithTimestamp, logErrorWithTimestamp } from "../../lib/logger"
@@ -106,6 +106,10 @@ const Home = () => {
         }
     }, [])
 
+    const isScenarioValid: boolean = useMemo(() => {
+        return scenarios.some(it => it.value === bsc.settings.general.scenario)
+    }, [bsc.settings.general.scenario])
+
     /**
      * Fetch device metrics from NativeModule.
      */
@@ -167,7 +171,7 @@ const Home = () => {
 
     /** Gets the appropriate icon name for the SelectButton based on device state. */
     const getSelectButtonIconName = (): React.ComponentProps<typeof Ionicons>["name"] | undefined => {
-        if (bsc.settings.general.scenario === "") {
+        if (!isScenarioValid) {
             return undefined
         } else if (isRunning) {
             return "stop-outline"
@@ -178,14 +182,20 @@ const Home = () => {
 
     /** Gets the SelectButton variant based on device state. */
     const getSelectButtonVariant = (): any => {
-        if (unsupportedReason) {
-            return "warning"
-        } else if (isRunning) {
+        if (isRunning) {
+            // Not an error, but we want the button to be red to indicate that
+            // pressing it will stop the service.
+            // Must come first because we always want the button to be red
+            // if the bot is running, regardless of the other conditions.
             return "error"
-        } else if (deviceMetrics && bsc.settings.general.scenario !== "") {
+        } else if (unsupportedReason !== null) {
+            return "warning"
+        } else if (deviceMetrics === null) {
+            return "warning"
+        } else if (isScenarioValid) {
             return "success"
         } else {
-            return isDark ? "default" : "secondary"
+            return "primary"
         }
     }
 
