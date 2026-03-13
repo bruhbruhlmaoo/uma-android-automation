@@ -1288,7 +1288,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 						// Build the row configurations based on the current scenario.
 						val rows = if (useTwoRows) {
-							// For Unity Cup, stats are in two rows on top of each other.
+							// For some scenarios, stats are in two rows on top of each other.
 							// First row uses "_mini" suffix, second row uses "_mini_bold" suffix.
 							val row2Offset = if (game.scenario == "Trackblazer") -60 else -55
 							val secondRowStartY = relY(firstRowStartY.toDouble(), row2Offset)
@@ -1327,7 +1327,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 									return@Thread
 								}
 
-								// Set croppedBitmap for non-Unity Cup path (used in debug visualization).
+								// Set croppedBitmap for scenarios with only one row (used in debug visualization).
 								if (!useTwoRows) {
 									croppedBitmap = rowBitmap
 								}
@@ -1401,7 +1401,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 						// Analyze results and construct the final integer value for this region.
 						val finalValue = if (rows.size > 1) {
-							// For Unity Cup with multiple rows, sum the values from each row.
+							// For scenarios with multiple rows, sum the values from each row.
 							val rowValues = rowDebugInfo.mapIndexed { index, rowInfo ->
 								constructIntegerFromMatches(rowInfo.matches)
 							}
