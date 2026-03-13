@@ -12,6 +12,6 @@
     {
         "value": "Trackblazer",
         "label": "Trackblazer",
-        "disabled": true
+        "disabled": false
     }
 ]
