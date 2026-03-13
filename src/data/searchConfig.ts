@@ -157,6 +157,13 @@ const searchConfig: SearchOption[] = [
         page: "TrainingSettings",
     },
     {
+        id: "enable-training-analysis-validation",
+        title: "Enable Training Analysis Validation",
+        description:
+            "When enabled, the bot will validate the current selected stat during training analysis. This helps prevent the bot from accidentally training a stat during analysis at the cost of a significant increase in scenario completion time.",
+        page: "TrainingSettings",
+    },
+    {
         id: "preferred-distance-override",
         title: "Preferred Distance Override",
         description: "Set the preferred race distance for training targets.",
