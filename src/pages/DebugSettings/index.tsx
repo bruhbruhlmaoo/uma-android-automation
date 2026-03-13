@@ -432,10 +432,10 @@ const DebugSettings = () => {
 
                             <Separator style={{ marginVertical: 16 }} />
 
-                            <CustomTitle 
+                            <CustomTitle
                                 searchId="debug-accessibility-service-check"
-                                title="Accessibility Service Check" 
-                                description="The Accessibility Service allows the bot to perform clicks and gestures on your behalf." 
+                                title="Accessibility Service Check"
+                                description="The Accessibility Service allows the bot to perform clicks and gestures on your behalf."
                             />
 
                             <InfoContainer style={{ marginTop: 0 }}>

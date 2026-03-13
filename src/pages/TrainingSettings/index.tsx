@@ -632,7 +632,11 @@ const TrainingSettings = () => {
                                 className="my-2"
                                 searchId="enable-training-analysis-validation"
                             />
-                            {enableTrainingAnalysisValidation && (<WarningContainer style={{ marginTop: 0 }}>⚠️ Warning: Enabling this option will prevent accidental trainings at the cost of a significant increase in the time it takes to complete a scenario.</WarningContainer>)}
+                            {enableTrainingAnalysisValidation && (
+                                <WarningContainer style={{ marginTop: 0 }}>
+                                    ⚠️ Warning: Enabling this option will prevent accidental trainings at the cost of a significant increase in the time it takes to complete a scenario.
+                                </WarningContainer>
+                            )}
                         </View>
 
                         <View style={styles.section}>
