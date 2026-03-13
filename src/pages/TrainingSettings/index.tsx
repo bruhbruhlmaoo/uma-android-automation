@@ -628,11 +628,11 @@ const TrainingSettings = () => {
                                 checked={enableTrainingAnalysisValidation}
                                 onCheckedChange={(checked) => updateTrainingSetting("enableTrainingAnalysisValidation", checked)}
                                 label="Enable Training Analysis Validation"
-                                description="When enabled, the bot will validate the current selected stat during training analysis. This helps prevent the bot from accidentally training a stat during analysis at the cost of a significant increase in campaign completion time."
+                                description="When enabled, the bot will validate the current selected stat during training analysis. This helps prevent the bot from accidentally training a stat during analysis at the cost of a significant increase in scenario completion time."
                                 className="my-2"
                                 searchId="enable-training-analysis-validation"
                             />
-                            {enableTrainingAnalysisValidation && (<WarningContainer>⚠️ Warning: Enabling this option will prevent accidental trainings at the cost of a significant increase in the time it takes to complete a campaign.</WarningContainer>)}
+                            {enableTrainingAnalysisValidation && (<WarningContainer style={{ marginTop: 0 }}>⚠️ Warning: Enabling this option will prevent accidental trainings at the cost of a significant increase in the time it takes to complete a scenario.</WarningContainer>)}
                         </View>
 
                         <View style={styles.section}>
