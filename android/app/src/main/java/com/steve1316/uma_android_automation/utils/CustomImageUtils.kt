@@ -1204,10 +1204,10 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 */
 	fun determineStatGainFromTraining(trainingName: StatName, sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null): StatGainResult {
         // Scenario-specific checks.
-		val isUnityCup = game.scenario == "Unity Cup"
+		val useTwoRows = game.scenario != "URA Finale"
 
 		// Determine all template suffixes needed for this scenario.
-		val templateSuffixes = if (isUnityCup) {
+		val templateSuffixes = if (useTwoRows) {
 			listOf("_mini", "_mini_bold")
 		} else {
 			listOf("")
@@ -1277,7 +1277,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 						// Determine crop regions based on campaign.
 						val firstRowStartX = relX(skillPointsLocation.x, -934 + xOffset)
-						val firstRowStartY = if (isUnityCup) {
+						val firstRowStartY = if (useTwoRows) {
                             relY(skillPointsLocation.y, -65)
                         } else {
                             relY(skillPointsLocation.y, -103)
@@ -1287,7 +1287,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 						var croppedBitmap: Bitmap? = null
 
 						// Build the row configurations based on the current scenario.
-						val rows = if (isUnityCup) {
+						val rows = if (useTwoRows) {
 							// For Unity Cup, stats are in two rows on top of each other.
 							// First row uses "_mini" suffix, second row uses "_mini_bold" suffix.
 							val secondRowStartY = relY(firstRowStartY.toDouble(), -55)
@@ -1327,7 +1327,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 								}
 
 								// Set croppedBitmap for non-Unity Cup path (used in debug visualization).
-								if (!isUnityCup) {
+								if (!useTwoRows) {
 									croppedBitmap = rowBitmap
 								}
 
