@@ -891,7 +891,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 
             // Early skill hint detection: If prioritization is enabled, scan for skill hints before analyzing trainings.
             // This ensures skill hints are detected even if some trainings are blacklisted.
-            if (enablePrioritizeSkillHints) {
+            if (!test && enablePrioritizeSkillHints) {
                 MessageLog.i(TAG, "[TRAINING] Skill hint prioritization is enabled. Scanning for skill hints before training analysis...")
                 val skillHintLocations: ArrayList<Point> = IconStatSkillHint.findAll(game.imageUtils, region = game.imageUtils.regionBottomHalf)
                 if (skillHintLocations.isNotEmpty()) {
