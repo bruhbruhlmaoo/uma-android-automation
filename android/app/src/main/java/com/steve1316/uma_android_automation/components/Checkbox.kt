@@ -16,3 +16,8 @@ object CheckboxDoNotShowAgain : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]CheckboxDoNotShowAgain"
     override val template = Template("components/checkbox/checkbox_do_not_show_again")
 }
+
+object CheckboxShopItem : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]CheckboxShopItem"
+    override val template = Template("components/checkbox/checkbox_shop_item")
+}
