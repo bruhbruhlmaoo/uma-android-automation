@@ -57,7 +57,8 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 	data class RaceDetails (
 		val fans: Int,
-		val hasDoublePredictions: Boolean
+		val hasDoublePredictions: Boolean,
+		val isRival: Boolean = false
 	)
 
     data class StatBlock(
@@ -475,11 +476,19 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 * @return Number of fans to be gained from the extra race or -1 if not found as an object.
 	 */
 	fun determineExtraRaceFans(extraRaceLocation: Point, sourceBitmap: Bitmap, forceRacing: Boolean = false): RaceDetails {
+		// Check for Rival status.
+		val rivalCheck = if (game.scenario == "Trackblazer") {
+			val rivalBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -275), relY(extraRaceLocation.y, -205), relWidth(295), relHeight(60), "determineExtraRaceFans rival")
+			if (rivalBitmap != null) {
+				LabelRivalRacer.check(this, sourceBitmap = rivalBitmap, region = intArrayOf(0, 0, 0, 0))
+			} else false
+		} else false
+
 		// Crop the source screenshot to show only the fan amount and the predictions.
 		val croppedBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -173), relY(extraRaceLocation.y, -106), relWidth(163), relHeight(96), "determineExtraRaceFans prediction")
 		if (croppedBitmap == null) {
 			MessageLog.e(TAG, "Failed to create cropped bitmap for extra race prediction detection.")
-			return RaceDetails(-1, false)
+			return RaceDetails(-1, false, rivalCheck)
 		}
 
 		val cvImage = Mat()
@@ -503,7 +512,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 			val croppedBitmap2 = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, xOffset), relY(extraRaceLocation.y, yOffset), relWidth(250), relHeight(35), "determineExtraRaceFans fans")
 			if (croppedBitmap2 == null) {
 				MessageLog.e(TAG, "Failed to create cropped bitmap for extra race fans detection.")
-				return RaceDetails(-1, predictionCheck)
+				return RaceDetails(-1, predictionCheck, rivalCheck)
 			}
 
 			// Make the cropped screenshot grayscale.
@@ -553,13 +562,13 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 			try {
 				Log.d(TAG, "Converting $result to integer for fans")
 				val cleanedResult = result.replace(Regex("[^0-9]"), "")
-				RaceDetails(cleanedResult.toInt(), predictionCheck)
+				RaceDetails(cleanedResult.toInt(), predictionCheck, rivalCheck)
 			} catch (_: NumberFormatException) {
-				RaceDetails(-1, predictionCheck)
+				RaceDetails(-1, predictionCheck, rivalCheck)
 			}
 		} else {
 			Log.d(TAG, "This race has no double prediction.")
-			return RaceDetails(-1, false)
+			return RaceDetails(-1, false, rivalCheck)
 		}
 	}
 
