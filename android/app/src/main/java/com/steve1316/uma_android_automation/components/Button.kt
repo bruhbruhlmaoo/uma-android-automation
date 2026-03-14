@@ -624,7 +624,7 @@ object ButtonShopTrackblazer : ButtonInterface {
 
 object ButtonTrainingItems : ButtonInterface {
     override val TAG: String = "ButtonTrainingItems"
-    override val template = Template("components/button/training_items", region = Region.topHalf)
+    override val template = Template("components/button/training_items")
 }
 
 object ButtonExchange : ButtonInterface {
