@@ -22,76 +22,76 @@ import com.steve1316.uma_android_automation.utils.ScrollListEntry
 class TrackblazerShopList(private val game: Game) {
 	private val TAG: String = "[${MainActivity.loggerTag}]TrackblazerShopList"
 
-	/** Mapping of shop items to their price and effect. */
-	val shopItems: Map<String, Pair<Int, String>> = mapOf(
+	/** Mapping of shop items to their price, effect, and whether they are allowed for quick usage. */
+	val shopItems: Map<String, Triple<Int, String, Boolean>> = mapOf(
 		// Stats
-		"Speed Notepad" to Pair(10, "Speed +3"),
-		"Stamina Notepad" to Pair(10, "Stamina +3"),
-		"Power Notepad" to Pair(10, "Power +3"),
-		"Guts Notepad" to Pair(10, "Guts +3"),
-		"Wit Notepad" to Pair(10, "Wisdom +3"),
-		"Speed Manual" to Pair(15, "Speed +7"),
-		"Stamina Manual" to Pair(15, "Stamina +7"),
-		"Power Manual" to Pair(15, "Power +7"),
-		"Guts Manual" to Pair(15, "Guts +7"),
-		"Wit Manual" to Pair(15, "Wisdom +7"),
-		"Speed Scroll" to Pair(30, "Speed +15"),
-		"Stamina Scroll" to Pair(30, "Stamina +15"),
-		"Power Scroll" to Pair(30, "Power +15"),
-		"Guts Scroll" to Pair(30, "Guts +15"),
-		"Wit Scroll" to Pair(30, "Wisdom +15"),
+		"Speed Notepad" to Triple(10, "Speed +3", true),
+		"Stamina Notepad" to Triple(10, "Stamina +3", true),
+		"Power Notepad" to Triple(10, "Power +3", true),
+		"Guts Notepad" to Triple(10, "Guts +3", true),
+		"Wit Notepad" to Triple(10, "Wisdom +3", true),
+		"Speed Manual" to Triple(15, "Speed +7", true),
+		"Stamina Manual" to Triple(15, "Stamina +7", true),
+		"Power Manual" to Triple(15, "Power +7", true),
+		"Guts Manual" to Triple(15, "Guts +7", true),
+		"Wit Manual" to Triple(15, "Wisdom +7", true),
+		"Speed Scroll" to Triple(30, "Speed +15", true),
+		"Stamina Scroll" to Triple(30, "Stamina +15", true),
+		"Power Scroll" to Triple(30, "Power +15", true),
+		"Guts Scroll" to Triple(30, "Guts +15", true),
+		"Wit Scroll" to Triple(30, "Wisdom +15", true),
 
 		// Energy and Motivation
-		"Vita 20" to Pair(35, "Energy +20"),
-		"Vita 40" to Pair(55, "Energy +40"),
-		"Vita 65" to Pair(75, "Energy +65"),
-		"Royal Kale Juice" to Pair(70, "Energy +100, Motivation -1"),
-		"Energy Drink MAX" to Pair(30, "Maximum energy +4, Energy +5"),
-		"Energy Drink MAX EX" to Pair(50, "Maximum energy +8"),
-		"Plain Cupcake" to Pair(30, "Motivation +1"),
-		"Berry Sweet Cupcake" to Pair(55, "Motivation +2"),
+		"Vita 20" to Triple(35, "Energy +20", false),
+		"Vita 40" to Triple(55, "Energy +40", false),
+		"Vita 65" to Triple(75, "Energy +65", false),
+		"Royal Kale Juice" to Triple(70, "Energy +100, Motivation -1", false),
+		"Energy Drink MAX" to Triple(30, "Maximum energy +4, Energy +5", false),
+		"Energy Drink MAX EX" to Triple(50, "Maximum energy +8", false),
+		"Plain Cupcake" to Triple(30, "Motivation +1", true),
+		"Berry Sweet Cupcake" to Triple(55, "Motivation +2", true),
 
 		// Bond
-		"Yummy Cat Food" to Pair(10, "Yayoi Akikawa's bond +5"),
-		"Grilled Carrots" to Pair(40, "All Support card bonds +5"),
+		"Yummy Cat Food" to Triple(10, "Yayoi Akikawa's bond +5", true),
+		"Grilled Carrots" to Triple(40, "All Support card bonds +5", true),
 
 		// Get Good Conditions
-		"Pretty Mirror" to Pair(150, "Get Charming ○ status effect"),
-		"Reporter's Binoculars" to Pair(150, "Get Hot Topic status effect"),
-		"Master Practice Guide" to Pair(150, "Get Practice Perfect ○ status effect"),
-		"Scholar's Hat" to Pair(280, "Get Fast Learner status effect"),
+		"Pretty Mirror" to Triple(150, "Get Charming ○ status effect", true),
+		"Reporter's Binoculars" to Triple(150, "Get Hot Topic status effect", true),
+		"Master Practice Guide" to Triple(150, "Get Practice Perfect ○ status effect", true),
+		"Scholar's Hat" to Triple(280, "Get Fast Learner status effect", true),
 
 		// Heal Bad Conditions
-		"Fluffy Pillow" to Pair(15, "Heal Night Owl"),
-		"Pocket Planner" to Pair(15, "Heal Slacker"),
-		"Rich Hand Cream" to Pair(15, "Heal Skin Outbreak"),
-		"Smart Scale" to Pair(15, "Heal Slow Metabolism"),
-		"Aroma Diffuser" to Pair(15, "Heal Migraine"),
-		"Practice Drills DVD" to Pair(15, "Heal Practice Poor"),
-		"Miracle Cure" to Pair(40, "Heal all negative status effects"),
+		"Fluffy Pillow" to Triple(15, "Heal Night Owl", true),
+		"Pocket Planner" to Triple(15, "Heal Slacker", true),
+		"Rich Hand Cream" to Triple(15, "Heal Skin Outbreak", true),
+		"Smart Scale" to Triple(15, "Heal Slow Metabolism", true),
+		"Aroma Diffuser" to Triple(15, "Heal Migraine", true),
+		"Practice Drills DVD" to Triple(15, "Heal Practice Poor", true),
+		"Miracle Cure" to Triple(40, "Heal all negative status effects", true),
 
 		// Training Facilities
-		"Speed Training Application" to Pair(150, "Speed Training Level +1"),
-		"Stamina Training Application" to Pair(150, "Stamina Training Level +1"),
-		"Power Training Application" to Pair(150, "Power Training Level +1"),
-		"Guts Training Application" to Pair(150, "Guts Training Level +1"),
-		"Wit Training Application" to Pair(150, "Wisdom Training Level +1"),
-		"Reset Whistle" to Pair(20, "Shuffle support card distribution"),
+		"Speed Training Application" to Triple(150, "Speed Training Level +1", true),
+		"Stamina Training Application" to Triple(150, "Stamina Training Level +1", true),
+		"Power Training Application" to Triple(150, "Power Training Level +1", true),
+		"Guts Training Application" to Triple(150, "Guts Training Level +1", true),
+		"Wit Training Application" to Triple(150, "Wisdom Training Level +1", true),
+		"Reset Whistle" to Triple(20, "Shuffle support card distribution", false),
 
 		// Training Effects
-		"Coaching Megaphone" to Pair(40, "Training bonus +20% for 4 turns"),
-		"Motivating Megaphone" to Pair(55, "Training bonus +40% for 3 turns"),
-		"Empowering Megaphone" to Pair(70, "Training bonus +60% for 2 turns"),
-		"Speed Ankle Weights" to Pair(50, "Speed training bonus +50%, Energy consumption +20% (One turn)"),
-		"Stamina Ankle Weights" to Pair(50, "Stamina training bonus +50%, Energy consumption +20% (One turn)"),
-		"Power Ankle Weights" to Pair(50, "Power training bonus +50%, Energy consumption +20% (One turn)"),
-		"Guts Ankle Weights" to Pair(50, "Guts training bonus +50%, Energy consumption +20% (One turn)"),
-		"Good-Luck Charm" to Pair(40, "Training failure rate set to 0% (One turn)"),
+		"Coaching Megaphone" to Triple(40, "Training bonus +20% for 4 turns", false),
+		"Motivating Megaphone" to Triple(55, "Training bonus +40% for 3 turns", false),
+		"Empowering Megaphone" to Triple(70, "Training bonus +60% for 2 turns", false),
+		"Speed Ankle Weights" to Triple(50, "Speed training bonus +50%, Energy consumption +20% (One turn)", false),
+		"Stamina Ankle Weights" to Triple(50, "Stamina training bonus +50%, Energy consumption +20% (One turn)", false),
+		"Power Ankle Weights" to Triple(50, "Power training bonus +50%, Energy consumption +20% (One turn)", false),
+		"Guts Ankle Weights" to Triple(50, "Guts training bonus +50%, Energy consumption +20% (One turn)", false),
+		"Good-Luck Charm" to Triple(40, "Training failure rate set to 0% (One turn)", false),
 
 		// Races
-		"Artisan Cleat Hammer" to Pair(25, "Race bonus +20% (One turn)"),
-		"Master Cleat Hammer" to Pair(40, "Race bonus +35% (One turn)"),
-		"Glow Sticks" to Pair(15, "Race fan gain +50% (One turn)")
+		"Artisan Cleat Hammer" to Triple(25, "Race bonus +20% (One turn)", false),
+		"Master Cleat Hammer" to Triple(40, "Race bonus +35% (One turn)", false),
+		"Glow Sticks" to Triple(15, "Race fan gain +50% (One turn)", false)
 	)
 
 	private var isShopOnSale: Boolean = false
