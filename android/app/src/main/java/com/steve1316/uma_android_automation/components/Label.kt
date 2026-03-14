@@ -204,3 +204,8 @@ object LabelOnSale : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]LabelOnSale"
     override val template = Template("components/label/on_sale", region = Region.topHalf)
 }
+
+object LabelRivalRacer : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]LabelRivalRacer"
+    override val template = Template("components/label/rival_racer", region = Region.rightHalf)
+}
