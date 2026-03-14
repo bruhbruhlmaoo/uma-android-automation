@@ -1209,6 +1209,31 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         }
         MessageLog.i(TAG, "[RACE] Number of fans detected for each extra race are: ${filteredRaces.joinToString(", ") { it.fans.toString() }}")
 
+        // Evaluates which race to select based on Rival priority, maximum fans and double prediction priority.
+        val index = if (filteredRaces.any { it.isRival }) {
+            MessageLog.i(TAG, "[RACE] Rival Race(s) detected. Prioritizing Rival Races.")
+            val rivalRaces = filteredRaces.filter { it.isRival }
+
+            if (enableForceRacing) {
+                val rivalsWithDouble = rivalRaces.filter { it.hasDoublePredictions }
+                if (rivalsWithDouble.isNotEmpty()) {
+                    val maxFansDouble = rivalsWithDouble.maxOf { it.fans }
+                    filteredRaces.indexOfFirst { it.isRival && it.hasDoublePredictions && it.fans == maxFansDouble }
+                } else {
+                    val maxRivalFans = rivalRaces.maxOf { it.fans }
+                    filteredRaces.indexOfFirst { it.isRival && it.fans == maxRivalFans }
+                }
+            } else {
+                val maxRivalFans = rivalRaces.maxOf { it.fans }
+                filteredRaces.indexOfFirst { it.isRival && it.fans == maxRivalFans }
+            }
+        } else {
+            if (!enableForceRacing) {
+                filteredRaces.indexOfFirst { it.fans == maxFans }
+            } else {
+                filteredRaces.indexOfFirst { it.hasDoublePredictions }.takeIf { it != -1 } ?: filteredRaces.indexOfFirst { it.fans == maxFans }
+            }
+        }
         // Evaluates which race to select based on maximum fans and double prediction priority (if force racing is enabled).
         val index = if (!enableForceRacing) {
             filteredRaces.indexOfFirst { it.fans == maxFans }
@@ -2037,7 +2062,15 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 game.wait(0.5, skipWaitingForLoading = true)
                 continue
             }
+
             val bitmap: Bitmap = game.imageUtils.getSourceBitmap()
+
+            // Handle post-race Rival popups.
+            if (ButtonClose.click(game.imageUtils, sourceBitmap = bitmap)) {
+                MessageLog.i(TAG, "[RACE] Closed post-race Rival popup.")
+                game.wait(1.0)
+                continue
+            }
             when {
                 ButtonNext.click(game.imageUtils, sourceBitmap = bitmap) -> {
                     MessageLog.i(TAG, "[RACE] Clicked on Next (race results) button.")
