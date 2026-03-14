@@ -13,6 +13,9 @@ import com.steve1316.uma_android_automation.utils.ScrollList
 import com.steve1316.uma_android_automation.utils.ScrollListEntry
 import com.steve1316.uma_android_automation.types.BoundingBox
 import com.steve1316.uma_android_automation.types.TrackblazerShopList
+import com.steve1316.uma_android_automation.types.DateYear
+import com.steve1316.uma_android_automation.types.DateMonth
+import com.steve1316.uma_android_automation.types.DatePhase
 import com.steve1316.uma_android_automation.components.CheckboxShopItem
 
 import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
@@ -61,7 +64,14 @@ class Trackblazer(game: Game) : Campaign(game) {
             "exchange_complete" -> result.dialog.click(game.imageUtils)
             "confirm_use" -> result.dialog.click(game.imageUtils)
             "shop" -> {
-                MessageLog.i(TAG, "Shop unlocked! Initiating the first time buying process...")
+                // Once it gets to Junior Year Early July, the shop will be unlocked for use.
+                // But the date update has not happened yet, so we need to check for the previous date instead.
+				if (date.year == DateYear.JUNIOR && date.month == DateMonth.JUNE && date.phase == DatePhase.LATE) {
+					MessageLog.i(TAG, "Shop unlocked! Initiating the first time buying process...")
+				} else {
+					MessageLog.i(TAG, "Shop discount detected! Initiating buying process...")
+				}
+                
                 result.dialog.click(game.imageUtils)
                 game.wait(game.dialogWaitDelay)
                 buyItems()
