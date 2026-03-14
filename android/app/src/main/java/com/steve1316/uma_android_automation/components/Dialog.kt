@@ -377,6 +377,7 @@ object DialogObjects {
         DialogScheduledRaces,               // Career
         DialogScheduleSettings,             // Career
         DialogSessionError,                 // Anywhere
+        DialogShop,                         // Career (Trackblazer)
         DialogSkillDetails,                 // Anywhere
         DialogSkillListConfirmation,        // Career
         DialogSkillListConfirmExit,         // Career
@@ -760,7 +761,7 @@ object DialogExchangeComplete : DialogInterface {
     override val name: String = "exchange_complete"
     override val title: String = "Exchange Complete"
     override val closeButton = null
-    override val okButton = null
+    override val okButton: BaseComponentInterface = ButtonClose
     override val buttons: List<BaseComponentInterface> = listOf(
         ButtonClose,
     )
@@ -1317,6 +1318,18 @@ object DialogSessionError : DialogInterface {
     override val okButton = null
     override val buttons: List<BaseComponentInterface> = listOf(
         ButtonTitleScreen,
+    )
+}
+
+object DialogShop : DialogInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]DialogShop"
+    override val name: String = "shop"
+    override val title: String = "Shop"
+    override val closeButton = null
+    override val okButton: BaseComponentInterface = ButtonShop
+    override val buttons: List<BaseComponentInterface> = listOf(
+        ButtonClose,
+        ButtonShop,
     )
 }
 
