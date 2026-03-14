@@ -283,5 +283,36 @@ class TrackblazerShopList(private val game: Game) {
 
 		return emptyList()
 	}
+
+	/**
+	 * Iterates through the bought items in the inventory and uses them immediately if they belong to
+	 * targeted categories and are eligible for use.
+	 */
+	fun quickUseItems() {
+		MessageLog.i(TAG, "Determining if any items can be used right away.")
+		val list: ScrollList = ScrollList.create(game) ?: return
+		var anyUsed = false
+
+		list.process { _, entry: ScrollListEntry ->
+			val itemName = getShopItemName(entry.bitmap)
+			if (itemName != null && shopItems[itemName]?.third == true) {
+				// Check if the item's "+" button is disabled.
+				if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
+					val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
+					if (plusButtonPoint != null) {
+						MessageLog.i(TAG, "Using item: \"$itemName\".")
+						game.tap(entry.bbox.left + plusButtonPoint.x, entry.bbox.top + plusButtonPoint.y)
+						anyUsed = true
+					}
+				}
+			}
+			false
+		}
+
+		if (anyUsed) {
+			ButtonConfirmUse.click(game.imageUtils)
+		} else {
+			ButtonCancel.click(game.imageUtils)
+		}
 	}
 }
