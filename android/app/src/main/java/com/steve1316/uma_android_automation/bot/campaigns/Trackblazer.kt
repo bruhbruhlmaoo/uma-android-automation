@@ -11,6 +11,8 @@ import com.steve1316.automation_library.data.SharedData
 import com.steve1316.automation_library.utils.MessageLog
 
 import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
+import com.steve1316.uma_android_automation.components.ButtonShopTrackblazer
+import com.steve1316.uma_android_automation.components.ButtonTrainingItems
 import com.steve1316.uma_android_automation.components.DialogInterface
 
 import org.opencv.core.Point
@@ -91,6 +93,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 		"Glow Sticks" to Pair(15, "Race fan gain +50% (One turn)")
 	)
 
+    var shopCoins: Int = 0
+    var currentInventory: Map<String, Int> = mapOf()
+
     /**
      * Detects and handles any dialog popups.
      *
@@ -145,6 +150,59 @@ class Trackblazer(game: Game) : Campaign(game) {
 		ButtonHomeFansInfo.click(game.imageUtils, region = game.imageUtils.regionBottomHalf, tries = 10)
 		bHasTriedCheckingFansToday = true
 		game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+	}
+
+    /**
+     * Opens the Shop.
+     */
+    fun openShop() {
+        if (ButtonShopTrackblazer.click(game.imageUtils)) {
+            game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+        } else {
+            MessageLog.e(TAG, "Unable to open the Shop due to failing to find its button.")
+        }
+    }
+
+    /**
+     * Reads the Shop Coins amount via OCR and updates our internal count.
+     * If it fails to read the Shop Coins, it will return the last known Shop Coins amount.
+     *
+     * @return The Shop Coins amount.
+     */
+	fun updateShopCoins(): Int {
+        MessageLog.i(TAG, "Updating current amount of Shop Coins...")
+		val (trainingItemsButtonLocation, sourceBitmap) = ButtonTrainingItems.find(game.imageUtils)
+        if (trainingItemsButtonLocation == null) {
+            MessageLog.e(TAG, "Failed to find Training Items button.")
+            return shopCoins
+        }
+		val coinText = game.imageUtils.performOCROnRegion(
+			sourceBitmap,
+			game.imageUtils.relX(trainingItemsButtonLocation.x, -37),
+			game.imageUtils.relY(trainingItemsButtonLocation.y, 84),
+			game.imageUtils.relWidth(175),
+			game.imageUtils.relHeight(60),
+			useThreshold = false,
+			useGrayscale = true,
+			scale = 1.0,
+			ocrEngine = "mlkit",
+			debugName = "ShopCoins"
+		)
+
+		return try {
+			val cleanedText = coinText.replace(Regex("[^0-9]"), "")
+			if (cleanedText.isEmpty()) {
+				MessageLog.w(TAG, "Parsed empty string for Shop Coins.")
+				shopCoins
+			} else {
+				shopCoins = cleanedText.toInt()
+				MessageLog.i(TAG, "We have $shopCoins Shop Coins.")
+				shopCoins
+			}
+		} catch (e: NumberFormatException) {
+			MessageLog.e(TAG, "Failed to parse Shop Coins from OCR text: \"$coinText\".")
+			shopCoins
+		}
 	}
 }
 
