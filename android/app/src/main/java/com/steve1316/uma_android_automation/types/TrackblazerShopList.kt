@@ -233,15 +233,15 @@ class TrackblazerShopList(private val game: Game) {
 	 *
 	 * @param priorityList An ordered list of item names to buy.
 	 * @param currentCoins The current amount of Shop Coins available.
-	 * @return True if the buying process finished normally, false otherwise.
+	 * @return A list of successfully purchased items.
 	 */
-	fun buyItems(priorityList: List<String>, currentCoins: Int): Boolean {
+	fun buyItems(priorityList: List<String>, currentCoins: Int): List<String> {
 		if (priorityList.isEmpty()) {
 			MessageLog.i(TAG, "Priority list is empty. No items to buy.")
-			return true
+			return emptyList()
 		}
 
-		val list: ScrollList = ScrollList.create(game) ?: return false
+		val list: ScrollList = ScrollList.create(game) ?: return emptyList()
 		var remainingCoins = currentCoins
 		val itemsBought = mutableSetOf<String>()
 
@@ -278,9 +278,10 @@ class TrackblazerShopList(private val game: Game) {
             // Final exchange confirmation.
             ButtonExchange.click(game.imageUtils)
             game.wait(game.dialogWaitDelay)
-            return true
+            return itemsBought.toList()
 		}
 
-		return true
+		return emptyList()
+	}
 	}
 }
