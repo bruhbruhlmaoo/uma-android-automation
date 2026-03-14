@@ -6,6 +6,9 @@ import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.TextUtils
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.bot.Game
+import com.steve1316.uma_android_automation.components.ButtonConfirm
+import com.steve1316.uma_android_automation.components.ButtonExchange
+import com.steve1316.uma_android_automation.components.CheckboxDoNotShowAgain
 import com.steve1316.uma_android_automation.components.CheckboxShopItem
 import com.steve1316.uma_android_automation.components.LabelOnSale
 import com.steve1316.uma_android_automation.utils.ScrollList
@@ -92,6 +95,7 @@ class TrackblazerShopList(private val game: Game) {
 	)
 
 	private var isShopOnSale: Boolean = false
+	private var hasClickedDoNotShowAgain: Boolean = false
 
 	/**
 	 * Scrolls through the Shop list.
@@ -222,5 +226,61 @@ class TrackblazerShopList(private val game: Game) {
 		// Remove non-numeric characters and parse.
 		val cleanedText = detectedText.replace(Regex("[^0-9]"), "")
 		return cleanedText.toIntOrNull() ?: originalPrice
+	}
+
+	/**
+	 * Buys items from the Shop based on a priority list and currency amount.
+	 *
+	 * @param priorityList An ordered list of item names to buy.
+	 * @param currentCoins The current amount of Shop Coins available.
+	 * @return True if the buying process finished normally, false otherwise.
+	 */
+	fun buyItems(priorityList: List<String>, currentCoins: Int): Boolean {
+		if (priorityList.isEmpty()) {
+			MessageLog.i(TAG, "Priority list is empty. No items to buy.")
+			return true
+		}
+
+		val list: ScrollList = ScrollList.create(game) ?: return false
+		var remainingCoins = currentCoins
+		val itemsBought = mutableSetOf<String>()
+
+		list.process { _, entry: ScrollListEntry ->
+			val itemName = getShopItemName(entry.bitmap)
+			if (itemName != null && priorityList.contains(itemName) && !itemsBought.contains(itemName)) {
+				val price = getShopItemPrice(itemName, entry.bitmap)
+				if (remainingCoins > price) {
+					MessageLog.i(TAG, "Selecting \"$itemName\" for $price coins.")
+					game.tap(entry.bbox.centerX.toDouble(), entry.bbox.centerY.toDouble())
+					remainingCoins -= price
+					itemsBought.add(itemName)
+				}
+			}
+
+			// Early exit if we've bought all items in the priority list.
+			itemsBought.size == priorityList.size
+		}
+
+		if (itemsBought.isNotEmpty()) {
+			MessageLog.i(TAG, "Confirming purchase of ${itemsBought.size} items.")
+			ButtonConfirm.click(game.imageUtils)
+            game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+
+            // Handle "Do not show again" checkbox if found.
+            if (!hasClickedDoNotShowAgain) {
+                if (CheckboxDoNotShowAgain.click(game.imageUtils)) {
+                    MessageLog.i(TAG, "Successfully clicked \"Do not show again\" checkbox.")
+                    hasClickedDoNotShowAgain = true
+                    game.wait(0.5, skipWaitingForLoading = true)
+                }
+            }
+
+            // Final exchange confirmation.
+            ButtonExchange.click(game.imageUtils)
+            game.wait(game.dialogWaitDelay)
+            return true
+		}
+
+		return true
 	}
 }
