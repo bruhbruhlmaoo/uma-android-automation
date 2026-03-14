@@ -199,3 +199,8 @@ object LabelRecreationUmamusume : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]LabelRecreationUmamusume"
     override val template = Template("components/label/recreation_umamusume", region = Region.middle)
 }
+
+object LabelOnSale : ComponentInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]LabelOnSale"
+    override val template = Template("components/label/on_sale", region = Region.topHalf)
+}
