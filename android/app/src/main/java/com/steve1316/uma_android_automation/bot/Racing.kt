@@ -62,6 +62,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     var hasG3OrAboveRequirement = false  // Indicates that a G3 or above requirement has been detected (any race can fulfill it).
     private var nextSmartRaceDay: Int? = null  // Tracks the specific day to race based on opportunity cost analysis.
     private var hasLoadedUserRaceAgenda = false  // Tracks if the user's race agenda has been loaded this career.
+    internal var lastRaceGrade: RaceGrade? = null  // Tracks the grade of the last race selected.
 
     internal val enableStopOnMandatoryRace: Boolean = SettingsHelper.getBooleanSetting("racing", "enableStopOnMandatoryRaces")
     internal var detectedMandatoryRaceCheck = false
@@ -290,6 +291,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
      * @return True if the mandatory/extra race was completed successfully. Otherwise false.
      */
     fun handleRaceEvents(isScheduledRace: Boolean = false): Boolean {
+        lastRaceGrade = null
         MessageLog.i(TAG, "\n********************")
         MessageLog.i(TAG, "[RACE] Starting Racing process on ${campaign.date}.")
 
@@ -1066,6 +1068,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
         MessageLog.i(TAG, "[RACE] Selecting smart racing choice: ${bestRace.raceData.name} (score: ${game.decimalFormat.format(bestRace.score)}).")
         game.tap(targetRaceLocation.x, targetRaceLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
+        lastRaceGrade = bestRace.raceData.grade
 
         return true
     }
@@ -1234,12 +1237,15 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 filteredRaces.indexOfFirst { it.hasDoublePredictions }.takeIf { it != -1 } ?: filteredRaces.indexOfFirst { it.fans == maxFans }
             }
         }
-        // Evaluates which race to select based on maximum fans and double prediction priority (if force racing is enabled).
-        val index = if (!enableForceRacing) {
-            filteredRaces.indexOfFirst { it.fans == maxFans }
+
+        // Determine the grade of the selected race and store it for retry purposes.
+        val selectedRaceName = if (hasTrophyRequirement && index < raceNamesList.size) {
+            raceNamesList[index]
         } else {
-            filteredRaces.indexOfFirst { it.hasDoublePredictions }.takeIf { it != -1 } ?: filteredRaces.indexOfFirst { it.fans == maxFans }
+            game.imageUtils.extractRaceName(extraRaceLocations[index])
         }
+        val raceDataList = lookupRaceInDatabase(campaign.date.day, selectedRaceName)
+        lastRaceGrade = raceDataList.firstOrNull()?.grade
 
         // Selects the determined race on screen.
         MessageLog.i(TAG, "[RACE] Selecting extra race at option #${index + 1}.")
@@ -2069,6 +2075,23 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             if (ButtonClose.click(game.imageUtils, sourceBitmap = bitmap)) {
                 MessageLog.i(TAG, "[RACE] Closed post-race Rival popup.")
                 game.wait(1.0)
+
+                // After closing the popup, check if we can retry a G1 race.
+                if (lastRaceGrade == RaceGrade.G1 && !ButtonTryAgain.checkDisabled(game.imageUtils)) {
+                    MessageLog.i(TAG, "[RACE] G1 race detected and retry button is available. Retrying...")
+                    if (ButtonTryAgain.click(game.imageUtils)) {
+                        game.wait(1.0)
+                        return runRaceWithRetries()
+                    }
+                }
+                continue
+            } else if (lastRaceGrade == RaceGrade.G1 && !ButtonTryAgain.checkDisabled(game.imageUtils, sourceBitmap = bitmap)) {
+                // Check if we can retry a G1 race even if no popup appeared.
+                MessageLog.i(TAG, "[RACE] G1 race detected and retry button is available. Retrying...")
+                if (ButtonTryAgain.click(game.imageUtils, sourceBitmap = bitmap)) {
+                    game.wait(1.0)
+                    return runRaceWithRetries()
+                }
                 continue
             }
             when {
