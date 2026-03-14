@@ -19,6 +19,8 @@ import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
 import com.steve1316.uma_android_automation.components.ButtonShopTrackblazer
 import com.steve1316.uma_android_automation.components.ButtonTrainingItems
 import com.steve1316.uma_android_automation.components.DialogInterface
+import com.steve1316.uma_android_automation.components.DialogExchangeComplete
+import com.steve1316.uma_android_automation.components.DialogConfirmUse
 
 import org.opencv.core.Point
 
@@ -48,8 +50,22 @@ class Trackblazer(game: Game) : Campaign(game) {
      * The DialogInterface is the detected dialog, or NULL if no dialogs were found.
      */
     override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
+        val result: DialogHandlerResult = super.handleDialogs(dialog, args)
+        if (result !is DialogHandlerResult.Unhandled) {
+            return result
+        }
+
+        when (result.dialog.name) {
+            "exchange_complete" -> result.dialog.click(game.imageUtils)
+            "confirm_use" -> result.dialog.click(game.imageUtils)
+            else -> {
+                Log.w(TAG, "[DIALOG] Unknown dialog \"${result.dialog.name}\" detected so it will not be handled.")
+                return DialogHandlerResult.Unhandled(result.dialog)
+            }
+        }
+
         game.wait(0.5)
-        return super.handleDialogs(dialog, args)
+        return DialogHandlerResult.Handled(result.dialog)
     }
 
 	/**
