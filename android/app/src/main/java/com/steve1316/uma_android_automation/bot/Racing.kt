@@ -81,6 +81,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     private val raceData: Map<String, RaceData> = loadRaceData()
     private val userPlannedRaces: List<PlannedRace> = loadUserPlannedRaces()
 
+    init {
+        if (game.scenario == "Trackblazer") {
+            raceRetries = 5
+        }
+    }
+
     companion object {
         private const val TABLE_RACES = "races"
         private const val RACES_COLUMN_NAME = "name"
