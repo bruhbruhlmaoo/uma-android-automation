@@ -577,7 +577,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 		}
 	}
 
-	private val trainingMap: MutableMap<StatName, TrainingOption> = mutableMapOf()
+	val trainingMap: MutableMap<StatName, TrainingOption> = mutableMapOf()
 	private val skippedTrainingMap: MutableMap<StatName, TrainingOption> = mutableMapOf()
 	private val restrictedTrainingNames: MutableSet<StatName> = mutableSetOf()
 	private val statsTrainedOverBuffer: MutableSet<StatName> = mutableSetOf()
@@ -1271,7 +1271,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 	 *
 	 * @return The name of the recommended training option, or NULL if no suitable option found.
 	 */
-	private fun recommendTraining(): StatName? {
+	fun recommendTraining(): StatName? {
 		// Build skillHintsPerLocation from the training map.
 		val skillHintsPerLocation: Map<StatName, Int> = StatName.entries.associateWith { trainingMap[it]?.numSkillHints ?: 0 }
 
@@ -1329,7 +1329,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 	 * 
 	 * @param trainingSelected The stat name of the training to execute.
 	 */
-	private fun executeTraining(trainingSelected: StatName?) {
+	fun executeTraining(trainingSelected: StatName?) {
 		MessageLog.i(TAG, "[TRAINING] Now starting process to execute training...")
 
 		if (trainingSelected != null) {
