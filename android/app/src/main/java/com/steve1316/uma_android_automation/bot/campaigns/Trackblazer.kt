@@ -75,7 +75,7 @@ class Trackblazer(game: Game) : Campaign(game) {
      * The DialogInterface is the detected dialog, or NULL if no dialogs were found.
      */
     override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
-        val result: DialogHandlerResult = super.handleDialogs(dialog, args)
+        val result: DialogHandlerResult = super.handleDialogs(dialog, args + mapOf("dialogNameToDefer" to "consecutive_race_warning"))
 
 		// Extract dialog name if result has one.
 		val dialogName = when (result) {
@@ -163,11 +163,16 @@ class Trackblazer(game: Game) : Campaign(game) {
 
                 MessageLog.i(TAG, "[TRACKBLAZER] Current consecutive race count: $consecutiveRaceCount")
 
-                // Handle the dialog based on the threshold.
-                racing.raceRepeatWarningCheck = true
+                // Check if we should ignore the warning based on global settings or arguments.
+                val overrideIgnoreConsecutiveRaceWarning = args["overrideIgnoreConsecutiveRaceWarning"] as? Boolean ?: false
+                val forceRace = overrideIgnoreConsecutiveRaceWarning || racing.enableForceRacing || racing.ignoreConsecutiveRaceWarning
 
-                if (consecutiveRaceCount < 6) {
-                    MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < 6. Continuing with racing...")
+                if (forceRace || consecutiveRaceCount < 6) {
+                    if (forceRace) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing...")
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < 6. Continuing with racing...")
+                    }
                     detectedDialog.ok(game.imageUtils)
                     game.wait(1.0, skipWaitingForLoading = true)
                 } else {
