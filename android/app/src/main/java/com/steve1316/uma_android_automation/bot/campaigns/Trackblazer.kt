@@ -679,5 +679,42 @@ class Trackblazer(game: Game) : Campaign(game) {
 			ButtonClose.click(game.imageUtils)
 		}
     }
+    /**
+     * Synchronizes the internal inventory state with the game's actual inventory.
+     * This is done by performing a single scroll pass through the Training Items dialog.
+     */
+    fun syncInventory() {
+        if (bInventorySynced) return
+
+        MessageLog.i(TAG, "[TRACKBLAZER] Synchronizing inventory...")
+        val list: ScrollList = ScrollList.create(game) ?: return
+        val scannedItems = mutableSetOf<String>()
+        val nextInventory = currentInventory.toMutableMap()
+
+        list.process { _, entry ->
+            val itemName = shopList.getShopItemName(entry.bitmap)
+            if (itemName != null) {
+                scannedItems.add(itemName)
+                // If the item is new to the inventory or currently at 0, set its count to 1.
+                // Otherwise, keep the existing count as it might have been updated by purchases.
+                if ((nextInventory[itemName] ?: 0) <= 0) {
+                    nextInventory[itemName] = 1
+                    MessageLog.i(TAG, "[INVENTORY] New item detected during sync: $itemName. Set count to 1.")
+                }
+            }
+            false
+        }
+
+        // After the sync pass, any items that were NOT detected during the pass will be set to a count of 0.
+        nextInventory.keys.forEach { name ->
+            if (!scannedItems.contains(name) && (nextInventory[name] ?: 0) > 0) {
+                nextInventory[name] = 0
+                MessageLog.i(TAG, "[INVENTORY] Item $name not found during sync. Set count to 0.")
+            }
+        }
+        
+        currentInventory = nextInventory.toMap()
+        bInventorySynced = true
+    }
 }
 
