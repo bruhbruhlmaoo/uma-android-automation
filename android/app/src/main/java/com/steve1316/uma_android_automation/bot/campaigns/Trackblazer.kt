@@ -228,7 +228,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 
 			MessageLog.i(TAG, "[TRACKBLAZER] Checking for suitable races...")
 			// We need to enter the race list to check for predictions and grades.
-			if (!ButtonRaces.click(game.imageUtils)) {
+			// Try both standard Races button and the Race Day variant.
+			if (!ButtonRaces.click(game.imageUtils, sourceBitmap = sourceBitmap) && !ButtonRaceDayRace.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
 				MessageLog.e(TAG, "[TRACKBLAZER] Failed to click Races button.")
 				return false
 			}
