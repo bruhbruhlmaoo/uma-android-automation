@@ -622,5 +622,19 @@ class Trackblazer(game: Game) : Campaign(game) {
         return priorityList
     }
 
+    /**
+     * Decrements an item's count in the internal inventory.
+     *
+     * @param itemName The name of the item used.
+     */
+    private fun useInventoryItem(itemName: String) {
+        val nextInventory = currentInventory.toMutableMap()
+        val count = nextInventory[itemName] ?: 0
+        if (count > 0) {
+            nextInventory[itemName] = count - 1
+            MessageLog.v(TAG, "[INVENTORY] Decremented $itemName. Remaining: ${nextInventory[itemName]}")
+        }
+        currentInventory = nextInventory.toMap()
+    }
 }
 
