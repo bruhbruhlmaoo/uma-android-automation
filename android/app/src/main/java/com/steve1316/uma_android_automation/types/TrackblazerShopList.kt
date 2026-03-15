@@ -18,6 +18,18 @@ import com.steve1316.uma_android_automation.utils.ScrollListEntry
 class TrackblazerShopList(private val game: Game) {
 	private val TAG: String = "[${MainActivity.loggerTag}]TrackblazerShopList"
 
+    val statItemNames = listOf(
+        "Speed Notepad", "Stamina Notepad", "Power Notepad", "Guts Notepad", "Wit Notepad",
+        "Speed Manual", "Stamina Manual", "Power Manual", "Guts Manual", "Wit Manual",
+        "Speed Scroll", "Stamina Scroll", "Power Scroll", "Guts Scroll", "Wit Scroll"
+    )
+
+    val energyItemNames = listOf("Vita 65", "Vita 40", "Vita 20")
+    
+    val badConditionHealItemNames = listOf(
+        "Fluffy Pillow", "Pocket Planner", "Rich Hand Cream", "Smart Scale", "Aroma Diffuser", "Practice Drills DVD", "Miracle Cure"
+    )
+
 	/** Mapping of shop items to their price, effect, and whether they are allowed for quick usage. */
 	val shopItems: Map<String, Triple<Int, String, Boolean>> = mapOf(
 		// Stats
