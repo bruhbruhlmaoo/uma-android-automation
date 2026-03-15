@@ -193,8 +193,49 @@ class Trackblazer(game: Game) : Campaign(game) {
 	 * @return True if a race event was handled, false otherwise.
 	 */
 	override fun handleRaceEvents(isScheduledRace: Boolean): Boolean {
-		return super.handleRaceEvents(isScheduledRace)
+		counterUpdatedByOCR = false
+        
+		// If it's not a scheduled race, we need to apply Trackblazer-specific filtering.
+		if (!isScheduledRace) {
+			MessageLog.i(TAG, "[TRACKBLAZER] Checking for suitable races...")
+			// We need to enter the race list to check for predictions and grades.
+			if (!ButtonRaces.click(game.imageUtils)) {
+				MessageLog.e(TAG, "[TRACKBLAZER] Failed to click Races button.")
+				return false
+			}
+			game.wait(1.0)
+            
+			// Handle any consecutive race warning dialogs that might pop up after clicking "Races".
+			val dialogResult = handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
+			if (dialogResult is DialogHandlerResult.Handled && consecutiveRaceCount >= 6) {
+				MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning obeyed. Aborting racing.")
+				return false
+			}
+            
+			val suitableRaceLocation = racing.findSuitableTrackblazerRace(consecutiveRaceCount)
+			if (suitableRaceLocation != null) {
+				MessageLog.i(TAG, "[TRACKBLAZER] Found suitable race. Proceeding...")
+				game.tap(suitableRaceLocation.x, suitableRaceLocation.y, "SuitableTrackblazerRace", ignoreWaiting = true)
+				game.wait(0.5)
+			} else {
+				MessageLog.i(TAG, "[TRACKBLAZER] No suitable races found. Backing out and training.")
+				ButtonBack.click(game.imageUtils)
+				return false
+			}
+		}
+        
+		val result = super.handleRaceEvents(isScheduledRace)
+		if (result) {
+			if (!counterUpdatedByOCR) {
+				consecutiveRaceCount++
+				MessageLog.i(TAG, "[TRACKBLAZER] Incremented consecutive race count to $consecutiveRaceCount.")
+			} else {
+				MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count was already updated by OCR: $consecutiveRaceCount.")
+			}
+		}
+		return result
 	}
+
 
 	/**
 	 * Checks for campaign-specific conditions.
