@@ -560,15 +560,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 
 			// Open "Training Items" dialog and use items.
 			if (shopList.openTrainingItemsDialog()) {
-				// Use items according to quick use categories.
-				quickUseItems()
-
-				// Handle the "Confirm Use" dialog.
-				handleDialogs(DialogConfirmUse)
-
-				// Exit the dialogs.
-				if (ButtonClose.click(game.imageUtils)) game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-				if (ButtonBack.click(game.imageUtils)) game.wait(game.dialogWaitDelay)
+				// Use items according to quick use categories and update inventory.
+				manageInventoryItems(bQuickUseOnly = true)
 			}
 		}
 	}
@@ -663,39 +656,28 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
         currentInventory = nextInventory.toMap()
     }
-    
+
     /**
-     * Uses items according to quick use categories and updates internal inventory.
+     * Clicks the plus button for an item in the item list and updates inventory.
+     *
+     * @param itemName The name of the item.
+     * @param entry The ScrollListEntry of the item.
+     * @param logMessage The message to log when clicking.
+     * @return True if the button was clicked, false otherwise.
      */
-    private fun quickUseItems() {
-        MessageLog.i(TAG, "Determining if any items can be used right away.")
-		val list: ScrollList = ScrollList.create(game) ?: return
-		var anyUsed = false
+    private fun clickItemPlusButton(itemName: String, entry: ScrollListEntry, logMessage: String): Boolean {
+        if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true) return false
 
-		list.process { _, entry: ScrollListEntry ->
-			val itemName = shopList.getShopItemName(entry.bitmap)
-			if (itemName != null && shopList.shopItems[itemName]?.third == true) {
-				// Check if the item's "+" button is disabled.
-				if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
-					val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
-					if (plusButtonPoint != null) {
-						MessageLog.i(TAG, "Using item: \"$itemName\".")
-						game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
-                        useInventoryItem(itemName)
-						anyUsed = true
-					}
-				}
-			}
-			false
-		}
-
-		if (anyUsed) {
-			ButtonConfirmUse.click(game.imageUtils)
-		} else {
-			ButtonClose.click(game.imageUtils)
-		}
+        val plusPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
+        if (plusPoint != null) {
+            MessageLog.i(TAG, logMessage)
+            game.tap(entry.bbox.x + plusPoint.x, entry.bbox.y + plusPoint.y)
+            useInventoryItem(itemName)
+            return true
+        }
+        return false
     }
-
+    
     /**
      * Handles the specialized training process for Trackblazer, including item usage.
      */
@@ -894,138 +876,87 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /**
      * Orchestrates the usage of items based on dynamic conditions and updates internal inventory.
+     * Consolidates synchronization and item usage into a single pass for efficiency.
      *
-     * @param trainee Reference to the trainee's state.
+     * @param trainee Reference to the trainee's state. If provided, conditional items will be used.
+     * @param bQuickUseOnly If true, only items marked for quick use will be used.
      */
-    private fun useItems(trainee: Trainee) {
+    fun manageInventoryItems(trainee: Trainee? = null, bQuickUseOnly: Boolean = false) {
         if (date.day < 13) return
 
-        // Determine if we even need to open the Training Items dialog.
-        // We open it if we haven't synced yet (need priming) or if guarded conditions are met for items we HAVE.
-        val needSync = !bInventorySynced
-        
-        val hasEnergyItems = currentInventory.any { (name, count) -> count > 0 && shopList.energyItemNames.contains(name) } || (currentInventory["Royal Kale Juice"] ?: 0) > 0
-        val hasMoodItems = currentInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
-        val hasBadConditionItems = currentInventory.any { (name, count) -> count > 0 && shopList.badConditionHealItemNames.contains(name) }
-        val hasStatItems = currentInventory.any { (name, count) -> count > 0 && shopList.statItemNames.contains(name) }
-        
-        // Potential use conditions:
-        val potentialUse = (trainee.energy <= 20 && hasEnergyItems) || 
-                           (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) ||
-                           hasBadConditionItems || // Always check if we have these, as they are high priority
-                           hasStatItems // Stat items are always useful to clear out
-
-        if (needSync || potentialUse) {
-            MessageLog.i(TAG, "Opening Training Items dialog (Sync needed: $needSync, Potential use: $potentialUse)...")
-            if (shopList.openTrainingItemsDialog()) {
-                // Synchronize inventory if not already done.
-                syncInventory()
-
-                var anyUsed = false
-                
-                // Use all remaining Stat items.
-                if (useStatItems()) anyUsed = true
-                
-                // Conditional Energy recovery.
-                if (useEnergyItems(trainee)) anyUsed = true
-                
-                // Conditional Mood recovery.
-                if (useMoodItems(trainee)) anyUsed = true
-                
-                // Heal Bad Conditions.
-                if (useBadConditionItems()) anyUsed = true
-
-                if (anyUsed) {
-                    MessageLog.i(TAG, "Confirming usage of items.")
-                    ButtonConfirmUse.click(game.imageUtils)
-                    game.wait(game.dialogWaitDelay)
-                } else {
-                    MessageLog.i(TAG, "No items were suited for use. Closing dialog.")
-                    ButtonClose.click(game.imageUtils)
-                    game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-                }
-            }
-        } else {
-            MessageLog.i(TAG, "Skipping Training Items dialog as no relevant items are in the cached inventory.")
-        }
-    }
-
-    /**
-     * Synchronizes the internal inventory state with the game's actual inventory.
-     * This is done by performing a single scroll pass through the Training Items dialog.
-     */
-    fun syncInventory() {
-        if (bInventorySynced) return
-
-        MessageLog.i(TAG, "[TRACKBLAZER] Synchronizing inventory...")
+        MessageLog.i(TAG, "[TRACKBLAZER] Starting inventory management pass...")
         val list: ScrollList = ScrollList.create(game) ?: return
         val scannedItems = mutableSetOf<String>()
         val nextInventory = currentInventory.toMutableMap()
+        var anyUsed = false
 
         list.process { _, entry ->
             val itemName = shopList.getShopItemName(entry.bitmap)
             if (itemName != null) {
                 scannedItems.add(itemName)
-                // If the item is new to the inventory or currently at 0, set its count to 1.
-                // Otherwise, keep the existing count as it might have been updated by purchases.
+                
+                // Sync Inventory.
                 if ((nextInventory[itemName] ?: 0) <= 0) {
                     nextInventory[itemName] = 1
-                    MessageLog.i(TAG, "[INVENTORY] New item detected during sync: $itemName. Set count to 1.")
                 }
-            }
-            false
-        }
 
-        // After the sync pass, any items that were NOT detected during the pass will be set to a count of 0.
-        nextInventory.keys.forEach { name ->
-            if (!scannedItems.contains(name) && (nextInventory[name] ?: 0) > 0) {
-                nextInventory[name] = 0
-                MessageLog.i(TAG, "[INVENTORY] Item $name not found during sync. Set count to 0.")
-            }
-        }
-        
-        currentInventory = nextInventory.toMap()
-        bInventorySynced = true
-    }
+                val isStat = shopList.statItemNames.contains(itemName)
+                val isBad = shopList.badConditionHealItemNames.contains(itemName)
+                val isQuick = shopList.shopItems[itemName]?.third == true
 
-    /** Uses all remaining stat items in the current inventory and updates their counts.
-     *
-     * @return True if any items were queued for use.
-     */
-    private fun useStatItems(): Boolean {
-        val list: ScrollList = ScrollList.create(game) ?: return false
-        var anyUsed = false
-
-        list.process { _, entry: ScrollListEntry ->
-            val itemName = shopList.getShopItemName(entry.bitmap)
-            if (itemName != null && shopList.statItemNames.contains(itemName)) {
-                // Click the "+" button for this item until it's disabled or we've reached a reasonable limit (e.g., 5).
-                var clicks = 0
-                while (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false && clicks < 5) {
-                    val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
-                    if (plusButtonPoint != null) {
-                        MessageLog.i(TAG, "Queuing stat item for use: \"$itemName\".")
-                        game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
-                        useInventoryItem(itemName)
+                if (bQuickUseOnly) {
+                    if (isQuick && clickItemPlusButton(itemName, entry, "Using quick-use item: \"$itemName\".")) {
                         anyUsed = true
-                        clicks++
-                        game.wait(0.2)
-                    } else {
-                        break
+                    }
+                } else {
+                    if (isStat) {
+                        var clicks = 0
+                        while (clickItemPlusButton(itemName, entry, "Queuing stat item: \"$itemName\".")) {
+                            anyUsed = true
+                            clicks++
+                            if (clicks >= 5) break
+                            game.wait(0.2)
+                        }
+                    } else if (isBad) {
+                        if (clickItemPlusButton(itemName, entry, "Queuing bad condition item: \"$itemName\".")) {
+                            anyUsed = true
+                        }
+                    } else if (isQuick) {
+                        if (clickItemPlusButton(itemName, entry, "Queuing quick-use item: \"$itemName\".")) {
+                            anyUsed = true
+                        }
                     }
                 }
             }
             false
         }
-        
-        return anyUsed
+
+        // Finalize Sync.
+        nextInventory.keys.forEach { name ->
+            if (!scannedItems.contains(name) && (nextInventory[name] ?: 0) > 0) {
+                nextInventory[name] = 0
+            }
+        }
+        currentInventory = nextInventory.toMap()
+        bInventorySynced = true
+
+        // Handle priority items (Energy/Mood).
+        if (trainee != null && !bQuickUseOnly) {
+            if (useEnergyItems(trainee)) anyUsed = true
+            if (useMoodItems(trainee)) anyUsed = true
+        }
+
+        if (anyUsed) {
+            MessageLog.i(TAG, "Confirming usage of items.")
+            ButtonConfirmUse.click(game.imageUtils)
+            game.wait(game.dialogWaitDelay)
+        } else {
+            MessageLog.i(TAG, "No items were suited for use. Closing dialog.")
+            ButtonClose.click(game.imageUtils)
+            game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+        }
     }
 
-    /** Uses energy recovery items based on the trainee's current energy and updates inventory.
-     *
-     * @param trainee Reference to the trainee's state.
-     * @return True if any items were queued for use.
-     */
     private fun useEnergyItems(trainee: Trainee): Boolean {
         if (trainee.energy > 20) return false
 
@@ -1123,32 +1054,31 @@ class Trackblazer(game: Game) : Campaign(game) {
         return anyUsed
     }
 
-    /** Uses items to heal bad conditions if their buttons are enabled and updates inventory.
+    /**
+     * Orchestrates the usage of items based on dynamic conditions and updates internal inventory.
      *
-     * @return True if any items were queued for use.
+     * @param trainee Reference to the trainee's state.
      */
-    private fun useBadConditionItems(): Boolean {
-        val list: ScrollList = ScrollList.create(game) ?: return false
-        var anyUsed = false
+    private fun useItems(trainee: Trainee) {
+        if (date.day < 13) return
 
-        list.process { _, entry: ScrollListEntry ->
-            val itemName = shopList.getShopItemName(entry.bitmap)
-            if (itemName != null && shopList.badConditionHealItemNames.contains(itemName)) {
-                // If the item's "+" button is NOT disabled, it means the condition it treats is currently active.
-                if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
-                    val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
-                    if (plusButtonPoint != null) {
-                        MessageLog.i(TAG, "Queuing bad condition healing item for use: \"$itemName\".")
-                        game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
-                        useInventoryItem(itemName)
-                        anyUsed = true
-                    }
-                }
+        val needSync = !bInventorySynced
+        val hasEnergyItems = currentInventory.any { (name, count) -> count > 0 && shopList.energyItemNames.contains(name) } || (currentInventory["Royal Kale Juice"] ?: 0) > 0
+        val hasMoodItems = currentInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
+        val hasBadConditionItems = currentInventory.any { (name, count) -> count > 0 && shopList.badConditionHealItemNames.contains(name) }
+        val hasStatItems = currentInventory.any { (name, count) -> count > 0 && shopList.statItemNames.contains(name) }
+        
+        val potentialUse = (trainee.energy <= 20 && hasEnergyItems) || 
+                           (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) ||
+                           hasBadConditionItems || hasStatItems
+
+        if (needSync || potentialUse) {
+            MessageLog.i(TAG, "Opening Training Items dialog (Sync needed: $needSync, Potential use: $potentialUse)...")
+            if (shopList.openTrainingItemsDialog()) {
+                manageInventoryItems(trainee)
             }
-            false
+        } else {
+            MessageLog.i(TAG, "Skipping Training Items dialog as no relevant items are in the cached inventory.")
         }
-
-        return anyUsed
     }
 }
-
