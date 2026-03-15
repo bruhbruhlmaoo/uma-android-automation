@@ -264,9 +264,15 @@ class Trackblazer(game: Game) : Campaign(game) {
 				return false
 			}
             
-			val suitableRaceLocation = racing.findSuitableTrackblazerRace(consecutiveRaceCount)
-			if (suitableRaceLocation != null) {
-				MessageLog.i(TAG, "[TRACKBLAZER] Found suitable race. Proceeding...")
+			val suitableRaceResult = racing.findSuitableTrackblazerRace(consecutiveRaceCount)
+			if (suitableRaceResult != null) {
+                val suitableRaceLocation = suitableRaceResult.first
+                val raceData = suitableRaceResult.second
+				MessageLog.i(TAG, "[TRACKBLAZER] Found suitable race: ${raceData.name} (${raceData.grade}). Processing items...")
+                
+                // Use race-related items (Hammers, Glow Sticks).
+                useRaceItems(raceData.grade, raceData.fans)
+				
 				game.tap(suitableRaceLocation.x, suitableRaceLocation.y, "SuitableTrackblazerRace", ignoreWaiting = true)
 				game.wait(0.5)
 			} else {
