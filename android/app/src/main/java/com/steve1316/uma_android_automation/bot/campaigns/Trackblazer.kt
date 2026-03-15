@@ -56,6 +56,9 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Tracks whether we have already updated trainee information this turn. */
     private var bHasUpdatedThisTurn: Boolean = false
 
+    /** Tracks whether the inventory has been synced at least once or needs a re-sync. */
+    private var bInventorySynced: Boolean = false
+
     /**
      * Detects and handles any dialog popups.
      *
