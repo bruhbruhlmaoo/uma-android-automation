@@ -250,6 +250,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 			} else {
 				MessageLog.i(TAG, "[TRACKBLAZER] No suitable races found. Backing out and training.")
 				ButtonBack.click(game.imageUtils)
+                game.wait(0.5)
 				return false
 			}
 		}
