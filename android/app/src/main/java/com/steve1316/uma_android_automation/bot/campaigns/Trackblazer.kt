@@ -217,6 +217,15 @@ class Trackblazer(game: Game) : Campaign(game) {
         
 		// If it's not a scheduled race, we need to apply Trackblazer-specific filtering.
 		if (!isScheduledRace) {
+			val sourceBitmap = game.imageUtils.getSourceBitmap()
+
+			// Check if we're at a mandatory race screen first (IconRaceDayRibbon or IconGoalRibbon).
+			// If we are, we should treat it as a mandatory race and NOT an extra race.
+			if (IconRaceDayRibbon.check(game.imageUtils, sourceBitmap = sourceBitmap) || IconGoalRibbon.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
+				MessageLog.i(TAG, "[TRACKBLAZER] Mandatory race ribbon detected. Processing as mandatory race...")
+				return super.handleRaceEvents(true)
+			}
+
 			MessageLog.i(TAG, "[TRACKBLAZER] Checking for suitable races...")
 			// We need to enter the race list to check for predictions and grades.
 			if (!ButtonRaces.click(game.imageUtils)) {
