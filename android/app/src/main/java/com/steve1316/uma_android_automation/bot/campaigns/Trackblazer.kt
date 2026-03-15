@@ -679,6 +679,65 @@ class Trackblazer(game: Game) : Campaign(game) {
 			ButtonClose.click(game.imageUtils)
 		}
     }
+
+    /**
+     * Orchestrates the usage of items based on dynamic conditions and updates internal inventory.
+     *
+     * @param trainee Reference to the trainee's state.
+     */
+    private fun useItems(trainee: Trainee) {
+        if (date.day < 13) return
+
+        // Determine if we even need to open the Training Items dialog.
+        // We open it if we haven't synced yet (need priming) or if guarded conditions are met for items we HAVE.
+        val needSync = !bInventorySynced
+        
+        val hasEnergyItems = currentInventory.any { (name, count) -> count > 0 && shopList.energyItemNames.contains(name) } || (currentInventory["Royal Kale Juice"] ?: 0) > 0
+        val hasMoodItems = currentInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
+        val hasBadConditionItems = currentInventory.any { (name, count) -> count > 0 && shopList.badConditionHealItemNames.contains(name) }
+        val hasStatItems = currentInventory.any { (name, count) -> count > 0 && shopList.statItemNames.contains(name) }
+        
+        // Potential use conditions:
+        val potentialUse = (trainee.energy <= 20 && hasEnergyItems) || 
+                           (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) ||
+                           hasBadConditionItems || // Always check if we have these, as they are high priority
+                           hasStatItems // Stat items are always useful to clear out
+
+        if (needSync || potentialUse) {
+            MessageLog.i(TAG, "Opening Training Items dialog (Sync needed: $needSync, Potential use: $potentialUse)...")
+            if (shopList.openTrainingItemsDialog()) {
+                // Synchronize inventory if not already done.
+                syncInventory()
+
+                var anyUsed = false
+                
+                // Use all remaining Stat items.
+                if (useStatItems()) anyUsed = true
+                
+                // Conditional Energy recovery.
+                if (useEnergyItems(trainee)) anyUsed = true
+                
+                // Conditional Mood recovery.
+                if (useMoodItems(trainee)) anyUsed = true
+                
+                // Heal Bad Conditions.
+                if (useBadConditionItems()) anyUsed = true
+
+                if (anyUsed) {
+                    MessageLog.i(TAG, "Confirming usage of items.")
+                    ButtonConfirmUse.click(game.imageUtils)
+                    game.wait(game.dialogWaitDelay)
+                } else {
+                    MessageLog.i(TAG, "No items were suited for use. Closing dialog.")
+                    ButtonClose.click(game.imageUtils)
+                    game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+                }
+            }
+        } else {
+            MessageLog.i(TAG, "Skipping Training Items dialog as no relevant items are in the cached inventory.")
+        }
+    }
+
     /**
      * Synchronizes the internal inventory state with the game's actual inventory.
      * This is done by performing a single scroll pass through the Training Items dialog.
