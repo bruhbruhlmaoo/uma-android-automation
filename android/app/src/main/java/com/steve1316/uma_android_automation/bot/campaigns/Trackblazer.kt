@@ -31,6 +31,12 @@ class Trackblazer(game: Game) : Campaign(game) {
     var shopCoins: Int = 0
     var currentInventory: Map<String, Int> = mapOf()
 
+	/** Tracks the number of consecutive races performed. */
+	private var consecutiveRaceCount: Int = 0
+    
+    /** Flag to prevent double incrementing the counter when OCR already updated it. */
+    private var counterUpdatedByOCR: Boolean = false
+
     /**
      * Detects and handles any dialog popups.
      *
@@ -58,7 +64,11 @@ class Trackblazer(game: Game) : Campaign(game) {
 		}
 
         if (result !is DialogHandlerResult.Unhandled) {
-            return result
+            // Only handle successful results that are NOT the consecutive race warning,
+            // as we want to apply Trackblazer-specific logic for that one.
+            if (dialogName != "consecutive_race_warning") {
+                return result
+            }
         }
 
         // Use the dialog from the result if super already detected it, otherwise detect it now.
@@ -84,6 +94,68 @@ class Trackblazer(game: Game) : Campaign(game) {
                 detectedDialog.ok(game.imageUtils)
                 game.wait(game.dialogWaitDelay)
                 buyItems()
+            }
+            "consecutive_race_warning" -> {
+                val okButtonLocation: Point? = ButtonOk.find(game.imageUtils).first
+                
+                if (okButtonLocation != null) {
+                    val ocrText = game.imageUtils.performOCRFromReference(
+                        okButtonLocation,
+                        offsetX = -560,
+                        offsetY = -525,
+                        width = game.imageUtils.relWidth(690),
+                        height = game.imageUtils.relHeight(50),
+                        useThreshold = true,
+                        useGrayscale = true,
+                        scale = 2.0,
+                        ocrEngine = "mlkit",
+                        debugName = "TrackblazerConsecutiveRaceOCR"
+                    )
+                    
+                    MessageLog.i(TAG, "[TRACKBLAZER] OCR text from consecutive warning: \"$ocrText\"")
+                    
+                    // Regex: This will put you at ([0-9]+) consecutive races.
+                    val match = Regex("""([0-9]+)""").find(ocrText)
+                    val ocrCount = match?.groups?.get(1)?.value?.toInt() ?: -1
+                    
+                    if (ocrCount != -1) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] OCR detected a count of $ocrCount consecutive races.")
+                        
+                        // Discrepancy logic: if (OCR - (actual + 1)) >= 3 then treat it as 1 (error/reset) else trust OCR.
+                        val expectedCount = consecutiveRaceCount + 1
+                        val diff = Math.abs(ocrCount - expectedCount)
+                        
+                        if (diff >= 3) {
+                            MessageLog.w(TAG, "[TRACKBLAZER] Large discrepancy in consecutive race count (OCR=$ocrCount, Expected=$expectedCount). Ignoring OCR and incrementing internal counter.")
+                            consecutiveRaceCount = expectedCount
+                        } else {
+                            consecutiveRaceCount = ocrCount
+                        }
+                        counterUpdatedByOCR = true
+                    } else {
+                        MessageLog.w(TAG, "[TRACKBLAZER] Failed to parse consecutive race count from OCR. Counter will be incremented after race.")
+                    }
+                } else {
+                    MessageLog.e(TAG, "[TRACKBLAZER] Failed to find ButtonOk on consecutive race warning screen. Counter will be incremented after race.")
+                }
+
+                MessageLog.i(TAG, "[TRACKBLAZER] Current consecutive race count: $consecutiveRaceCount")
+
+                // Handle the dialog based on the threshold.
+                racing.raceRepeatWarningCheck = true
+
+                if (consecutiveRaceCount < 6) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < 6. Continuing with racing...")
+                    detectedDialog.ok(game.imageUtils)
+                    game.wait(1.0, skipWaitingForLoading = true)
+                } else {
+                    // At 6 consecutive races and above, we start losing 30 stats in addition to the mood down and injury.
+                    MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= 6. Aborting racing...")
+                    racing.encounteredRacingPopup = false
+                    racing.clearRacingRequirementFlags()
+                    detectedDialog.close(game.imageUtils)
+                }
+                return DialogHandlerResult.Handled(detectedDialog)
             }
             else -> {
                 Log.w(TAG, "[DIALOG] Unknown dialog \"${detectedDialog.name}\" detected so it will not be handled.")
