@@ -346,9 +346,13 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 return false
             }
             return handleExtraRace(isScheduledRace = isScheduledRace)
+        } else if (ButtonRace.check(game.imageUtils)) {
+            MessageLog.i(TAG, "[RACE] The bot is already at the Race List screen and a race has already been selected.")
+            return handleSelectedRace()
         } else if (ButtonChangeRunningStyle.check(game.imageUtils)) {
             MessageLog.i(TAG, "[RACE] The bot is currently sitting on the race screen. Most likely here for a scheduled race.")
             handleStandaloneRace()
+            return true
         }
 
         // Clear requirement flags if no race selection buttons were found.
@@ -370,6 +374,34 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
         MessageLog.i(TAG, "[RACE] Racing process for Standalone Race is completed.")
         MessageLog.i(TAG, "********************")
+    }
+
+    /**
+     * Handles a race that has already been selected, usually via custom racing logic.
+     *
+     * @return True if the race was completed successfully, false otherwise.
+     */
+    private fun handleSelectedRace(): Boolean {
+        MessageLog.i(TAG, "[RACE] Starting process for a race that is already selected.")
+
+        // Confirm the selection and the resultant popup and then wait for the game to load.
+        ButtonRace.click(game.imageUtils, tries = 30)
+        game.wait(1.0)
+        ButtonRace.click(game.imageUtils, tries = 10)
+        game.wait(2.0)
+
+        game.waitForLoading()
+
+        // Skip the race if possible, otherwise run it manually.
+        runRaceWithRetries()
+        finalizeRaceResults(isExtra = true)
+
+        // Clear the next smart race day tracker since we just completed a race.
+        nextSmartRaceDay = null
+
+        MessageLog.i(TAG, "[RACE] Racing process for already selected race is completed.")
+        MessageLog.i(TAG, "********************")
+        return true
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
