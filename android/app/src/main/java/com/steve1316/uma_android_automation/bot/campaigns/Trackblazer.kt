@@ -392,6 +392,12 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (needToRace) {
             MessageLog.i(TAG, "[TRACKBLAZER] Decision made to race. Entering race events...")
             if (handleRaceEvents(isScheduledRace = bIsScheduledRaceDay)) {
+                // Turn is over if we raced.
+                bHasUpdatedThisTurn = false
+                if (trainee.megaphoneTurnCounter > 0) {
+                    trainee.megaphoneTurnCounter--
+                    MessageLog.i(TAG, "[TRACKBLAZER] Megaphone duration reduced after racing. Turns remaining: ${trainee.megaphoneTurnCounter}")
+                }
                 return true
             } else {
                 MessageLog.i(TAG, "[TRACKBLAZER] Race events returned false. Falling back to training...")
@@ -402,7 +408,14 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Fallback to training if not racing.
         MessageLog.i(TAG, "[TRACKBLAZER] Decision made to train.")
-        training.handleTraining()
+        // Turn is over, reset the update flag so we update next time the date changes.
+        // Also decrement the megaphone turn counter.
+        bHasUpdatedThisTurn = false
+        if (trainee.megaphoneTurnCounter > 0) {
+            trainee.megaphoneTurnCounter--
+            MessageLog.i(TAG, "[TRACKBLAZER] Megaphone duration reduced. Turns remaining: ${trainee.megaphoneTurnCounter}")
+        }
+        
         return true
     }
 
