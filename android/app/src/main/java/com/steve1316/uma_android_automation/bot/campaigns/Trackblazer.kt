@@ -384,6 +384,14 @@ class Trackblazer(game: Game) : Campaign(game) {
             bHasUpdatedThisTurn = true
         }
 
+        // Before taking any action, check for items to use.
+        // This handles Stats, Energy, Mood, and Bad Conditions.
+        // Training items are only available starting Turn 13 (Junior Year Early July).
+        // We would have already bought some items during handleDialog() for the Shop dialog during the transition from Day 12 and Day 13.
+        if (date.day >= 13) {
+            useItems(trainee)
+        }
+
         // Flag on whether to race or train.
         val sourceBitmap = game.imageUtils.getSourceBitmap()
         val bIsScheduledRaceDay = LabelScheduledRace.check(game.imageUtils, sourceBitmap = sourceBitmap)
