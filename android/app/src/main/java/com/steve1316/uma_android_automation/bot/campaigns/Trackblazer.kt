@@ -174,6 +174,18 @@ class Trackblazer(game: Game) : Campaign(game) {
 		super.handleTrainingEvent()
 	}
 
+	override fun recoverEnergy(sourceBitmap: Bitmap?): Boolean {
+		MessageLog.i(TAG, "[TRACKBLAZER] Resetting consecutive race counter due to energy recovery.")
+		consecutiveRaceCount = 0
+		return super.recoverEnergy(sourceBitmap)
+	}
+
+    override fun recoverMood(sourceBitmap: Bitmap?): Boolean {
+        MessageLog.i(TAG, "[TRACKBLAZER] Resetting consecutive race counter due to mood recovery.")
+        consecutiveRaceCount = 0
+        return super.recoverMood(sourceBitmap)
+    }
+
 	/**
 	 * Handles race events specific to the Trackblazer campaign.
 	 *
