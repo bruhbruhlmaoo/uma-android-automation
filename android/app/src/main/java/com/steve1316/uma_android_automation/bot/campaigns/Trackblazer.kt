@@ -505,16 +505,27 @@ class Trackblazer(game: Game) : Campaign(game) {
 	 * @param priorityList An ordered list of item names to buy. Defaults to an empty list.
 	 */
 	fun buyItems(priorityList: List<String> = listOf()) {
-		if (priorityList.isEmpty()) {
-			MessageLog.i(TAG, "Priority list is empty. No items to buy.")
-			return
-		}
+		val finalPriorityList = if (priorityList.isEmpty()) getPriorityList() else priorityList
+
+		MessageLog.i(TAG, "Initiating buying process. Current inventory being checked for per-item limit of 5.")
 
 		// Update current coins via OCR before buying.
 		updateShopCoins()
 
 		// Buy items from the shop.
-		val itemsBought = shopList.buyItems(priorityList, shopCoins)
+		// Rule: Each item is limited to 5 in the inventory.
+		// Bad Condition items except Rich Hand Cream and Miracle Cure will be limited to 1 in our current inventory.
+		val nonPriorityBadConditions = listOf("Fluffy Pillow", "Pocket Planner", "Smart Scale", "Aroma Diffuser", "Practice Drills DVD")
+		val filteredPriorityList = finalPriorityList.filter { itemName ->
+			val itemCount = currentInventory[itemName] ?: 0
+			if (nonPriorityBadConditions.contains(itemName)) {
+				itemCount < 1
+			} else {
+				itemCount < 5
+			}
+		}
+
+		val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins)
 		if (itemsBought.isNotEmpty()) {
 			// Update internal inventory.
 			val nextInventory = currentInventory.toMutableMap()
