@@ -430,6 +430,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Fallback to training if not racing.
         MessageLog.i(TAG, "[TRACKBLAZER] Decision made to train.")
+        handleTrackblazerTraining()
+
         // Turn is over, reset the update flag so we update next time the date changes.
         // Also decrement the megaphone turn counter.
         bHasUpdatedThisTurn = false
