@@ -68,6 +68,7 @@ import com.steve1316.uma_android_automation.components.LabelStatTrackSurface
  * @property trackSurface The trainee's preferred `TrackSurface`.
  * @property trackDistance The trainee's preferred `TrackDistance`.
  * @property runningStyle The trainee's preferred `RunningStyle`.
+ * @property energy The trainee's approximate energy level.
  */
 class Trainee {
     companion object {
@@ -166,6 +167,7 @@ class Trainee {
     var bHasUpdatedSkillPoints: Boolean = false
     var bTemporaryRunningStyleAptitudesUpdated: Boolean = false
     var bHasSetRunningStyle: Boolean = false
+    var energy: Int = 100
 
     var fanCountClass: FanCountClass = FanCountClass.DEBUT
 
@@ -723,6 +725,17 @@ class Trainee {
         mood = checkMood(imageUtils, sourceBitmap) ?: mood
     }
 
+    /** Updates the trainee's appproximate energy level from the current screen.
+     *
+     * @param imageUtils A reference to a CustomImageUtils instance.
+     */
+    fun updateEnergy(imageUtils: CustomImageUtils) {
+        val res = imageUtils.analyzeEnergyBar()
+        if (res != null) {
+            energy = res
+        }
+    }
+
     /**
 	 * Sets up stat targets for different race distances by reading values from SQLite settings.
      * These targets are used to determine training priorities based on the expected race distance.
@@ -760,6 +773,7 @@ class Trainee {
             MessageLog.i(TAG, "[TRAINEE_DETAILED] Name: $name")
         }
         MessageLog.i(TAG, "[TRAINEE_DETAILED] Stats: $statsString")
+        MessageLog.i(TAG, "[TRAINEE_DETAILED] Energy: $energy%")
         MessageLog.i(TAG, "[TRAINEE_DETAILED] Track: $trackString")
         MessageLog.i(TAG, "[TRAINEE_DETAILED] Distance: $distanceString")
         MessageLog.i(TAG, "[TRAINEE_DETAILED] Style: $styleString")
@@ -788,6 +802,7 @@ class Trainee {
             "\nStats: $statsString" +
             "\nSkill Points: $skillPoints" +
             "\nMood: $mood" +
+            "\nEnergy: $energy" +
             "\nFans: $fans" +
             "\nFanCountClass: $fanCountClass"
     }
