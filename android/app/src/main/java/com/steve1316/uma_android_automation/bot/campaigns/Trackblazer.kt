@@ -636,5 +636,37 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
         currentInventory = nextInventory.toMap()
     }
+    
+    /**
+     * Uses items according to quick use categories and updates internal inventory.
+     */
+    private fun quickUseItems() {
+        MessageLog.i(TAG, "Determining if any items can be used right away.")
+		val list: ScrollList = ScrollList.create(game) ?: return
+		var anyUsed = false
+
+		list.process { _, entry: ScrollListEntry ->
+			val itemName = shopList.getShopItemName(entry.bitmap)
+			if (itemName != null && shopList.shopItems[itemName]?.third == true) {
+				// Check if the item's "+" button is disabled.
+				if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
+					val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
+					if (plusButtonPoint != null) {
+						MessageLog.i(TAG, "Using item: \"$itemName\".")
+						game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
+                        useInventoryItem(itemName)
+						anyUsed = true
+					}
+				}
+			}
+			false
+		}
+
+		if (anyUsed) {
+			ButtonConfirmUse.click(game.imageUtils)
+		} else {
+			ButtonClose.click(game.imageUtils)
+		}
+    }
 }
 
