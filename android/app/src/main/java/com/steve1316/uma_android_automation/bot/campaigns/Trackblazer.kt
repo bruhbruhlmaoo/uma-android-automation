@@ -716,5 +716,168 @@ class Trackblazer(game: Game) : Campaign(game) {
         currentInventory = nextInventory.toMap()
         bInventorySynced = true
     }
+
+    /** Uses all remaining stat items in the current inventory and updates their counts.
+     *
+     * @return True if any items were queued for use.
+     */
+    private fun useStatItems(): Boolean {
+        val list: ScrollList = ScrollList.create(game) ?: return false
+        var anyUsed = false
+
+        list.process { _, entry: ScrollListEntry ->
+            val itemName = shopList.getShopItemName(entry.bitmap)
+            if (itemName != null && shopList.statItemNames.contains(itemName)) {
+                // Click the "+" button for this item until it's disabled or we've reached a reasonable limit (e.g., 5).
+                var clicks = 0
+                while (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false && clicks < 5) {
+                    val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
+                    if (plusButtonPoint != null) {
+                        MessageLog.i(TAG, "Queuing stat item for use: \"$itemName\".")
+                        game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
+                        useInventoryItem(itemName)
+                        anyUsed = true
+                        clicks++
+                        game.wait(0.2)
+                    } else {
+                        break
+                    }
+                }
+            }
+            false
+        }
+        
+        return anyUsed
+    }
+
+    /** Uses energy recovery items based on the trainee's current energy and updates inventory.
+     *
+     * @param trainee Reference to the trainee's state.
+     * @return True if any items were queued for use.
+     */
+    private fun useEnergyItems(trainee: Trainee): Boolean {
+        if (trainee.energy > 20) return false
+
+        val list: ScrollList = ScrollList.create(game) ?: return false
+        var anyUsed = false
+
+        // We want to find the best item (highest gain) that doesn't exceed 100%.
+        // Gain values: Vita 65 = 65, Vita 40 = 40, Vita 20 = 20.
+        val gainMap = mapOf("Vita 65" to 65, "Vita 40" to 40, "Vita 20" to 20)
+        
+        // Scan for Vita items.
+        val availableVitas = mutableListOf<String>()
+        list.process { _, entry: ScrollListEntry ->
+            val itemName = shopList.getShopItemName(entry.bitmap)
+            if (itemName != null && shopList.energyItemNames.contains(itemName)) {
+                if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
+                    availableVitas.add(itemName)
+                }
+            }
+            false
+        }
+
+        // Use the largest Vita that doesn't overcap.
+        // Iterates in priority order: 65, 40, 20.
+        for (vita in shopList.energyItemNames) {
+            if (availableVitas.contains(vita)) {
+                val gain = gainMap[vita] ?: 0
+                if (trainee.energy + gain <= 100) {
+                    if (shopList.useSpecificItem(vita)) {
+                        MessageLog.i(TAG, "Queued $vita for use (Energy: ${trainee.energy}%).")
+                        useInventoryItem(vita)
+                        anyUsed = true
+                        break
+                    }
+                }
+            }
+        }
+
+        return anyUsed
+    }
+
+    /** Uses mood recovery items based on the trainee's current mood and updates inventory.
+     *
+     * @param trainee Reference to the trainee's state.
+     * @return True if any items were queued for use.
+     */
+    private fun useMoodItems(trainee: Trainee): Boolean {
+        val list: ScrollList = ScrollList.create(game) ?: return false
+        var anyUsed = false
+
+        // Check for Royal Kale Juice + Cupcake combo availability.
+        // We only use Kale Juice if energy is very low and we have a way to fix the mood.
+        if (trainee.energy <= 20 && trainee.mood.ordinal != Mood.AWFUL.ordinal) {
+            var hasKaleJuice = false
+            var bestCupcake: String? = null
+
+            list.process { _, entry: ScrollListEntry ->
+                val itemName = shopList.getShopItemName(entry.bitmap)
+                if (itemName == "Royal Kale Juice" && ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
+                    hasKaleJuice = true
+                }
+                if ((itemName == "Berry Sweet Cupcake" || itemName == "Plain Cupcake") && 
+                    ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
+                    if (bestCupcake == null || itemName == "Berry Sweet Cupcake") {
+                        bestCupcake = itemName
+                    }
+                }
+                false
+            }
+
+            if (hasKaleJuice && bestCupcake != null) {
+                MessageLog.i(TAG, "Using Royal Kale Juice + $bestCupcake combo.")
+                if (shopList.useSpecificItem("Royal Kale Juice")) {
+                    useInventoryItem("Royal Kale Juice")
+                    shopList.useSpecificItem(bestCupcake!!)
+                    useInventoryItem(bestCupcake!!)
+                    anyUsed = true
+                    // Return early as we've done a major recovery.
+                    return true
+                }
+            }
+        }
+
+        // Fallback: Simple mood recovery if mood is BAD or AWFUL.
+        if (trainee.mood.ordinal <= Mood.BAD.ordinal) {
+            if (shopList.useSpecificItem("Berry Sweet Cupcake")) {
+                useInventoryItem("Berry Sweet Cupcake")
+                anyUsed = true
+            } else if (shopList.useSpecificItem("Plain Cupcake")) {
+                useInventoryItem("Plain Cupcake")
+                anyUsed = true
+            }
+        }
+
+        return anyUsed
+    }
+
+    /** Uses items to heal bad conditions if their buttons are enabled and updates inventory.
+     *
+     * @return True if any items were queued for use.
+     */
+    private fun useBadConditionItems(): Boolean {
+        val list: ScrollList = ScrollList.create(game) ?: return false
+        var anyUsed = false
+
+        list.process { _, entry: ScrollListEntry ->
+            val itemName = shopList.getShopItemName(entry.bitmap)
+            if (itemName != null && shopList.badConditionHealItemNames.contains(itemName)) {
+                // If the item's "+" button is NOT disabled, it means the condition it treats is currently active.
+                if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == false) {
+                    val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
+                    if (plusButtonPoint != null) {
+                        MessageLog.i(TAG, "Queuing bad condition healing item for use: \"$itemName\".")
+                        game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
+                        useInventoryItem(itemName)
+                        anyUsed = true
+                    }
+                }
+            }
+            false
+        }
+
+        return anyUsed
+    }
 }
 
