@@ -239,6 +239,11 @@ object ButtonRace : ButtonInterface {
     override val template = Template("components/button/race", region = Region.bottomHalf)
 }
 
+object ButtonRaceDayRace : ButtonInterface {
+    override val TAG: String = "[${MainActivity.loggerTag}]ButtonRaceDayRace"
+    override val template = Template("components/button/race_day_race", region = Region.bottomHalf)
+}
+
 object ButtonRaceAgain : ButtonInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]ButtonRaceAgain"
     override val template = Template("components/button/race_again", region = Region.bottomHalf)
