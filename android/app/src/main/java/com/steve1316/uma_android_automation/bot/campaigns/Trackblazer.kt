@@ -691,6 +691,142 @@ class Trackblazer(game: Game) : Campaign(game) {
 			ButtonConfirmUse.click(game.imageUtils)
 		} else {
 			ButtonClose.click(game.imageUtils)
+		}
+    }
+
+    /**
+     * Handles the specialized training process for Trackblazer, including item usage.
+     */
+    private fun handleTrackblazerTraining() {
+        MessageLog.i(TAG, "[TRACKBLAZER] Starting specialized Training process.")
+        
+        // Enter the Training screen.
+        if (!ButtonTraining.click(game.imageUtils)) {
+            MessageLog.e(TAG, "Failed to enter training screen.")
+            return
+        }
+        game.wait(0.5)
+
+        // Megaphone Check: Use if no current megaphone effect is active.
+        if (date.day >= 13 && trainee.megaphoneTurnCounter == 0) {
+            val megaphoneInInventory = currentInventory.any { (name, count) ->
+                count > 0 && (name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone")
+            }
+
+            if (megaphoneInInventory) {
+                MessageLog.i(TAG, "[TRACKBLAZER] No active megaphone effect and megaphones available. Opening Training Items...")
+                if (shopList.openTrainingItemsDialog()) {
+                    val usedMegaphone = shopList.useBestMegaphone()
+                    if (usedMegaphone != null) {
+                        ButtonConfirmUse.click(game.imageUtils)
+                        useInventoryItem(usedMegaphone)
+                        trainee.megaphoneTurnCounter = when (usedMegaphone) {
+                            "Empowering Megaphone" -> 2
+                            "Motivating Megaphone" -> 3
+                            "Coaching Megaphone" -> 4
+                            else -> 0
+                        }
+                        MessageLog.i(TAG, "[TRACKBLAZER] Used $usedMegaphone. Duration: ${trainee.megaphoneTurnCounter} turns.")
+                        game.wait(game.dialogWaitDelay)
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] No megaphones found in inventory.")
+                        ButtonClose.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+                    }
+                }
+            } else {
+                MessageLog.i(TAG, "[TRACKBLAZER] No active megaphone effect and no megaphones in cached inventory.")
+            }
+        }
+
+        // Initial Training Analysis.
+        training.analyzeTrainings()
+        var trainingSelected: StatName? = training.recommendTraining()
+
+        // Reset Whistle Check: Use if recommendations are poor.
+        // We define "poor" as no training being selected or certain other conditions.
+        if (date.day >= 13 && !bUsedWhistleToday && trainingSelected == null) {
+            if ((currentInventory["Reset Whistle"] ?: 0) > 0) {
+                MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Using Reset Whistle...")
+                if (shopList.openTrainingItemsDialog()) {
+                    if (shopList.useSpecificItem("Reset Whistle")) {
+                        ButtonConfirmUse.click(game.imageUtils)
+                        useInventoryItem("Reset Whistle")
+                        bUsedWhistleToday = true
+                        game.wait(game.dialogWaitDelay)
+                        
+                        // Re-analyze after shuffle.
+                        MessageLog.i(TAG, "[TRACKBLAZER] Re-analyzing trainings after Reset Whistle.")
+                        training.analyzeTrainings()
+                        trainingSelected = training.recommendTraining()
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] No Reset Whistles found in inventory.")
+                        ButtonClose.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+                    }
+                }
+            } else {
+                MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found and no Reset Whistles in cached inventory.")
+            }
+        }
+
+        // Ankle Weights Check: Use if it matches the selected training.
+        if (date.day >= 13 && trainingSelected != null) {
+            val ankleWeight = when (trainingSelected) {
+                StatName.SPEED -> "Speed Ankle Weights"
+                StatName.STAMINA -> "Stamina Ankle Weights"
+                StatName.POWER -> "Power Ankle Weights"
+                StatName.GUTS -> "Guts Ankle Weights"
+                else -> ""
+            }
+
+            if (ankleWeight.isNotEmpty() && (currentInventory[ankleWeight] ?: 0) > 0) {
+                if (shopList.openTrainingItemsDialog()) {
+                    if (shopList.useAnkleWeights(trainingSelected!!)) {
+                        ButtonConfirmUse.click(game.imageUtils)
+                        useInventoryItem(ankleWeight)
+                        MessageLog.i(TAG, "[TRACKBLAZER] Used Ankle Weights for $trainingSelected.")
+                        game.wait(game.dialogWaitDelay)
+                    } else {
+                        ButtonClose.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+                    }
+                }
+            }
+        }
+
+        // Good-Luck Charm Check: Use if failure chance is risky in order to set it to 0%.
+        val maxFailureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
+        if (date.day >= 13 && !bUsedCharmToday && maxFailureChance >= 20) {
+            if ((currentInventory["Good-Luck Charm"] ?: 0) > 0) {
+                MessageLog.i(TAG, "[TRACKBLAZER] High failure chance ($maxFailureChance%). Checking for Good-Luck Charm...")
+                if (shopList.openTrainingItemsDialog()) {
+                    if (shopList.useGoodLuckCharm()) {
+                        ButtonConfirmUse.click(game.imageUtils)
+                        useInventoryItem("Good-Luck Charm")
+                        bUsedCharmToday = true
+                        MessageLog.i(TAG, "[TRACKBLAZER] Used Good-Luck Charm.")
+                        game.wait(game.dialogWaitDelay)
+                    } else {
+                        ButtonClose.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+                    }
+                }
+            }
+        }
+
+        // Final Training Execution.
+        if (trainingSelected != null) {
+            training.executeTraining(trainingSelected)
+        } else {
+            MessageLog.i(TAG, "[TRACKBLAZER] Still no suitable training found. Backing out to rest/recollect.")
+            ButtonBack.click(game.imageUtils)
+            game.wait(1.0)
+            if (checkMainScreen()) {
+                recoverEnergy()
+            }
+        }
+    }
 
     /**
      * Uses race-related items (Hammers, Glow Sticks) based on the race grade and fan count.
