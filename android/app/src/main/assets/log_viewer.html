@@ -222,6 +222,25 @@
                 font-family: var(--font-mono);
             }
 
+            .debug-notice {
+                background: rgba(108, 140, 255, 0.1);
+                border-bottom: 1px solid var(--border-color);
+                padding: 10px 20px;
+                font-size: 12px;
+                color: var(--text-primary);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .debug-notice span {
+                opacity: 0.8;
+            }
+
+            .debug-notice strong {
+                color: var(--accent-blue);
+            }
+
             /* Modal Styles */
             .modal {
                 display: none;
@@ -1260,6 +1279,9 @@
 
         <!-- Debug Images View -->
         <div id="imagesView" class="tab-view">
+            <div class="debug-notice">
+                <span>ℹ️</span> <strong>Note:</strong> Debug Mode needs to be enabled in the app settings due to image creation being locked behind this.
+            </div>
             <div class="image-toolbar">
                 <button class="refresh-btn" onclick="refreshImages()">
                     <span>🔄</span> Refresh Images
