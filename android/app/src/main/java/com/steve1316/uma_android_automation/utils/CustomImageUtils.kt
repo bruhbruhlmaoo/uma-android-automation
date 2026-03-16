@@ -478,7 +478,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	fun determineExtraRaceFans(extraRaceLocation: Point, sourceBitmap: Bitmap, forceRacing: Boolean = false): RaceDetails {
 		// Check for Rival status.
 		val rivalCheck = if (game.scenario == "Trackblazer") {
-			val rivalBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -275), relY(extraRaceLocation.y, -205), relWidth(295), relHeight(60), "determineExtraRaceFans rival")
+			val rivalBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -165), relY(extraRaceLocation.y, -165), relWidth(320), relHeight(80), "determineExtraRaceFans rival")
 			if (rivalBitmap != null) {
 				LabelRivalRacer.check(this, sourceBitmap = rivalBitmap, region = intArrayOf(0, 0, 0, 0))
 			} else false
