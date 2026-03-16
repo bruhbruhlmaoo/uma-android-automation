@@ -694,6 +694,24 @@ class Trackblazer(game: Game) : Campaign(game) {
         currentInventory = nextInventory.toMap()
     }
 
+	/**
+	 * Confirms the usage of items and closes the Training Items dialog.
+	 */
+	private fun confirmAndCloseItemDialog() {
+		MessageLog.i(TAG, "Confirming usage of items.")
+		ButtonConfirmUse.click(game.imageUtils)
+		game.wait(game.dialogWaitDelay)
+		ButtonUseTrainingItems.click(game.imageUtils)
+		// Lengthy delay here for the animation to finish.
+		game.wait(5.0)
+
+		// Finalize by closing the dialog.
+		MessageLog.i(TAG, "Closing training items dialog.")
+		if (ButtonClose.click(game.imageUtils, tries = 30)) {
+			game.wait(game.dialogWaitDelay)
+		}
+	}
+
     /**
      * Clicks the plus button for an item in the item list and updates inventory.
      *
@@ -739,7 +757,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 				if (shopList.openTrainingItemsDialog()) {
 					val usedMegaphone = shopList.useBestMegaphone()
 					if (usedMegaphone != null) {
-						ButtonConfirmUse.click(game.imageUtils)
+						confirmAndCloseItemDialog()
+
 						useInventoryItem(usedMegaphone)
 						trainee.megaphoneTurnCounter = when (usedMegaphone) {
 							"Empowering Megaphone" -> 2
@@ -748,7 +767,6 @@ class Trackblazer(game: Game) : Campaign(game) {
 							else -> 0
 						}
 						MessageLog.i(TAG, "[TRACKBLAZER] Used $usedMegaphone. Duration: ${trainee.megaphoneTurnCounter} turns.")
-						game.wait(game.dialogWaitDelay)
 					} else {
 						MessageLog.i(TAG, "[TRACKBLAZER] No megaphones found in inventory.")
 						ButtonClose.click(game.imageUtils)
@@ -772,10 +790,10 @@ class Trackblazer(game: Game) : Campaign(game) {
 				MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Using Reset Whistle...")
 				if (shopList.openTrainingItemsDialog()) {
 					if (shopList.useSpecificItem("Reset Whistle")) {
-						ButtonConfirmUse.click(game.imageUtils)
+						confirmAndCloseItemDialog()
+
 						useInventoryItem("Reset Whistle")
 						bUsedWhistleToday = true
-						game.wait(game.dialogWaitDelay)
 						
 						// Re-analyze after shuffle.
 						MessageLog.i(TAG, "[TRACKBLAZER] Re-analyzing trainings after Reset Whistle.")
@@ -806,10 +824,10 @@ class Trackblazer(game: Game) : Campaign(game) {
 			if (hasAnkleWeight) {
 				if (shopList.openTrainingItemsDialog()) {
 					if (shopList.useAnkleWeights(trainingSelected!!)) {
-						ButtonConfirmUse.click(game.imageUtils)
+						confirmAndCloseItemDialog()
+
 						useInventoryItem(ankleWeight)
 						MessageLog.i(TAG, "[TRACKBLAZER] Used Ankle Weights for $trainingSelected.")
-						game.wait(game.dialogWaitDelay)
 					} else {
 						ButtonClose.click(game.imageUtils)
 						game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
@@ -826,11 +844,11 @@ class Trackblazer(game: Game) : Campaign(game) {
 				MessageLog.i(TAG, "[TRACKBLAZER] High failure chance ($maxFailureChance%). Checking for Good-Luck Charm...")
 				if (shopList.openTrainingItemsDialog()) {
 					if (shopList.useGoodLuckCharm()) {
-						ButtonConfirmUse.click(game.imageUtils)
+						confirmAndCloseItemDialog()
+
 						useInventoryItem("Good-Luck Charm")
 						bUsedCharmToday = true
 						MessageLog.i(TAG, "[TRACKBLAZER] Used Good-Luck Charm.")
-						game.wait(game.dialogWaitDelay)
 					} else {
 						ButtonClose.click(game.imageUtils)
 						game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
@@ -899,9 +917,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 				
 				if (anyUsed) {
 					MessageLog.i(TAG, "[TRACKBLAZER] Queued race items for $grade ($fans fans). Confirming usage.")
-					ButtonConfirmUse.click(game.imageUtils)
+					confirmAndCloseItemDialog()
+					
 					bUsedHammerToday = true
-					game.wait(game.dialogWaitDelay)
 				} else {
 					MessageLog.i(TAG, "[TRACKBLAZER] No suitable race items found for grade $grade.")
 					ButtonClose.click(game.imageUtils)
@@ -1028,20 +1046,19 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
 
         if (anyUsed && !bDryRun) {
-            MessageLog.i(TAG, "Confirming usage of items.")
-            ButtonConfirmUse.click(game.imageUtils)
-            game.wait(game.dialogWaitDelay)
-            ButtonUseTrainingItems.click(game.imageUtils)
-            // Lengthy delay here for the animation to finish.
-            game.wait(5.0)
+            confirmAndCloseItemDialog()
         } else {
             MessageLog.i(TAG, "No items were suited for use.")
         }
 
         // Finalize by closing the dialog.
-        MessageLog.i(TAG, "Closing training items dialog.")
-        if (ButtonClose.click(game.imageUtils, tries = 30)) {
-            game.wait(game.dialogWaitDelay)
+        // The dialog is already closed by confirmAndCloseItemDialog() if items were used.
+        // Otherwise, we still need to close it.
+        if (!anyUsed && !bDryRun) {
+            MessageLog.i(TAG, "Closing training items dialog.")
+            if (ButtonClose.click(game.imageUtils, tries = 30)) {
+                game.wait(game.dialogWaitDelay)
+            }
         }
     }
 
