@@ -39,6 +39,8 @@ data class ScrollListEntry(
     val index: Int,
     val bitmap: Bitmap,
     val bbox: BoundingBox,
+    val refX: Int? = null,
+    val refY: Int? = null
 )
 
 /** Stores configuration for entry image detection.
@@ -134,7 +136,7 @@ class ScrollList private constructor(
     // An estimate of the scrollbar's location within the list.
     // Roughly 35px wide on a 1080 screen, scaled to screen width.
     private val defaultScrollBarWidth: Int = (0.0325 * SharedData.displayWidth).toInt()
-    private val bboxScrollBarRegionDefault = BoundingBox(
+    val bboxScrollBarRegionDefault = BoundingBox(
         x = bboxList.x + (bboxList.w - defaultScrollBarWidth),
         y = bboxList.y + 10,
         w = defaultScrollBarWidth,
@@ -148,7 +150,8 @@ class ScrollList private constructor(
     // This flag tracks whether the list is scrollable. It is set in [getListScrollBarBoundingRegion].
     // This flag latches to true if it is ever set since the list will never go from
     // being scrollable to not being scrollable.
-    private var bIsScrollable: Boolean = false
+    var bIsScrollable: Boolean = false
+        private set
 
     companion object {
         private val TAG: String = "[${MainActivity.loggerTag}]ScrollList"
@@ -341,7 +344,7 @@ class ScrollList private constructor(
      * @return A pair of nullable bounding boxes where the first item is the scrollbar
      * and the second item is the scrollbar's thumb component.
      */
-    private fun getListScrollBarBoundingRegion(
+    fun getListScrollBarBoundingRegion(
         bitmap: Bitmap? = null,
     ): Pair<BoundingBox?, BoundingBox?> {
         val result: Pair<BoundingBox?, BoundingBox?> = game.imageUtils.detectScrollBar(
