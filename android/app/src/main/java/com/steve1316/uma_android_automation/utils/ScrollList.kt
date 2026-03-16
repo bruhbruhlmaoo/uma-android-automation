@@ -235,16 +235,21 @@ class ScrollList private constructor(
             val y0 = (listTopLeft.y - (listTopLeftBitmap.height / 2)).toInt()
             val x1 = (listBottomRight.x + (listBottomRightBitmap.width / 2)).toInt()
             val y1 = (listBottomRight.y + (listBottomRightBitmap.height / 2)).toInt()
+            
             val bbox = BoundingBox(
                 x = x0,
                 y = y0,
-                w = x1 - x0,
-                h = y1 - y0,
+                w = Math.abs(x1 - x0),
+                h = Math.abs(y1 - y0),
             )
-
+            
             if (bbox.w <= 0 || bbox.h <= 0) {
-                MessageLog.e(TAG, "[SCROLL_LIST] Invalid bounding box: $bbox")
+                MessageLog.e(TAG, "[SCROLL_LIST] Invalid bounding box (zero width or height): $bbox")
                 return null
+            }
+            
+            if (y1 < y0 || x1 < x0) {
+                MessageLog.w(TAG, "[SCROLL_LIST] Warning: Scroll list icons were detected out of order. Normalized bounding box: $bbox")
             }
 
             if (game.debugMode) {
