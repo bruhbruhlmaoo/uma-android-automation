@@ -961,6 +961,15 @@ class Trackblazer(game: Game) : Campaign(game) {
         currentInventory = nextInventory.toMap()
         bInventorySynced = true
 
+        // Log a summary of the inventory.
+        val summary = StringBuilder("\nContents of the inventory:\n\n")
+        scannedResults.forEach { (name, isDisabled) ->
+            summary.append(name)
+            if (isDisabled) summary.append(" (Disabled)")
+            summary.append("\n")
+        }
+        MessageLog.i(TAG, summary.toString())
+
         // Handle priority items (Energy/Mood).
         if (trainee != null && !bQuickUseOnly) {
             if (useEnergyItems(trainee)) anyUsed = true
