@@ -9,6 +9,7 @@ import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.TextUtils
+import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.utils.ScrollList
 import com.steve1316.uma_android_automation.utils.ScrollListEntry
 import com.steve1316.uma_android_automation.types.BoundingBox
@@ -548,8 +549,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 	 * Starts the process to buy items from the shop.
 	 *
 	 * @param priorityList An ordered list of item names to buy. Defaults to an empty list.
+	 * @param bDryRun If true, only logs intentions without performing any clicks.
 	 */
-	fun buyItems(priorityList: List<String> = listOf()) {
+	fun buyItems(priorityList: List<String> = listOf(), bDryRun: Boolean = false) {
 		val finalPriorityList = if (priorityList.isEmpty()) getPriorityList() else priorityList
 
 		MessageLog.i(TAG, "Initiating buying process. Current inventory being checked for per-item limit of 5.")
@@ -569,7 +571,13 @@ class Trackblazer(game: Game) : Campaign(game) {
 				itemCount < 5
 			}
 		}
-
+		
+		if (bDryRun) {
+			MessageLog.i(TAG, "[TEST] Dry Run: Identified items that would be bought: ${filteredPriorityList.joinToString(", ")}")
+			shopList.buyItems(filteredPriorityList, shopCoins, bDryRun = true)
+			return
+		}
+		
 		val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins)
 		if (itemsBought.isNotEmpty()) {
 			// Update internal inventory.
@@ -911,9 +919,10 @@ class Trackblazer(game: Game) : Campaign(game) {
 	 *
 	 * @param trainee Reference to the trainee's state. If provided, conditional items will be used.
 	 * @param bQuickUseOnly If true, only items marked for quick use will be used.
+	 * @param bDryRun If true, only logs intentions without performing any clicks.
 	 */
-	fun manageInventoryItems(trainee: Trainee? = null, bQuickUseOnly: Boolean = false) {
-		if (date.day < 13) return
+	fun manageInventoryItems(trainee: Trainee? = null, bQuickUseOnly: Boolean = false, bDryRun: Boolean = false) {
+		if (date.day < 13 && !bDryRun) return
 
 		MessageLog.i(TAG, "[TRACKBLAZER] Starting inventory management pass...")
 		val scannedResults = mutableListOf<Pair<String, Boolean>>()
@@ -944,24 +953,42 @@ class Trackblazer(game: Game) : Campaign(game) {
 				val isQuick = shopList.shopItems[itemName]?.third == true
 
 				if (bQuickUseOnly) {
-					if (isQuick && clickItemPlusButton(itemName, entry, "Using quick-use item: \"$itemName\".")) {
-						anyUsed = true
+					if (isQuick) {
+						if (bDryRun) {
+							MessageLog.i(TAG, "[TEST] Dry Run: Would use quick-use item: \"$itemName\".")
+						} else if (clickItemPlusButton(itemName, entry, "Using quick-use item: \"$itemName\".")) {
+							anyUsed = true
+						}
 					}
 				} else {
 					if (isStat) {
 						var clicks = 0
-						while (clickItemPlusButton(itemName, entry, "Queuing stat item: \"$itemName\".")) {
-							anyUsed = true
-							clicks++
-							if (clicks >= 5) break
-							game.wait(0.2)
+						while (true) {
+							if (bDryRun) {
+								MessageLog.i(TAG, "[TEST] Dry Run: Would queue stat item: \"$itemName\".")
+								anyUsed = true
+								break
+							} else if (clickItemPlusButton(itemName, entry, "Queuing stat item: \"$itemName\".")) {
+								anyUsed = true
+								clicks++
+								if (clicks >= 5) break
+								game.wait(0.2)
+							} else {
+								break
+							}
 						}
 					} else if (isBad) {
-						if (clickItemPlusButton(itemName, entry, "Queuing bad condition item: \"$itemName\".")) {
+						if (bDryRun) {
+							MessageLog.i(TAG, "[TEST] Dry Run: Would queue bad condition item: \"$itemName\".")
+							anyUsed = true
+						} else if (clickItemPlusButton(itemName, entry, "Queuing bad condition item: \"$itemName\".")) {
 							anyUsed = true
 						}
 					} else if (isQuick) {
-						if (clickItemPlusButton(itemName, entry, "Queuing quick-use item: \"$itemName\".")) {
+						if (bDryRun) {
+							MessageLog.i(TAG, "[TEST] Dry Run: Would queue quick-use item: \"$itemName\".")
+							anyUsed = true
+						} else if (clickItemPlusButton(itemName, entry, "Queuing quick-use item: \"$itemName\".")) {
 							anyUsed = true
 						}
 					}
@@ -995,12 +1022,12 @@ class Trackblazer(game: Game) : Campaign(game) {
         MessageLog.i(TAG, summary.toString())
 
         // Handle priority items (Energy/Mood).
-        if (trainee != null && !bQuickUseOnly) {
+        if (trainee != null && !bQuickUseOnly && !bDryRun) {
             if (useEnergyItems(trainee)) anyUsed = true
             if (useMoodItems(trainee)) anyUsed = true
         }
 
-        if (anyUsed) {
+        if (anyUsed && !bDryRun) {
             MessageLog.i(TAG, "Confirming usage of items.")
             ButtonConfirmUse.click(game.imageUtils)
             game.wait(game.dialogWaitDelay)
@@ -1141,6 +1168,116 @@ class Trackblazer(game: Game) : Campaign(game) {
 			}
 		} else {
 			MessageLog.i(TAG, "Skipping Training Items dialog as no relevant items are in the cached inventory or all relevant items are disabled.")
+		}
+	}
+
+	/**
+	 * Start debug tests for Trackblazer here.
+	 *
+	 * @return True if any tests were run. False otherwise.
+	 */
+	override fun startTests(): Boolean {
+		var bDidAnyTestsRun = super.startTests()
+
+        val fnMap: Map<String, () -> Unit> = mapOf(
+            "debugMode_startTrackblazerRaceSelectionTest" to ::startTrackblazerRaceSelectionTest,
+            "debugMode_startTrackblazerInventorySyncTest" to ::startTrackblazerInventorySyncTest,
+            "debugMode_startTrackblazerBuyItemsTest" to ::startTrackblazerBuyItemsTest,
+        )
+
+        for ((settingName, fn) in fnMap) {
+            if (SettingsHelper.getBooleanSetting("debug", settingName)) {
+                fn()
+                bDidAnyTestsRun = true
+            }
+        }
+
+		return bDidAnyTestsRun
+	}
+
+	/**
+	 * Debug test for Trackblazer race selection logic.
+	 */
+	fun startTrackblazerRaceSelectionTest() {
+		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer race selection test.")
+
+		val sourceBitmap = game.imageUtils.getSourceBitmap()
+
+		// If on Main Screen, navigate to the Race List screen first.
+		if (checkMainScreen()) {
+			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Navigating to Race List...")
+			if (!ButtonRaces.click(game.imageUtils, sourceBitmap = sourceBitmap) && !ButtonRaceDayRace.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
+				MessageLog.e(TAG, "[TEST] Failed to click Races button.")
+				return
+			}
+			game.wait(1.0)
+			
+			// Handle any consecutive race warning dialogs that might pop up.
+			handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
+		}
+
+		// Now check if we are on the Race List screen.
+		if (ButtonRaceListFullStats.check(game.imageUtils)) {
+			// Update the date first for racing logic.
+			updateDate(isOnMainScreen = false)
+
+			MessageLog.i(TAG, "[TEST] Currently on Race List screen. Calling findSuitableTrackblazerRace...")
+			val result = racing.findSuitableTrackblazerRace(consecutiveRaceCount)
+
+			if (result != null) {
+				val (point, raceData) = result
+				MessageLog.i(TAG, "[TEST] Selection Finalized: ${raceData.name} (${raceData.grade}) at (${point.x}, ${point.y})")
+			} else {
+				MessageLog.i(TAG, "[TEST] findSuitableTrackblazerRace returned null. No suitable races found.")
+			}
+		} else {
+			MessageLog.e(TAG, "[TEST] Not on Main Screen or Race List screen. Ending test.")
+		}
+	}
+
+	/**
+	 * Debug test for Trackblazer inventory sync logic.
+	 */
+	fun startTrackblazerInventorySyncTest() {
+		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer inventory sync test.")
+
+		// If on Main Screen, open Training Items.
+		if (checkMainScreen()) {
+			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Opening Training Items...")
+			if (shopList.openTrainingItemsDialog()) {
+				MessageLog.i(TAG, "[TEST] Training Items dialog opened. Calling manageInventoryItems with bDryRun = true and bQuickUseOnly = true...")
+				manageInventoryItems(bQuickUseOnly = true, bDryRun = true)
+			} else {
+				MessageLog.e(TAG, "[TEST] Failed to open Training Items dialog.")
+			}
+		} else if (ButtonClose.check(game.imageUtils)) {
+			// Assume we are already in some dialog, possibly training items.
+			MessageLog.i(TAG, "[TEST] Close button detected. Assuming Training Items dialog is open. Calling manageInventoryItems...")
+			manageInventoryItems(bQuickUseOnly = true, bDryRun = true)
+		} else {
+			MessageLog.e(TAG, "[TEST] Not on Main Screen or in a dialog. Ending test.")
+		}
+	}
+
+	/**
+	 * Debug test for Trackblazer buying process logic.
+	 */
+	fun startTrackblazerBuyItemsTest() {
+		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer buy items test.")
+
+		// If on Main Screen, open the Shop.
+		if (checkMainScreen()) {
+			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Opening Shop...")
+			openShop()
+			game.wait(1.0)
+		}
+
+		// Check if we are in the Shop.
+		if (ButtonTrainingItems.check(game.imageUtils)) {
+			MessageLog.i(TAG, "[TEST] Shop detected. Calling buyItems with bDryRun = true...")
+			buyItems(bDryRun = true)
+		} else {
+			MessageLog.e(TAG, "[TEST] Shop not detected. Ending test.")
 		}
 	}
 }

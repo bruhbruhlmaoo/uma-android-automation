@@ -267,9 +267,10 @@ class TrackblazerShopList(private val game: Game) {
 	 *
 	 * @param priorityList An ordered list of item names to buy.
 	 * @param currentCoins The current amount of Shop Coins available.
+	 * @param bDryRun If true, only logs intentions without performing any clicks.
 	 * @return A list of successfully purchased items.
 	 */
-	fun buyItems(priorityList: List<String>, currentCoins: Int): List<String> {
+	fun buyItems(priorityList: List<String>, currentCoins: Int, bDryRun: Boolean = false): List<String> {
 		if (priorityList.isEmpty()) {
 			MessageLog.i(TAG, "Priority list is empty. No items to buy.")
 			return emptyList()
@@ -303,22 +304,31 @@ class TrackblazerShopList(private val game: Game) {
 				remainingCoinsAfterProposed -= price
 			}
 		}
-
-		if (itemsToBuy.isEmpty()) {
-			MessageLog.i(TAG, "[SHOP] No items from priority list are available or affordable. Aborting...")
-			return emptyList()
-		}
-
+		
 		// Log the summary of proposed purchases.
-		MessageLog.d(TAG, "============== Items To Buy ==============")
-		for (name in itemsToBuy) {
-			MessageLog.d(TAG, "\t$name: ${availableInShop[name]} coins")
-		}
-		val totalCost = currentCoins - remainingCoinsAfterProposed
-		MessageLog.d(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
-		MessageLog.d(TAG, "==========================================")
+        MessageLog.i(TAG, "============== Items To Buy ==============")
+        if (itemsToBuy.isEmpty()) {
+            MessageLog.i(TAG, "[SHOP] No items from priority list are available or affordable. Aborting...")
+            // Exit early if not a dry run.
+            if (!bDryRun) {
+                MessageLog.i(TAG, "==========================================")
+                return emptyList()
+            }
+        }
 
-		// Step 3: Purchasing Phase.
+        for (name in itemsToBuy) {
+            MessageLog.i(TAG, "\t$name: ${availableInShop[name]} coins")
+        }
+        val totalCost = currentCoins - remainingCoinsAfterProposed
+        MessageLog.i(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
+        MessageLog.i(TAG, "==========================================")
+
+		if (bDryRun) {
+            // Return early for the test.
+			return itemsToBuy
+		}
+
+        // Step 3: Purchasing Phase.
 		// Re-process the list to click on the selected items.
 		val itemsBought = mutableSetOf<String>()
 		processItemsWithFallback { entry ->
