@@ -12,6 +12,8 @@ import com.steve1316.automation_library.utils.DiscordUtils
 import com.steve1316.automation_library.utils.ImageUtils.ScaleConfidenceResult
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.SettingsHelper
+import com.steve1316.uma_android_automation.utils.ScrollList
+import com.steve1316.uma_android_automation.utils.ScrollListEntry
 
 import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
@@ -144,6 +146,7 @@ abstract class Campaign(game: Game) : Task(game) {
             "debugMode_startTraineeNameOCRTest" to ::startTraineeNameOCRTest,
             "debugMode_startMainScreenOCRTest" to ::startMainScreenOCRTest,
             "debugMode_startTrainingScreenOCRTest" to ::startTrainingScreenOCRTest,
+            "debugMode_startScrollBarDetectionTest" to ::startScrollBarDetectionTest,
         )
 
         var bDidAnyTestsRun: Boolean = false
@@ -385,6 +388,47 @@ abstract class Campaign(game: Game) : Task(game) {
         }
 
         MessageLog.i(TAG, "---- startMainScreenOCRTest END: PASS=$numPass, FAIL=$numFail ----")
+    }
+
+    /**
+     * Debug test for scrollbar detection and functionality.
+     * Detects the scrollbar on the current screen and attempts to scroll it up and down.
+     */
+    fun startScrollBarDetectionTest() {
+        MessageLog.i(TAG, "\n[TEST] Now beginning scrollbar detection test on the current screen.")
+
+        // Initial detection pass.
+        val scrollList = ScrollList.create(game)
+        if (scrollList == null) {
+            MessageLog.e(TAG, "[TEST] Could not detect a list on the current screen.")
+            return
+        }
+
+        val scrollBarRegion = scrollList.getListScrollBarBoundingRegion()
+        if (scrollBarRegion.first != null) {
+            MessageLog.i(TAG, "[TEST] Scrollbar detected at: ${scrollBarRegion.first}")
+            if (scrollBarRegion.second != null) {
+                MessageLog.i(TAG, "[TEST] Scrollbar thumb detected at: ${scrollBarRegion.second}")
+            } else {
+                MessageLog.i(TAG, "[TEST] No scrollbar thumb detected.")
+            }
+
+            // Try scrolling down.
+            MessageLog.i(TAG, "[TEST] Attempting to scroll DOWN...")
+            scrollList.scrollDown()
+            MessageLog.i(TAG, "[TEST] Scroll DOWN attempted.")
+
+            game.wait(1.0)
+
+            // Try scrolling up.
+            MessageLog.i(TAG, "[TEST] Attempting to scroll UP...")
+            scrollList.scrollUp()
+            MessageLog.i(TAG, "[TEST] Scroll UP attempted.")
+
+            MessageLog.i(TAG, "[TEST] Scrollbar detection test complete.")
+        } else {
+            MessageLog.e(TAG, "[TEST] No scrollbar detected on the current screen.")
+        }
     }
 
     // =============================================================================

@@ -560,7 +560,7 @@ class ScrollList private constructor(
      * scrolling but will reduce scrolling precision. Anything below 250 is clamped
      * to 250 since anything lower wouldn't be registered by gestureUtils.
      */
-    private fun scrollDown(
+    fun scrollDown(
         startLoc: Point? = null,
         entryHeight: Int = 0,
         durationMs: Long = 1000L,
@@ -596,7 +596,7 @@ class ScrollList private constructor(
      * scrolling but will reduce scrolling precision. Anything below 250 is clamped
      * to 250 since anything lower wouldn't be registered by gestureUtils.
      */
-    private fun scrollUp(
+    fun scrollUp(
         startLoc: Point? = null,
         entryHeight: Int = 0,
         durationMs: Long = 1000L,
