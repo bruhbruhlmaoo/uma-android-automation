@@ -32,12 +32,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     private val TAG: String = "[${MainActivity.loggerTag}]Racing"
 
     private val enableFarmingFans = SettingsHelper.getBooleanSetting("racing", "enableFarmingFans")
-    internal val ignoreConsecutiveRaceWarning = SettingsHelper.getBooleanSetting("racing", "ignoreConsecutiveRaceWarning")
+    val ignoreConsecutiveRaceWarning = SettingsHelper.getBooleanSetting("racing", "ignoreConsecutiveRaceWarning")
     private val daysToRunExtraRaces: Int = SettingsHelper.getIntSetting("racing", "daysToRunExtraRaces")
     internal val disableRaceRetries: Boolean = SettingsHelper.getBooleanSetting("racing", "disableRaceRetries")
     internal val enableFreeRaceRetry: Boolean = SettingsHelper.getBooleanSetting("racing", "enableFreeRaceRetry")
     internal val enableCompleteCareerOnFailure: Boolean = SettingsHelper.getBooleanSetting("racing", "enableCompleteCareerOnFailure")
-    internal val enableForceRacing = SettingsHelper.getBooleanSetting("racing", "enableForceRacing")
+    val enableForceRacing = SettingsHelper.getBooleanSetting("racing", "enableForceRacing")
 
     private val enableRacingPlan = SettingsHelper.getBooleanSetting("racing", "enableRacingPlan")
     private val lookAheadDays = SettingsHelper.getIntSetting("racing", "lookAheadDays")
@@ -64,9 +64,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     var hasG3OrAboveRequirement = false  // Indicates that a G3 or above requirement has been detected (any race can fulfill it).
     private var nextSmartRaceDay: Int? = null  // Tracks the specific day to race based on opportunity cost analysis.
     private var hasLoadedUserRaceAgenda = false  // Tracks if the user's race agenda has been loaded this career.
-    internal var lastRaceGrade: RaceGrade? = null  // Tracks the grade of the last race selected.
-	internal var lastRaceIsRival: Boolean = false  // Tracks if the last race selected was a Rival Race.
-	internal var bRetriedCurrentRace: Boolean = false  // Tracks if the current race has already been retried.
+    var lastRaceGrade: RaceGrade? = null  // Tracks the grade of the last race selected.
+	var lastRaceIsRival: Boolean = false  // Tracks if the last race selected was a Rival Race.
+	var bRetriedCurrentRace: Boolean = false  // Tracks if the current race has already been retried.
 
     internal val enableStopOnMandatoryRace: Boolean = SettingsHelper.getBooleanSetting("racing", "enableStopOnMandatoryRaces")
     internal var detectedMandatoryRaceCheck = false
@@ -153,7 +153,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     /**
      * Clears all racing requirement flags like fan and trophy requirements.
      */
-    internal fun clearRacingRequirementFlags() {
+    fun clearRacingRequirementFlags() {
         hasFanRequirement = false
         hasTrophyRequirement = false
         hasPreOpOrAboveRequirement = false

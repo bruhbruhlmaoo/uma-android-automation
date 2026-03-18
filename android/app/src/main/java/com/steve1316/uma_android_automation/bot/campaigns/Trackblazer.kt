@@ -20,6 +20,7 @@ import com.steve1316.uma_android_automation.types.DateYear
 import com.steve1316.uma_android_automation.types.DateMonth
 import com.steve1316.uma_android_automation.types.DatePhase
 import com.steve1316.uma_android_automation.components.*
+import com.steve1316.uma_android_automation.bot.Racing
 import com.steve1316.uma_android_automation.bot.Racing.RaceData
 import com.steve1316.uma_android_automation.types.RaceGrade
 import com.steve1316.uma_android_automation.types.StatName
@@ -40,6 +41,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     var shopCoins: Int = 0
     var currentInventory: Map<String, Int> = mapOf()
+
+	private val consecutiveRacesLimit: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerConsecutiveRacesLimit", 5)
 
 	/** Tracks the number of consecutive races performed. */
 	private var consecutiveRaceCount: Int = 0
@@ -193,22 +196,32 @@ class Trackblazer(game: Game) : Campaign(game) {
 				val turnsRemaining = game.imageUtils.determineTurnsRemainingBeforeNextGoal()
 				val onlyOneTurnLeft = turnsRemaining == 1
 
-				if (forceRace || consecutiveRaceCount < 6 || onlyOneTurnLeft) {
-					when {
-						forceRace -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing...")
-						onlyOneTurnLeft && consecutiveRaceCount >= 6 -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= 6, but only 1 turn remains before mandatory race. Racing is safe. Continuing...")
-						else -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < 6. Continuing with racing...")
-					}
+				if (forceRace) {
+					MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing...")
 					detectedDialog.ok(game.imageUtils)
 					game.wait(1.0, skipWaitingForLoading = true)
 				} else {
-                    // At 6 consecutive races and above, we start losing 30 stats in addition to the mood down and injury.
-                    MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= 6. Aborting racing...")
-                    racing.encounteredRacingPopup = false
-                    racing.clearRacingRequirementFlags()
-                    detectedDialog.close(game.imageUtils)
-                }
-                return DialogHandlerResult.Handled(detectedDialog)
+					// A -30 stat penalty can apply starting from 3 consecutive races.
+					if (consecutiveRaceCount >= 3) {
+						MessageLog.w(TAG, "[TRACKBLAZER] Current consecutive race count is $consecutiveRaceCount. Note that a -30 stat penalty can apply starting from 3 consecutive races!")
+					}
+
+					if (consecutiveRaceCount < (consecutiveRacesLimit + 1) || onlyOneTurnLeft) {
+						if (onlyOneTurnLeft && consecutiveRaceCount >= (consecutiveRacesLimit + 1)) {
+							MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}, but only 1 turn remains before mandatory race. Racing is safe. Continuing...")
+						} else {
+							MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < ${consecutiveRacesLimit + 1}. Continuing...")
+						}
+						detectedDialog.ok(game.imageUtils)
+						game.wait(1.0, skipWaitingForLoading = true)
+					} else {
+						MessageLog.w(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}. Aborting racing...")
+						racing.encounteredRacingPopup = false
+						racing.clearRacingRequirementFlags()
+						detectedDialog.close(game.imageUtils)
+					}
+				}
+				return DialogHandlerResult.Handled(detectedDialog)
             }
             else -> {
                 Log.w(TAG, "[DIALOG] Unknown dialog \"${detectedDialog.name}\" detected so it will not be handled.")
