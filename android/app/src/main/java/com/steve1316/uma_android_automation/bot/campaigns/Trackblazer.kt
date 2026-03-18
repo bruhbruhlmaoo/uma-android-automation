@@ -962,9 +962,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 				}
 
 				// Sync Inventory.
-				if ((nextInventory[itemName] ?: 0) <= 0) {
-					nextInventory[itemName] = 1
-				}
+				val amount = shopList.getItemAmount(entry, isDisabled)
+				nextInventory[itemName] = amount
 
                 // Inline usage logic.
                 if (!bDryRun) {

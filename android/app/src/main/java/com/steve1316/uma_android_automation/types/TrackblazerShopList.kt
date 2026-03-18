@@ -222,6 +222,43 @@ class TrackblazerShopList(private val game: Game) {
         return matchedName ?: detectedText
 	}
 
+    /**
+     * Extracts the item amount from a cropped Shop entry bitmap.
+     *
+     * @param entry The ScrollListEntry of the item.
+     * @param isDisabled Whether the item's plus button is disabled.
+     * @return The detected amount of the item on-hand.
+     */
+    fun getItemAmount(entry: ScrollListEntry, isDisabled: Boolean): Int {
+        val bitmap = entry.bitmap
+        // Use the plus button as a reference point for the amount detection.
+        val refPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmap) ?: return 1
+        
+        val amountText = game.imageUtils.performOCROnRegion(
+            bitmap,
+            game.imageUtils.relX(refPoint.x, -585),
+            game.imageUtils.relY(refPoint.y, -15),
+            game.imageUtils.relWidth(55),
+            game.imageUtils.relHeight(50),
+            useThreshold = true,
+            useGrayscale = true,
+            scale = 2.0,
+            ocrEngine = "mlkit",
+            debugName = "ItemAmountOCR"
+        )
+        
+        return try {
+            val cleanedText = amountText.replace(Regex("[^0-9]"), "")
+            if (cleanedText.isEmpty()) {
+                1
+            } else {
+                cleanedText.toInt().coerceIn(0, 5)
+            }
+        } catch (e: NumberFormatException) {
+            1
+        }
+    }
+
 	/**
 	 * Extracts the item price from a cropped Shop entry bitmap, either from the original price from the
 	 * mapping or the discounted price via OCR if there is a sale.
