@@ -65,8 +65,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 	/** Tracks items that were found to be disabled during the last inventory management pass. */
 	private var disabledItems: Set<String> = setOf()
 
-	/** Flag to track when a Rival Race was won to trigger item purchase. */
-	private var bWonRivalRace: Boolean = false
+	/** Flag to track when a shop check should be performed after a race. */
+	private var bShouldCheckShop: Boolean = false
 
     /** Threshold for energy level to use energy items. */
     private var energyThresholdToUseEnergyItems: Int = 40
@@ -138,10 +138,10 @@ class Trackblazer(game: Game) : Campaign(game) {
                 detectedDialog.ok(game.imageUtils)
                 game.wait(game.dialogWaitDelay)
 
-				// Clear the Rival Race win flag as the shop is already being handled.
-				if (bWonRivalRace) {
-					MessageLog.i(TAG, "[TRACKBLAZER] Rival Race win fallback: Shop handled via dialog.")
-					bWonRivalRace = false
+				// Clear the shop check flag as the shop is already being handled.
+				if (bShouldCheckShop) {
+					MessageLog.i(TAG, "[TRACKBLAZER] Shop check fallback: Shop handled via dialog.")
+					bShouldCheckShop = false
 				}
 
                 buyItems()
@@ -329,6 +329,13 @@ class Trackblazer(game: Game) : Campaign(game) {
 			} else {
 				MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count was already updated by OCR: $consecutiveRaceCount.")
 			}
+
+			// Check if we should perform a shop check after this race.
+			// Any graded race (G1, G2, or G3) should trigger a shop check regardless whether it is a Rival Race or not.
+			if (racing.lastRaceGrade == RaceGrade.G1 || racing.lastRaceGrade == RaceGrade.G2 || racing.lastRaceGrade == RaceGrade.G3) {
+				MessageLog.i(TAG, "[TRACKBLAZER] Graded race detected (${racing.lastRaceGrade}). Shop check will be performed on main screen.")
+				bShouldCheckShop = true
+			}
 		}
 		return result
 	}
@@ -343,13 +350,13 @@ class Trackblazer(game: Game) : Campaign(game) {
             return false
         }
 
-		// Buy items if we just won a Rival Race.
-		if (bWonRivalRace) {
-			MessageLog.i(TAG, "[TRACKBLAZER] Rival Race win detected! Checking Shop for new items...")
-			bWonRivalRace = false
+		// Buy items if a shop check is pending after a race.
+		if (bShouldCheckShop) {
+			MessageLog.i(TAG, "[TRACKBLAZER] Pending shop check detected! Checking Shop for new items...")
+			bShouldCheckShop = false
 			game.wait(0.5)
 			if (openShop()) {
-				buyItems(bWonRivalRaceWin = true)
+				buyItems(bAfterRacePurchase = true)
 			}
 		}
 
@@ -559,7 +566,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
 	override fun onRaceWin() {
 		MessageLog.i(TAG, "[TRACKBLAZER] Rival Race win detected via post-race popup.")
-		bWonRivalRace = true
+		bShouldCheckShop = true
 	}
 
 	/**
@@ -635,13 +642,13 @@ class Trackblazer(game: Game) : Campaign(game) {
 	 *
 	 * @param priorityList An ordered list of item names to buy. Defaults to an empty list.
 	 * @param bDryRun If true, only logs intentions without performing any clicks.
-	 * @param bWonRivalRaceWin If true, indicates this process was triggered by a Rival Race win.
+	 * @param bAfterRacePurchase If true, indicates this process was triggered by a post-race shop check.
 	 */
-	fun buyItems(priorityList: List<String> = listOf(), bDryRun: Boolean = false, bWonRivalRaceWin: Boolean = false) {
+	fun buyItems(priorityList: List<String> = listOf(), bDryRun: Boolean = false, bAfterRacePurchase: Boolean = false) {
 		val finalPriorityList = if (priorityList.isEmpty()) getPriorityList() else priorityList
 
-		if (bWonRivalRaceWin) {
-			MessageLog.i(TAG, "[TRACKBLAZER] Buying extra items after winning a Rival Race...")
+		if (bAfterRacePurchase) {
+			MessageLog.i(TAG, "[TRACKBLAZER] Buying extra items after participating in a race...")
 		}
 		MessageLog.i(TAG, "Initiating buying process. Current inventory being checked for per-item limit of 5.")
 
