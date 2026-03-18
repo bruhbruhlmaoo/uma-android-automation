@@ -1072,7 +1072,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
 		// Perform megaphone usage AFTER the scan to ensure the best one is used if available.
 		if (!bQuickUseOnly && !bDryRun && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0) {
-			val megaphoneUsed = shopList.useBestMegaphone()
+			val megaphoneUsed = shopList.useBestMegaphone(scannedItems)
 			if (megaphoneUsed != null) {
 				trainee.megaphoneTurnCounter = when (megaphoneUsed) {
 					"Empowering Megaphone" -> 2
