@@ -897,9 +897,14 @@ class Trackblazer(game: Game) : Campaign(game) {
 		} else null
 
 		val useGlowSticks = grade == RaceGrade.G1 && fans >= 20000 && hasGlowSticks
-		
+		val glowSticksStatus = if (!useGlowSticks && hasGlowSticks && grade == RaceGrade.G1 && fans < 20000) {
+			"false (does not meet the fan amount requirement of 20000)"
+		} else {
+			useGlowSticks.toString()
+		}
+
 		if (hammerToUse != null || useGlowSticks) {
-			MessageLog.i(TAG, "[TRACKBLAZER] Suitable race items found in inventory (Hammer: $hammerToUse, Glow Sticks: $useGlowSticks). Opening Training Items dialog...")
+			MessageLog.i(TAG, "[TRACKBLAZER] Suitable race items found in inventory (Hammer: $hammerToUse, Glow Sticks: $glowSticksStatus). Opening Training Items dialog...")
 			if (shopList.openTrainingItemsDialog()) {
 				var anyUsed = false
 				
