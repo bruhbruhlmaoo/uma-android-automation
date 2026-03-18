@@ -10,6 +10,10 @@ import com.steve1316.uma_android_automation.components.*
 import com.steve1316.uma_android_automation.utils.ScrollList
 import com.steve1316.uma_android_automation.utils.ScrollListEntry
 import org.opencv.core.Point
+import com.steve1316.uma_android_automation.types.StatName
+
+/** Stores a single scanned item's entry and disabled state. */
+data class ScannedItem(val entry: ScrollListEntry, val isDisabled: Boolean)
 
 /**
  * Handles interaction with the item shop list in the Trackblazer scenario.
@@ -425,13 +429,36 @@ class TrackblazerShopList(private val game: Game) {
 	}
 
     /**
-     * Uses a specific item by its name and returns the item's name if successful.
+     * Uses specific items by their names and returns the list of names for items that were successfully used.
      *
-     * @param itemName The name of the item to use.
-     * @return The name of the item used, or NULL if it could not be used.
+     * @param itemNames The names of the items to use.
+     * @param bUseAll If true, attempts to use all items in the list. If false, stops after the first successful usage.
+     * @param scannedItems Optional map of pre-scanned items to use instead of performing a new scan.
+     * @return A list of names of the items used.
      */
-    fun useSpecificItem(itemName: String): Boolean {
-        var used = false
+    fun useSpecificItems(itemNames: List<String>, bUseAll: Boolean = false, scannedItems: Map<String, ScannedItem>? = null): List<String> {
+        val usedItems = mutableListOf<String>()
+        if (itemNames.isEmpty()) return usedItems
+
+        if (scannedItems != null) {
+            MessageLog.d(TAG, "[TRACKBLAZER] Using pre-scanned items for specific item usage.")
+            for (name in itemNames) {
+                if (usedItems.contains(name)) continue
+                
+                val info = scannedItems[name]
+                if (info != null && !info.isDisabled) {
+                    val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, info.entry.bitmap)
+                    if (plusButtonPoint != null) {
+                        MessageLog.i(TAG, "Queuing specific item for use: \"$name\" (from pre-scanned).")
+                        game.tap(info.entry.bbox.x + plusButtonPoint.x, info.entry.bbox.y + plusButtonPoint.y)
+                        usedItems.add(name)
+                        
+                        if (!bUseAll) return usedItems
+                    }
+                }
+            }
+            return usedItems
+        }
 
 		val itemNameMapInUseSpecific = mutableMapOf<Int, String>()
         processItemsWithFallback(
@@ -443,46 +470,46 @@ class TrackblazerShopList(private val game: Game) {
 		) { entry ->
             val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
             val name = itemNameMapInUseSpecific[entry.index] ?: getShopItemName(entry, isDisabled)
-            if (name != null && name == itemName) {
+            if (name != null && itemNames.contains(name) && !usedItems.contains(name)) {
                 // Check if the item's "+" button is disabled.
                 if (!isDisabled) {
                     val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
                     if (plusButtonPoint != null) {
-                        MessageLog.i(TAG, "Queuing specific item for use: \"$itemName\".")
+                        MessageLog.i(TAG, "Queuing specific item for use: \"$name\".")
                         game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
-                        used = true
-                        return@processItemsWithFallback true
+                        usedItems.add(name)
+                        
+                        // If we only wanted to use one item, we are done.
+                        if (!bUseAll) return@processItemsWithFallback true
                     }
                 }
             }
             false
         }
 
-        return used
+        return usedItems
     }
 
     /**
      * Finds and uses the highest value Megaphone available in the inventory.
      *
+     * @param scannedItems Optional map of pre-scanned items.
      * @return The item name of the megaphone used, or NULL if none were used.
      */
-    fun useBestMegaphone(): String? {
+    fun useBestMegaphone(scannedItems: Map<String, ScannedItem>? = null): String? {
         val megaphonePriority = listOf("Empowering Megaphone", "Motivating Megaphone", "Coaching Megaphone")
-        for (megaphone in megaphonePriority) {
-            if (useSpecificItem(megaphone)) {
-                return megaphone
-            }
-        }
-        return null
+        val used = useSpecificItems(megaphonePriority, bUseAll = false, scannedItems = scannedItems)
+        return used.firstOrNull()
     }
 
     /**
      * Uses the Ankle Weights corresponding to the specified stat.
      *
      * @param stat The stat to use ankle weights for.
+     * @param scannedItems Optional map of pre-scanned items.
      * @return True if ankle weights were queued.
      */
-    fun useAnkleWeights(stat: StatName): Boolean {
+    fun useAnkleWeights(stat: StatName, scannedItems: Map<String, ScannedItem>? = null): Boolean {
         val itemName = when (stat) {
             StatName.SPEED -> "Speed Ankle Weights"
             StatName.STAMINA -> "Stamina Ankle Weights"
@@ -490,7 +517,7 @@ class TrackblazerShopList(private val game: Game) {
             StatName.GUTS -> "Guts Ankle Weights"
             else -> return false
         }
-        return useSpecificItem(itemName)
+        return useSpecificItems(listOf(itemName), scannedItems = scannedItems).isNotEmpty()
     }
 
     /**
@@ -536,10 +563,11 @@ class TrackblazerShopList(private val game: Game) {
     /**
      * Uses the Good-Luck Charm if available.
      *
+     * @param scannedItems Optional map of pre-scanned items.
      * @return True if the charm was queued.
      */
-    fun useGoodLuckCharm(): Boolean {
-        return useSpecificItem("Good-Luck Charm")
+    fun useGoodLuckCharm(scannedItems: Map<String, ScannedItem>? = null): Boolean {
+        return useSpecificItems(listOf("Good-Luck Charm"), scannedItems = scannedItems).isNotEmpty()
     }
 
     /**
