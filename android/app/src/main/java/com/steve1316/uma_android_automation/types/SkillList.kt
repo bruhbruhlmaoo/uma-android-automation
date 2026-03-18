@@ -313,13 +313,30 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
         // but we can't just replace that character since some titles
         // actually end in those letters. So we just append this to the title
         // since it shouldn't cause fuzzy matching to fail.
-        val iconChar: String = when (match) {
-            IconSkillTitleDoubleCircle -> "◎"
-            IconSkillTitleCircle -> "○"
-            IconSkillTitleX -> "×"
-            else -> ""
-        }
-        skillName += iconChar
+		val iconChar: String = when (match) {
+			IconSkillTitleDoubleCircle -> "◎"
+			IconSkillTitleCircle -> "○"
+			IconSkillTitleX -> "×"
+			else -> ""
+		}
+
+		if (iconChar.isNotEmpty()) {
+			// Clean up any trailing noise characters that OCR might have picked up for the icon.
+			// These symbols are always preceded by a space in the English names in the database.
+			// Example: OCR gets "Kyoto Racecourse O" and we detected the "○" icon.
+			// We want to remove the 'O' and append " ○" to match the database's name.
+			skillName = skillName.trimEnd()
+			if (skillName.isNotEmpty() && skillName.last().isLetterOrDigit()) {
+				// If the last character is a single letter or digit and there is a space before it,
+				// then it is almost certainly a misread of the icon.
+				if (skillName.length == 1 || (skillName.length >= 2 && skillName[skillName.length - 2] == ' ')) {
+					skillName = skillName.dropLast(1).trimEnd()
+				}
+			}
+
+			// All skills in the database with these symbols have a space before them.
+			skillName += " $iconChar"
+		}
 
         // Most negative skills have "Remove" in front of their skill
         // name in the title. The actual skill itself in the database does
