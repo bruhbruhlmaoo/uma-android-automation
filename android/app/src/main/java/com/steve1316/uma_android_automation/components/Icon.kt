@@ -261,3 +261,13 @@ object IconRaceAgendaEmpty : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]IconRaceAgendaEmpty"
     override val template = Template("components/icon/race_agenda_empty", region = Region.topHalf)
 }
+
+object IconDialogScrollListTopLeft : ComponentInterface {
+    override val TAG: String = "IconDialogScrollListTopLeft"
+    override val template = Template("components/icon/dialog_scroll_list_top_left", region = Region.leftHalf)
+}
+
+object IconDialogScrollListBottomRight : ComponentInterface {
+    override val TAG: String = "IconDialogScrollListBottomRight"
+    override val template = Template("components/icon/dialog_scroll_list_bottom_right", region = Region.rightHalf)
+}
