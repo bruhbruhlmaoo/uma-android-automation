@@ -607,11 +607,11 @@ class Trackblazer(game: Game) : Campaign(game) {
 		return try {
 			val cleanedText = coinText.replace(Regex("[^0-9]"), "")
 			if (cleanedText.isEmpty()) {
-				MessageLog.w(TAG, "Parsed empty string for Shop Coins.")
+				MessageLog.w(TAG, "Parsed empty string for Shop Coins from raw text: \"$coinText\".")
 				shopCoins
 			} else {
 				shopCoins = cleanedText.toInt()
-				MessageLog.i(TAG, "We have $shopCoins Shop Coins.")
+				MessageLog.i(TAG, "Current Shop Coins: $shopCoins (Raw OCR text: \"$coinText\")")
 				shopCoins
 			}
 		} catch (e: NumberFormatException) {
@@ -651,10 +651,15 @@ class Trackblazer(game: Game) : Campaign(game) {
 			}
 		}
 		
-		if (bDryRun) {
-			MessageLog.i(TAG, "[TEST] Dry Run: Identified items that would be bought: ${filteredPriorityList.joinToString(", ")}")
-			shopList.buyItems(filteredPriorityList, shopCoins, bDryRun = true)
-			return
+		if (filteredPriorityList.isEmpty()) {
+			MessageLog.i(TAG, "Filtered priority list is empty. All priority items are either at their limit in the inventory or none were identified.")
+			printCurrentInventory()
+		} else if (bDryRun) {
+            MessageLog.i(TAG, "[TEST] Dry Run: Identified items that would be bought: ${filteredPriorityList.joinToString(", ")}")
+            shopList.buyItems(filteredPriorityList, shopCoins, bDryRun = true)
+            return
+        } else {
+			MessageLog.i(TAG, "Filtered priority list has ${filteredPriorityList.size} items to check in shop. Current coins: $shopCoins")
 		}
 		
 		val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins)
@@ -1006,7 +1011,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                 if (!bDryRun) {
                     val isStat = shopList.statItemNames.contains(itemName)
                     val isBad = shopList.badConditionHealItemNames.contains(itemName)
-                    val isQuick = shopList.shopItems[itemName]?.third == true
+                    val itemInfo = shopList.shopItems[itemName]
+                    val isQuick = itemInfo != null && itemInfo.isQuickUsage
 
                     if (bQuickUseOnly) {
                         if (isQuick && !isDisabled) {
@@ -1060,15 +1066,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 		disabledItems = currentDisabledItems.toSet()
 		bInventorySynced = true
 
-        // Log a summary of the inventory.
-        val summary = StringBuilder("\nContents of the inventory:\n\n")
-        scannedItems.forEach { (name, info) ->
-			val count = currentInventory[name] ?: 0
-            summary.append("$name: $count")
-            if (info.isDisabled) summary.append(" (Disabled)")
-            summary.append("\n")
-        }
-        MessageLog.i(TAG, summary.toString())
+        // Print the categorized inventory summary.
+        printCurrentInventory()
 
 		// Perform megaphone usage AFTER the scan to ensure the best one is used if available.
 		if (!bQuickUseOnly && !bDryRun && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0) {
@@ -1333,5 +1332,42 @@ class Trackblazer(game: Game) : Campaign(game) {
 		} else {
 			MessageLog.e(TAG, "[TEST] Shop not detected. Ending test.")
 		}
+	}
+
+	/**
+	 * Prints the current inventory in a formatted way with the items placed in their respective categories along with their item amounts.
+	 */
+	fun printCurrentInventory() {
+		// Group items by category from the central shopItems mapping.
+		val inventoryByCategory = currentInventory.filter { it.value > 0 }.keys.groupBy { itemName ->
+			shopList.shopItems[itemName]?.category ?: "Other"
+		}
+
+		val summary = StringBuilder("\n============== Current Inventory ==============\n")
+		var hasItems = false
+
+		// Sort categories to maintain consistent order (Stats first, then others).
+		val categoryOrder = listOf("Stats", "Energy and Motivation", "Bond", "Get Good Conditions", "Heal Bad Conditions", "Training Facilities", "Training Effects", "Races")
+		val sortedCategories = inventoryByCategory.keys.sortedWith(compareBy { category ->
+			val index = categoryOrder.indexOf(category)
+			if (index == -1) categoryOrder.size else index
+		})
+
+		sortedCategories.forEach { category ->
+			val items = inventoryByCategory[category] ?: emptyList()
+			if (items.isNotEmpty()) {
+				summary.append("\n[$category]\n")
+				items.sorted().forEach { name ->
+					summary.append("- $name: ${currentInventory[name]}\n")
+				}
+				hasItems = true
+			}
+		}
+
+		if (!hasItems) {
+			summary.append("\nInventory is empty.\n")
+		}
+		summary.append("\n===============================================")
+		MessageLog.i(TAG, summary.toString())
 	}
 }

@@ -16,6 +16,21 @@ import com.steve1316.uma_android_automation.types.StatName
 data class ScannedItem(val entry: ScrollListEntry, val isDisabled: Boolean)
 
 /**
+ * Stores information about a single item in the Trackblazer scenario.
+ *
+ * @property price The cost of the item in the Shop.
+ * @property effect A brief description of the item's effect.
+ * @property isQuickUsage Whether the item can be used directly from the Training Items dialog.
+ * @property category The category the item belongs to for UI and organization.
+ */
+data class TrackblazerItemInfo(
+    val price: Int,
+    val effect: String,
+    val isQuickUsage: Boolean,
+    val category: String
+)
+
+/**
  * Handles interaction with the item shop list in the Trackblazer scenario.
  *
  * @param game Reference to the bot's Game instance.
@@ -23,88 +38,83 @@ data class ScannedItem(val entry: ScrollListEntry, val isDisabled: Boolean)
 class TrackblazerShopList(private val game: Game) {
 	private val TAG: String = "[${MainActivity.loggerTag}]TrackblazerShopList"
 
-    val statItemNames = listOf(
-        "Speed Notepad", "Stamina Notepad", "Power Notepad", "Guts Notepad", "Wit Notepad",
-        "Speed Manual", "Stamina Manual", "Power Manual", "Guts Manual", "Wit Manual",
-        "Speed Scroll", "Stamina Scroll", "Power Scroll", "Guts Scroll", "Wit Scroll"
-    )
+    val statItemNames get() = shopItems.filter { it.value.category == "Stats" }.keys.toList()
 
-    val energyItemNames = listOf("Vita 65", "Vita 40", "Vita 20")
+    val energyItemNames get() = listOf("Vita 65", "Vita 40", "Vita 20")
     
-    val badConditionHealItemNames = listOf(
-        "Fluffy Pillow", "Pocket Planner", "Rich Hand Cream", "Smart Scale", "Aroma Diffuser", "Practice Drills DVD", "Miracle Cure"
-    )
+    val badConditionHealItemNames get() = shopItems.filter { it.value.category == "Heal Bad Conditions" }.keys.toList()
 
 	/** Mapping of shop items to their price, effect, and whether they are allowed for quick usage. */
-	val shopItems: Map<String, Triple<Int, String, Boolean>> = mapOf(
+	val shopItems: Map<String, TrackblazerItemInfo> = mapOf(
 		// Stats
-		"Speed Notepad" to Triple(10, "Speed +3", true),
-		"Stamina Notepad" to Triple(10, "Stamina +3", true),
-		"Power Notepad" to Triple(10, "Power +3", true),
-		"Guts Notepad" to Triple(10, "Guts +3", true),
-		"Wit Notepad" to Triple(10, "Wisdom +3", true),
-		"Speed Manual" to Triple(15, "Speed +7", true),
-		"Stamina Manual" to Triple(15, "Stamina +7", true),
-		"Power Manual" to Triple(15, "Power +7", true),
-		"Guts Manual" to Triple(15, "Guts +7", true),
-		"Wit Manual" to Triple(15, "Wisdom +7", true),
-		"Speed Scroll" to Triple(30, "Speed +15", true),
-		"Stamina Scroll" to Triple(30, "Stamina +15", true),
-		"Power Scroll" to Triple(30, "Power +15", true),
-		"Guts Scroll" to Triple(30, "Guts +15", true),
-		"Wit Scroll" to Triple(30, "Wisdom +15", true),
+		"Speed Notepad" to TrackblazerItemInfo(10, "Speed +3", true, "Stats"),
+		"Stamina Notepad" to TrackblazerItemInfo(10, "Stamina +3", true, "Stats"),
+		"Power Notepad" to TrackblazerItemInfo(10, "Power +3", true, "Stats"),
+		"Guts Notepad" to TrackblazerItemInfo(10, "Guts +3", true, "Stats"),
+		"Wit Notepad" to TrackblazerItemInfo(10, "Wisdom +3", true, "Stats"),
+		"Speed Manual" to TrackblazerItemInfo(15, "Speed +7", true, "Stats"),
+		"Stamina Manual" to TrackblazerItemInfo(15, "Stamina +7", true, "Stats"),
+		"Power Manual" to TrackblazerItemInfo(15, "Power +7", true, "Stats"),
+		"Guts Manual" to TrackblazerItemInfo(15, "Guts +7", true, "Stats"),
+		"Wit Manual" to TrackblazerItemInfo(15, "Wisdom +7", true, "Stats"),
+		"Speed Scroll" to TrackblazerItemInfo(30, "Speed +15", true, "Stats"),
+		"Stamina Scroll" to TrackblazerItemInfo(30, "Stamina +15", true, "Stats"),
+		"Power Scroll" to TrackblazerItemInfo(30, "Power +15", true, "Stats"),
+		"Guts Scroll" to TrackblazerItemInfo(30, "Guts +15", true, "Stats"),
+		"Wit Scroll" to TrackblazerItemInfo(30, "Wisdom +15", true, "Stats"),
 
 		// Energy and Motivation
-		"Vita 20" to Triple(35, "Energy +20", false),
-		"Vita 40" to Triple(55, "Energy +40", false),
-		"Vita 65" to Triple(75, "Energy +65", false),
-		"Royal Kale Juice" to Triple(70, "Energy +100, Motivation -1", false),
-		"Energy Drink MAX" to Triple(30, "Maximum energy +4, Energy +5", true),
-		"Energy Drink MAX EX" to Triple(50, "Maximum energy +8", true),
-		"Plain Cupcake" to Triple(30, "Motivation +1", true),
-		"Berry Sweet Cupcake" to Triple(55, "Motivation +2", true),
+		"Vita 20" to TrackblazerItemInfo(35, "Energy +20", false, "Energy and Motivation"),
+		"Vita 40" to TrackblazerItemInfo(55, "Energy +40", false, "Energy and Motivation"),
+		"Vita 65" to TrackblazerItemInfo(75, "Energy +65", false, "Energy and Motivation"),
+		"Royal Kale Juice" to TrackblazerItemInfo(70, "Energy +100, Motivation -1", false, "Energy and Motivation"),
+		"Energy Drink MAX" to TrackblazerItemInfo(30, "Maximum energy +4, Energy +5", true, "Energy and Motivation"),
+		"Energy Drink MAX EX" to TrackblazerItemInfo(50, "Maximum energy +8", true, "Energy and Motivation"),
+		"Plain Cupcake" to TrackblazerItemInfo(30, "Motivation +1", true, "Energy and Motivation"),
+		"Berry Sweet Cupcake" to TrackblazerItemInfo(55, "Motivation +2", true, "Energy and Motivation"),
 
 		// Bond
-		"Yummy Cat Food" to Triple(10, "Yayoi Akikawa's bond +5", true),
-		"Grilled Carrots" to Triple(40, "All Support card bonds +5", true),
+		"Yummy Cat Food" to TrackblazerItemInfo(10, "Yayoi Akikawa's bond +5", true, "Bond"),
+		"Grilled Carrots" to TrackblazerItemInfo(40, "All Support card bonds +5", true, "Bond"),
 
 		// Get Good Conditions
-		"Pretty Mirror" to Triple(150, "Get Charming ○ status effect", true),
-		"Reporter's Binoculars" to Triple(150, "Get Hot Topic status effect", true),
-		"Master Practice Guide" to Triple(150, "Get Practice Perfect ○ status effect", true),
-		"Scholar's Hat" to Triple(280, "Get Fast Learner status effect", true),
+		"Pretty Mirror" to TrackblazerItemInfo(150, "Get Charming ○ status effect", true, "Get Good Conditions"),
+		"Reporter's Binoculars" to TrackblazerItemInfo(150, "Get Hot Topic status effect", true, "Get Good Conditions"),
+		"Master Practice Guide" to TrackblazerItemInfo(150, "Get Practice Perfect ○ status effect", true, "Get Good Conditions"),
+		"Scholar's Hat" to TrackblazerItemInfo(280, "Get Fast Learner status effect", true, "Get Good Conditions"),
 
 		// Heal Bad Conditions
-		"Fluffy Pillow" to Triple(15, "Heal Night Owl", true),
-		"Pocket Planner" to Triple(15, "Heal Slacker", true),
-		"Rich Hand Cream" to Triple(15, "Heal Skin Outbreak", true),
-		"Smart Scale" to Triple(15, "Heal Slow Metabolism", true),
-		"Aroma Diffuser" to Triple(15, "Heal Migraine", true),
-		"Practice Drills DVD" to Triple(15, "Heal Practice Poor", true),
-		"Miracle Cure" to Triple(40, "Heal all negative status effects", true),
+		"Fluffy Pillow" to TrackblazerItemInfo(15, "Heal Night Owl", true, "Heal Bad Conditions"),
+		"Pocket Planner" to TrackblazerItemInfo(15, "Heal Slacker", true, "Heal Bad Conditions"),
+		"Rich Hand Cream" to TrackblazerItemInfo(15, "Heal Skin Outbreak", true, "Heal Bad Conditions"),
+		"Smart Scale" to TrackblazerItemInfo(15, "Heal Slow Metabolism", true, "Heal Bad Conditions"),
+		"Aroma Diffuser" to TrackblazerItemInfo(15, "Heal Migraine", true, "Heal Bad Conditions"),
+		"Practice Drills DVD" to TrackblazerItemInfo(15, "Heal Practice Poor", true, "Heal Bad Conditions"),
+		"Miracle Cure" to TrackblazerItemInfo(40, "Heal all negative status effects", true, "Heal Bad Conditions"),
 
 		// Training Facilities
-		"Speed Training Application" to Triple(150, "Speed Training Level +1", true),
-		"Stamina Training Application" to Triple(150, "Stamina Training Level +1", true),
-		"Power Training Application" to Triple(150, "Power Training Level +1", true),
-		"Guts Training Application" to Triple(150, "Guts Training Level +1", true),
-		"Wit Training Application" to Triple(150, "Wisdom Training Level +1", true),
-		"Reset Whistle" to Triple(20, "Shuffle support card distribution", false),
+		"Speed Training Application" to TrackblazerItemInfo(150, "Speed Training Level +1", true, "Training Facilities"),
+		"Stamina Training Application" to TrackblazerItemInfo(150, "Stamina Training Level +1", true, "Training Facilities"),
+		"Power Training Application" to TrackblazerItemInfo(150, "Power Training Level +1", true, "Training Facilities"),
+		"Guts Training Application" to TrackblazerItemInfo(150, "Guts Training Level +1", true, "Training Facilities"),
+		"Wit Training Application" to TrackblazerItemInfo(150, "Wisdom Training Level +1", true, "Training Facilities"),
 
 		// Training Effects
-		"Coaching Megaphone" to Triple(40, "Training bonus +20% for 4 turns", false),
-		"Motivating Megaphone" to Triple(55, "Training bonus +40% for 3 turns", false),
-		"Empowering Megaphone" to Triple(70, "Training bonus +60% for 2 turns", false),
-		"Speed Ankle Weights" to Triple(50, "Speed training bonus +50%, Energy consumption +20% (One turn)", false),
-		"Stamina Ankle Weights" to Triple(50, "Stamina training bonus +50%, Energy consumption +20% (One turn)", false),
-		"Power Ankle Weights" to Triple(50, "Power training bonus +50%, Energy consumption +20% (One turn)", false),
-		"Guts Ankle Weights" to Triple(50, "Guts training bonus +50%, Energy consumption +20% (One turn)", false),
-		"Good-Luck Charm" to Triple(40, "Training failure rate set to 0% (One turn)", false),
+		"Coaching Megaphone" to TrackblazerItemInfo(40, "Training bonus +20% for 4 turns", false, "Training Effects"),
+		"Motivating Megaphone" to TrackblazerItemInfo(55, "Training bonus +40% for 3 turns", false, "Training Effects"),
+		"Empowering Megaphone" to TrackblazerItemInfo(70, "Training bonus +60% for 2 turns", false, "Training Effects"),
+		"Speed Ankle Weights" to TrackblazerItemInfo(50, "Speed training bonus +50%, Energy consumption +20% (One turn)", false, "Training Effects"),
+		"Stamina Ankle Weights" to TrackblazerItemInfo(50, "Stamina training bonus +50%, Energy consumption +20% (One turn)", false, "Training Effects"),
+		"Power Ankle Weights" to TrackblazerItemInfo(50, "Power training bonus +50%, Energy consumption +20% (One turn)", false, "Training Effects"),
+		"Guts Ankle Weights" to TrackblazerItemInfo(50, "Guts training bonus +50%, Energy consumption +20% (One turn)", false, "Training Effects"),
+		"Wit Ankle Weights" to TrackblazerItemInfo(50, "Wisdom training bonus +50%, Energy consumption +20% (One turn)", false, "Training Effects"),
+		"Good-Luck Charm" to TrackblazerItemInfo(40, "Training failure rate set to 0% (One turn)", false, "Training Effects"),
+        "Reset Whistle" to TrackblazerItemInfo(20, "Shuffle support card distribution", false, "Training Effects"),
 
 		// Races
-		"Artisan Cleat Hammer" to Triple(25, "Race bonus +20% (One turn)", false),
-		"Master Cleat Hammer" to Triple(40, "Race bonus +35% (One turn)", false),
-		"Glow Sticks" to Triple(15, "Race fan gain +50% (One turn)", false)
+		"Artisan Cleat Hammer" to TrackblazerItemInfo(25, "Race bonus +20% (One turn)", false, "Races"),
+		"Master Cleat Hammer" to TrackblazerItemInfo(40, "Race bonus +35% (One turn)", false, "Races"),
+		"Glow Sticks" to TrackblazerItemInfo(15, "Race fan gain +50% (One turn)", false, "Races")
 	)
 
 	private var isShopOnSale: Boolean = false
@@ -268,7 +278,7 @@ class TrackblazerShopList(private val game: Game) {
 	 * @return The item price if detected, or original price otherwise.
 	 */
 	fun getShopItemPrice(itemName: String, bitmap: Bitmap): Int {
-		val originalPrice = shopItems[itemName]?.first ?: 0
+		val originalPrice = shopItems[itemName]?.price ?: 0
 
 		// Use the flag to handle discounted prices instead of repeated checks.
 		if (!isShopOnSale) {
@@ -349,19 +359,41 @@ class TrackblazerShopList(private val game: Game) {
 		// Step 2: Calculation & Summary.
 		// Determine which items from the priority list are available and affordable.
 		val itemsToBuy = mutableListOf<String>()
+		val skippedItemsReasons = mutableMapOf<String, String>()
 		var remainingCoinsAfterProposed = currentCoins
 		for (item in priorityList) {
 			val price = availableInShop[item]
-			if (price != null && remainingCoinsAfterProposed >= price && item !in itemsToBuy) {
-				itemsToBuy.add(item)
-				remainingCoinsAfterProposed -= price
+			if (price != null) {
+				if (remainingCoinsAfterProposed >= price) {
+					if (item !in itemsToBuy) {
+						itemsToBuy.add(item)
+						remainingCoinsAfterProposed -= price
+					}
+				} else {
+					skippedItemsReasons[item] = "Too expensive ($price required, but only $remainingCoinsAfterProposed left)"
+				}
+			} else {
+				skippedItemsReasons[item] = "Not found in shop"
 			}
 		}
 		
 		// Log the summary of proposed purchases.
-        MessageLog.i(TAG, "============== Items To Buy ==============")
+        MessageLog.i(TAG, "============== Shop Evaluation Summary ==============")
+		if (availableInShop.isEmpty()) {
+			MessageLog.i(TAG, "[SHOP] No items were successfully identified in the shop scan. Check OCR and bounding boxes.")
+		} else {
+			MessageLog.i(TAG, "[SHOP] Identified ${availableInShop.size} items in shop.")
+		}
+
         if (itemsToBuy.isEmpty()) {
-            MessageLog.i(TAG, "[SHOP] No items from priority list are available or affordable. Aborting...")
+            MessageLog.i(TAG, "[SHOP] No items from the priority list will be bought. Current coins: $currentCoins.")
+			if (skippedItemsReasons.isNotEmpty()) {
+				MessageLog.i(TAG, "[SHOP] Evaluation reasons for first 10 priority items:")
+				priorityList.take(10).forEach { item ->
+					val reason = skippedItemsReasons[item] ?: "Eligible but somehow skipped"
+					MessageLog.i(TAG, "\t- $item: $reason")
+				}
+			}
             // Exit early if not a dry run.
             if (!bDryRun) {
                 MessageLog.i(TAG, "==========================================")
