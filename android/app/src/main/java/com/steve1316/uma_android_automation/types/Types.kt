@@ -113,6 +113,22 @@ enum class Mood {
     GOOD,
     GREAT;
 
+    /** Increments the mood level by one, capping at GREAT.
+     *
+     * @return The new mood level.
+     */
+    fun increment(): Mood {
+        return entries.getOrElse(ordinal + 1) { GREAT }
+    }
+
+    /** Decrements the mood level by one, capping at AWFUL.
+     *
+     * @return The new mood level.
+     */
+    fun decrement(): Mood {
+        return entries.getOrElse(ordinal - 1) { AWFUL }
+    }
+
     companion object {
         private val nameMap = entries.associateBy { it.name }
 
