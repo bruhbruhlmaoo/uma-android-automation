@@ -160,16 +160,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                     if (ocrCount != -1) {
                         MessageLog.i(TAG, "[TRACKBLAZER] OCR detected a count of $ocrCount consecutive races.")
                         
-                        // Discrepancy logic: if (OCR - (actual + 1)) >= 3 then treat it as 1 (error/reset) else trust OCR.
-                        val expectedCount = consecutiveRaceCount + 1
-                        val diff = Math.abs(ocrCount - expectedCount)
-                        
-                        if (diff >= 3) {
-                            MessageLog.w(TAG, "[TRACKBLAZER] Large discrepancy in consecutive race count (OCR=$ocrCount, Expected=$expectedCount). Ignoring OCR and incrementing internal counter.")
-                            consecutiveRaceCount = expectedCount
-                        } else {
-                            consecutiveRaceCount = ocrCount
-                        }
+                        // Trust OCR as the primary source of truth if it successfully parses a number.
+                        consecutiveRaceCount = ocrCount
                         counterUpdatedByOCR = true
                     } else {
                         MessageLog.w(TAG, "[TRACKBLAZER] Failed to parse consecutive race count from OCR. Counter will be incremented after race.")
