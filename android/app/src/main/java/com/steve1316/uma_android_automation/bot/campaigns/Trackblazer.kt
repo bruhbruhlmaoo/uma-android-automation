@@ -68,6 +68,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 	/** Flag to track when a Rival Race was won to trigger item purchase. */
 	private var bWonRivalRace: Boolean = false
 
+    /** Threshold for energy level to use energy items. */
+    private var energyThresholdToUseEnergyItems: Int = 40
 
     /**
      * Detects and handles any dialog popups.
@@ -1099,7 +1101,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
 
         // 4. Energy Items Check. (Only one per pass)
-        if (trainee.energy <= 20 && shopList.energyItemNames.contains(itemName)) {
+        if (trainee.energy <= energyThresholdToUseEnergyItems && shopList.energyItemNames.contains(itemName)) {
             val gainMap = mapOf("Vita 65" to 65, "Vita 40" to 40, "Vita 20" to 20)
             val gain = gainMap[itemName] ?: 0
             if (trainee.energy + gain <= 100) {
@@ -1161,14 +1163,14 @@ class Trackblazer(game: Game) : Campaign(game) {
 		val failureChance = if (trainingSelected != null) training.trainingMap[trainingSelected]?.failureChance ?: 0 else 0
 		val hasCharm = trainingSelected != null && !bUsedCharmToday && failureChance >= 20 && (currentInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm")
 
-		val potentialUse = (trainee.energy <= 20 && hasEnergyItems) || 
+		val potentialUse = (trainee.energy <= energyThresholdToUseEnergyItems && hasEnergyItems) || 
 						   (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) ||
 						   hasBadConditionItems || hasStatItems || hasMegaphones || hasAnkleWeights || hasCharm
 
 		if (needSync || potentialUse) {
 			val reasons = mutableListOf<String>()
 			if (needSync) reasons.add("Sync needed")
-			if (trainee.energy <= 20 && hasEnergyItems) reasons.add("Low energy")
+			if (trainee.energy <= energyThresholdToUseEnergyItems && hasEnergyItems) reasons.add("Low energy")
 			if (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) reasons.add("Low mood")
 			if (hasBadConditionItems) reasons.add("Bad conditions")
 			if (hasStatItems) reasons.add("Stat items available")
