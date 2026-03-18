@@ -114,7 +114,17 @@ class Trackblazer(game: Game) : Campaign(game) {
 		} ?: return DialogHandlerResult.NoDialogDetected
 
         when (detectedDialog.name) {
-            "exchange_complete" -> detectedDialog.ok(game.imageUtils)
+            "exchange_complete" -> {
+                // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
+                if (detectedDialog.ok(game.imageUtils)) {
+                    game.wait(0.5)
+                    // This clicks the "Use Training Items" button on the "Confirm Use" dialog.
+                    handleDialogs(DialogConfirmUse)
+                } else {
+                    // Fallback to closing the dialog if "Confirm Use" button was not found.
+                    detectedDialog.close(game.imageUtils)
+                }
+            }
             "confirm_use" -> detectedDialog.ok(game.imageUtils)
             "shop" -> {
                 // Once it gets to Junior Year Early July, the shop will be unlocked for use.

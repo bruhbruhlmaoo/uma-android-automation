@@ -760,10 +760,11 @@ object DialogExchangeComplete : DialogInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]DialogExchangeComplete"
     override val name: String = "exchange_complete"
     override val title: String = "Exchange Complete"
-    override val closeButton = null
-    override val okButton: BaseComponentInterface = ButtonClose
+    override val closeButton: BaseComponentInterface = ButtonClose
+    override val okButton: BaseComponentInterface = ButtonConfirmUse
     override val buttons: List<BaseComponentInterface> = listOf(
         ButtonClose,
+        ButtonConfirmUse,
     )
 }
 
