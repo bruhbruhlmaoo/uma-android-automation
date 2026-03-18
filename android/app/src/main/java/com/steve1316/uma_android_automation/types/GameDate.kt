@@ -8,6 +8,7 @@ import com.steve1316.uma_android_automation.utils.CustomImageUtils
 import com.steve1316.uma_android_automation.types.DateYear
 import com.steve1316.uma_android_automation.types.DateMonth
 import com.steve1316.uma_android_automation.types.DatePhase
+import com.steve1316.uma_android_automation.components.LabelEnergy
 
 /**
  * Represents the Game's date.
@@ -125,10 +126,11 @@ class GameDate {
          * This is just a simple wrapper around [fromDateString].
          *
          * @param imageUtils A reference to a CustomImageUtils instance.
+         * @param scenario The scenario name for special handling.
          * @return The detected GameDate object, or NULL if nothing could be detected.
          */
-        fun detectDate(imageUtils: CustomImageUtils): GameDate? {
-            return fromDateString(imageUtils = imageUtils)
+        fun detectDate(imageUtils: CustomImageUtils, scenario: String? = null): GameDate? {
+            return fromDateString(imageUtils = imageUtils, scenario = scenario)
         }
 
         /**
@@ -140,11 +142,12 @@ class GameDate {
          *          If NULL, then imageUtils will be used to detect this value.
          * @param imageUtils The CustomImageUtils instance used to detect
          * the date string and turnsLeft if either are NULL.
+         * @param scenario The scenario name for special handling.
          *
          * @return The GameDate object generated from the date string and turns left,
          * or NULL if conversion failed.
          */
-        fun fromDateString(s: String? = null, turnsLeft: Int? = null, imageUtils: CustomImageUtils): GameDate? {
+        fun fromDateString(s: String? = null, turnsLeft: Int? = null, imageUtils: CustomImageUtils, scenario: String? = null): GameDate? {
             val s: String? = s ?: imageUtils.determineDayString()
             if (s == null || s == "") {
                 MessageLog.d(TAG, "fromDateString:: Passed string is NULL or empty.")
@@ -172,7 +175,7 @@ class GameDate {
             if (s.lowercase().contains("finale")) {
                 MessageLog.d(TAG, "fromDateString:: Finale season.")
                 // Pass the cached day string to avoid redundant OCR operations.
-                val (finalsDay, _) = getFinalsDay(imageUtils = imageUtils, cachedDayString = s)
+                val (finalsDay, _) = getFinalsDay(imageUtils = imageUtils, cachedDayString = s, scenario = scenario)
                 if (finalsDay == null) {
                     MessageLog.w(TAG, "fromDateString:: Could not determine day in finale season. Defaulting to first day of finale.")
                     return GameDate(day = 73)
@@ -263,9 +266,10 @@ class GameDate {
          * @param imageUtils A reference to a CustomImageUtils instance.
          * @param cachedDayString Optional cached day string to avoid redundant OCR.
          * @param isOnMainScreen If true, skip the check in [determineDayString].
+         * @param scenario The scenario name for special handling.
          * @return A Pair containing the day number and day string.
          */
-        fun getFinalsDay(imageUtils: CustomImageUtils, cachedDayString: String? = null, isOnMainScreen: Boolean = false): Pair<Int?, String?> {
+        fun getFinalsDay(imageUtils: CustomImageUtils, cachedDayString: String? = null, isOnMainScreen: Boolean = false, scenario: String? = null): Pair<Int?, String?> {
             // Get the day string first to check if we're in finals before doing expensive OCR operations.
             val dayString: String? = cachedDayString ?: imageUtils.determineDayString(isOnMainScreen)
             if (dayString == null) {
@@ -277,6 +281,47 @@ class GameDate {
             if (!dayString.lowercase().contains("finale")) {
                 MessageLog.w(TAG, "[DATE] getFinalsDay:: Not in finale season. Day string: $dayString")
                 return Pair(null, dayString)
+            }
+
+            if (scenario == "Trackblazer") {
+                // If it's Trackblazer, we check the specific OCR region for the finale stage.
+                val (energyLocation, sourceBitmap) = LabelEnergy.find(imageUtils)
+                if (energyLocation != null) {
+                    val detectedText = imageUtils.performOCROnRegion(
+                        sourceBitmap,
+                        imageUtils.relX(energyLocation.x, -245),
+                        imageUtils.relY(energyLocation.y, 280),
+                        imageUtils.relWidth(145),
+                        imageUtils.relHeight(35),
+                        useThreshold = true,
+                        useGrayscale = true,
+                        scale = 2.0,
+                        ocrEngine = "mlkit",
+                        debugName = "TrackblazerFinaleDay"
+                    ).lowercase()
+
+                    return when {
+                        detectedText.contains("0/3") -> {
+                            MessageLog.d(TAG, "[DATE] Trackblazer Finale Qualifier (Turn 73).")
+                            Pair(73, dayString)
+                        }
+                        detectedText.contains("1/3") -> {
+                            MessageLog.d(TAG, "[DATE] Trackblazer Finale Semi-Final (Turn 74).")
+                            Pair(74, dayString)
+                        }
+                        detectedText.contains("2/3") -> {
+                            MessageLog.d(TAG, "[DATE] Trackblazer Finale Finals (Turn 75).")
+                            Pair(75, dayString)
+                        }
+                        else -> {
+                            MessageLog.w(TAG, "[DATE] Could not determine Trackblazer Finale date from text: \"$detectedText\". Defaulting to turn 73.")
+                            Pair(73, dayString)
+                        }
+                    }
+                } else {
+                    MessageLog.w(TAG, "[DATE] Could not find energy asset for Trackblazer finale detection. Defaulting to turn 73.")
+                    return Pair(73, dayString)
+                }
             }
 
             val goalText = imageUtils.getGoalText().lowercase()
@@ -370,16 +415,17 @@ class GameDate {
      * Updates the current date by detecting it from the screen.
      *
      * @param imageUtils A reference to a CustomImageUtils instance.
+     * @param scenario The scenario name for special handling.
      * @param isOnMainScreen If true, skip the check in [determineDayString].
      * @return True if the date was updated successfully, false otherwise.
      */
-    fun update(imageUtils: CustomImageUtils, isOnMainScreen: Boolean = false): Boolean {
-        val (finalsDay, cachedDayString) = getFinalsDay(imageUtils, isOnMainScreen = isOnMainScreen)
+    fun update(imageUtils: CustomImageUtils, scenario: String? = null, isOnMainScreen: Boolean = false): Boolean {
+        val (finalsDay, cachedDayString) = getFinalsDay(imageUtils, isOnMainScreen = isOnMainScreen, scenario = scenario)
         if (finalsDay != null) {
             updateDay(finalsDay)
         } else {
             // Pass the cached day string to avoid doing expensive OCR operations again.
-            val tmpDate: GameDate? = fromDateString(s = cachedDayString, imageUtils = imageUtils)
+            val tmpDate: GameDate? = fromDateString(s = cachedDayString, imageUtils = imageUtils, scenario = scenario)
             if (tmpDate == null) {
                 MessageLog.e(TAG, "GameDate.fromDateString returned NULL.")
                 return false
