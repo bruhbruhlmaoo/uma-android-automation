@@ -12,8 +12,8 @@ import com.steve1316.uma_android_automation.utils.ScrollListEntry
 import org.opencv.core.Point
 import com.steve1316.uma_android_automation.types.StatName
 
-/** Stores a single scanned item's entry and disabled state. */
-data class ScannedItem(val entry: ScrollListEntry, val isDisabled: Boolean)
+/** Stores a single scanned item's entry, name, and disabled state. */
+data class ScannedItem(val entry: ScrollListEntry, val itemName: String, val isDisabled: Boolean)
 
 /**
  * Stores information about a single item in the Trackblazer scenario.
@@ -337,7 +337,7 @@ class TrackblazerShopList(private val game: Game) {
 		// Step 1: Pre-scan Phase.
 		// Scan the entire shop to log each item and its price, and to identify what is available.
 		MessageLog.d(TAG, "[SHOP] Beginning process of scanning shop items...")
-		val availableInShop = mutableMapOf<String, Int>()
+		val availableInShop = mutableListOf<Triple<String, Int, ScrollListEntry>>()
 		val itemNameMap = mutableMapOf<Int, String>()
 		processItemsWithFallback(
 			keyExtractor = { entry -> 
@@ -350,25 +350,29 @@ class TrackblazerShopList(private val game: Game) {
 			val itemName = itemNameMap[entry.index] ?: getShopItemName(entry, isDisabled)
 			if (itemName != null) {
 				val price = getShopItemPrice(itemName, entry.bitmap)
-				MessageLog.d(TAG, "\t$itemName: $price coins")
-				availableInShop[itemName] = price
+				MessageLog.d(TAG, "\t$itemName: $price coins at index ${entry.index}")
+				availableInShop.add(Triple(itemName, price, entry))
 			}
 			false
 		}
 
 		// Step 2: Calculation & Summary.
 		// Determine which items from the priority list are available and affordable.
-		val itemsToBuy = mutableListOf<String>()
+		val itemsToBuy = mutableListOf<Triple<String, Int, ScrollListEntry>>()
 		val skippedItemsReasons = mutableMapOf<String, String>()
 		var remainingCoinsAfterProposed = currentCoins
+		
+		val tempAvailable = availableInShop.toMutableList()
 		for (item in priorityList) {
-			val price = availableInShop[item]
-			if (price != null) {
+			val availableIndex = tempAvailable.indexOfFirst { it.first == item }
+			if (availableIndex != -1) {
+				val foundItem = tempAvailable[availableIndex]
+				val price = foundItem.second
 				if (remainingCoinsAfterProposed >= price) {
-					if (item !in itemsToBuy) {
-						itemsToBuy.add(item)
-						remainingCoinsAfterProposed -= price
-					}
+					itemsToBuy.add(foundItem)
+					remainingCoinsAfterProposed -= price
+					// Remove from temp list so we don't buy the same SLOT twice for one priority entry.
+					tempAvailable.removeAt(availableIndex)
 				} else {
 					skippedItemsReasons[item] = "Too expensive ($price required, but only $remainingCoinsAfterProposed left)"
 				}
@@ -401,8 +405,8 @@ class TrackblazerShopList(private val game: Game) {
             }
         }
 
-        for (name in itemsToBuy) {
-            MessageLog.i(TAG, "\t$name: ${availableInShop[name]} coins")
+        for (boughtItem in itemsToBuy) {
+            MessageLog.i(TAG, "\t${boughtItem.first}: ${boughtItem.second} coins")
         }
         val totalCost = currentCoins - remainingCoinsAfterProposed
         MessageLog.i(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
@@ -410,12 +414,13 @@ class TrackblazerShopList(private val game: Game) {
 
 		if (bDryRun) {
             // Return early for the test.
-			return itemsToBuy
+			return itemsToBuy.map { it.first }
 		}
 
         // Step 3: Purchasing Phase.
 		// Re-process the list to click on the selected items.
-		val itemsBought = mutableSetOf<String>()
+		val itemsBought = mutableListOf<String>()
+		val itemsRemainingToClick = itemsToBuy.toMutableList()
 		val itemNameMapInPurchase = mutableMapOf<Int, String>()
 		processItemsWithFallback(
 			keyExtractor = { entry -> 
@@ -426,13 +431,20 @@ class TrackblazerShopList(private val game: Game) {
 		) { entry ->
 			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
 			val itemName = itemNameMapInPurchase[entry.index] ?: getShopItemName(entry, isDisabled)
-			if (itemName != null && itemName in itemsToBuy && itemName !in itemsBought) {
-				MessageLog.i(TAG, "Selecting \"$itemName\" for ${availableInShop[itemName]} coins.")
-				game.tap(entry.bbox.cx.toDouble(), entry.bbox.cy.toDouble())
-				itemsBought.add(itemName)
+			
+			if (itemName != null) {
+				// Find the first matching item in our purchase list.
+				val targetIndex = itemsRemainingToClick.indexOfFirst { it.first == itemName }
+				if (targetIndex != -1) {
+					val targetItem = itemsRemainingToClick[targetIndex]
+					MessageLog.i(TAG, "Selecting \"$itemName\" for ${targetItem.second} coins at index ${entry.index}.")
+					game.tap(entry.bbox.cx.toDouble(), entry.bbox.cy.toDouble())
+					itemsBought.add(itemName)
+					itemsRemainingToClick.removeAt(targetIndex)
+				}
 			}
 			// Early exit if we've bought all items in the proposed list.
-			itemsBought.size == itemsToBuy.size
+			itemsRemainingToClick.isEmpty()
 		}
 
 		if (itemsBought.isNotEmpty()) {
@@ -476,7 +488,7 @@ class TrackblazerShopList(private val game: Game) {
 		) { entry ->
 			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
 			val itemName = itemNameMapInQuickUse[entry.index] ?: getShopItemName(entry, isDisabled)
-			if (itemName != null && shopItems[itemName]?.third == true) {
+			if (itemName != null && shopItems[itemName]?.isQuickUsage == true) {
 				// Check if the item's "+" button is disabled.
 				if (!isDisabled) {
 					val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
@@ -502,31 +514,36 @@ class TrackblazerShopList(private val game: Game) {
      *
      * @param itemNames The names of the items to use.
      * @param bUseAll If true, attempts to use all items in the list. If false, stops after the first successful usage.
-     * @param scannedItems Optional map of pre-scanned items to use instead of performing a new scan.
+     * @param scannedItems Optional list of pre-scanned items to use instead of performing a new scan.
      * @return A list of names of the items used.
      */
-    fun useSpecificItems(itemNames: List<String>, bUseAll: Boolean = false, scannedItems: Map<String, ScannedItem>? = null): List<String> {
-        val usedItems = mutableListOf<String>()
-        if (itemNames.isEmpty()) return usedItems
+    fun useSpecificItems(itemNames: List<String>, bUseAll: Boolean = false, scannedItems: List<ScannedItem>? = null): List<String> {
+        val successfullyUsedNames = mutableListOf<String>()
+        if (itemNames.isEmpty()) return successfullyUsedNames
 
         if (scannedItems != null) {
             MessageLog.d(TAG, "[TRACKBLAZER] Using pre-scanned items for specific item usage.")
+            val tempScanned = scannedItems.toMutableList()
             for (name in itemNames) {
-                if (usedItems.contains(name)) continue
+                // If we already used this name and aren't using all, skip.
+                if (!bUseAll && successfullyUsedNames.contains(name)) continue
                 
-                val info = scannedItems[name]
-                if (info != null && !info.isDisabled) {
+                val itemIndex = tempScanned.indexOfFirst { it.itemName == name && !it.isDisabled }
+                if (itemIndex != -1) {
+                    val info = tempScanned[itemIndex]
                     val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, info.entry.bitmap)
                     if (plusButtonPoint != null) {
                         MessageLog.i(TAG, "Queuing specific item for use: \"$name\" (from pre-scanned).")
                         game.tap(info.entry.bbox.x + plusButtonPoint.x, info.entry.bbox.y + plusButtonPoint.y)
-                        usedItems.add(name)
+                        successfullyUsedNames.add(name)
+                        // Remove from temp list so we don't try to use the SAME instance twice.
+                        tempScanned.removeAt(itemIndex)
                         
-                        if (!bUseAll) return usedItems
+                        if (!bUseAll) return successfullyUsedNames
                     }
                 }
             }
-            return usedItems
+            return successfullyUsedNames
         }
 
 		val itemNameMapInUseSpecific = mutableMapOf<Int, String>()
@@ -539,14 +556,14 @@ class TrackblazerShopList(private val game: Game) {
 		) { entry ->
             val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
             val name = itemNameMapInUseSpecific[entry.index] ?: getShopItemName(entry, isDisabled)
-            if (name != null && itemNames.contains(name) && !usedItems.contains(name)) {
+            if (name != null && itemNames.contains(name) && !successfullyUsedNames.contains(name)) {
                 // Check if the item's "+" button is disabled.
                 if (!isDisabled) {
                     val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
                     if (plusButtonPoint != null) {
                         MessageLog.i(TAG, "Queuing specific item for use: \"$name\".")
                         game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
-                        usedItems.add(name)
+                        successfullyUsedNames.add(name)
                         
                         // If we only wanted to use one item, we are done.
                         if (!bUseAll) return@processItemsWithFallback true
@@ -556,16 +573,16 @@ class TrackblazerShopList(private val game: Game) {
             false
         }
 
-        return usedItems
+        return successfullyUsedNames
     }
 
     /**
      * Finds and uses the highest value Megaphone available in the inventory.
      *
-     * @param scannedItems Optional map of pre-scanned items.
+     * @param scannedItems Optional list of pre-scanned items.
      * @return The item name of the megaphone used, or NULL if none were used.
      */
-    fun useBestMegaphone(scannedItems: Map<String, ScannedItem>? = null): String? {
+    fun useBestMegaphone(scannedItems: List<ScannedItem>? = null): String? {
         val megaphonePriority = listOf("Empowering Megaphone", "Motivating Megaphone", "Coaching Megaphone")
         val used = useSpecificItems(megaphonePriority, bUseAll = false, scannedItems = scannedItems)
         return used.firstOrNull()
@@ -575,10 +592,10 @@ class TrackblazerShopList(private val game: Game) {
      * Uses the Ankle Weights corresponding to the specified stat.
      *
      * @param stat The stat to use ankle weights for.
-     * @param scannedItems Optional map of pre-scanned items.
+     * @param scannedItems Optional list of pre-scanned items.
      * @return True if ankle weights were queued.
      */
-    fun useAnkleWeights(stat: StatName, scannedItems: Map<String, ScannedItem>? = null): Boolean {
+    fun useAnkleWeights(stat: StatName, scannedItems: List<ScannedItem>? = null): Boolean {
         val itemName = when (stat) {
             StatName.SPEED -> "Speed Ankle Weights"
             StatName.STAMINA -> "Stamina Ankle Weights"
@@ -632,10 +649,10 @@ class TrackblazerShopList(private val game: Game) {
     /**
      * Uses the Good-Luck Charm if available.
      *
-     * @param scannedItems Optional map of pre-scanned items.
+     * @param scannedItems Optional list of pre-scanned items.
      * @return True if the charm was queued.
      */
-    fun useGoodLuckCharm(scannedItems: Map<String, ScannedItem>? = null): Boolean {
+    fun useGoodLuckCharm(scannedItems: List<ScannedItem>? = null): Boolean {
         return useSpecificItems(listOf("Good-Luck Charm"), scannedItems = scannedItems).isNotEmpty()
     }
 

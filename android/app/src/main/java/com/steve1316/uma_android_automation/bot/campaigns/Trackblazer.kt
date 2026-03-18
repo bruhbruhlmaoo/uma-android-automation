@@ -981,7 +981,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 		MessageLog.i(TAG, "[TRACKBLAZER] Starting inventory management pass...")
 		val nextInventory = currentInventory.toMutableMap()
 		val currentDisabledItems = mutableSetOf<String>()
-        val scannedItems = mutableMapOf<String, ScannedItem>()
+        val scannedItemsList = mutableListOf<ScannedItem>()
 		var anyUsed = false
 
 		val itemNameMapInManage = mutableMapOf<Int, String>()
@@ -997,7 +997,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 			
 			if (itemName != null) {
 				MessageLog.d(TAG, "[TRACKBLAZER] Detected item \"$itemName\" (Disabled: $isDisabled) at index ${entry.index}.")
-                scannedItems[itemName] = ScannedItem(entry, isDisabled)
+                scannedItemsList.add(ScannedItem(entry, itemName, isDisabled))
 				
 				// Track disabled items.
 				if (isDisabled) {
@@ -1058,8 +1058,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 		}
 
 		// Finalize Sync.
+        val scannedItemNames = scannedItemsList.map { it.itemName }.toSet()
 		nextInventory.keys.forEach { name ->
-			if (!scannedItems.containsKey(name) && (nextInventory[name] ?: 0) > 0) {
+			if (!scannedItemNames.contains(name) && (nextInventory[name] ?: 0) > 0) {
 				nextInventory[name] = 0
 			}
 		}
@@ -1072,7 +1073,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
 		// Perform megaphone usage AFTER the scan to ensure the best one is used if available.
 		if (!bQuickUseOnly && !bDryRun && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0) {
-			val megaphoneUsed = shopList.useBestMegaphone(scannedItems)
+			val megaphoneUsed = shopList.useBestMegaphone(scannedItemsList)
 			if (megaphoneUsed != null) {
 				trainee.megaphoneTurnCounter = when (megaphoneUsed) {
 					"Empowering Megaphone" -> 2
