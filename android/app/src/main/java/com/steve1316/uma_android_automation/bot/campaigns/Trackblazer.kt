@@ -773,16 +773,32 @@ class Trackblazer(game: Game) : Campaign(game) {
      * @param itemName The name of the item.
      * @param entry The ScrollListEntry of the item.
      * @param logMessage The message to log when clicking.
+     * @param nextInventory The current inventory map being updated during this pass.
+     * @param recheck If true, captures a fresh crop of the entry to re-verify the button state.
      * @return True if the button was clicked, false otherwise.
      */
-    private fun clickItemPlusButton(itemName: String, entry: ScrollListEntry, logMessage: String): Boolean {
-        if (ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true) return false
+    private fun clickItemPlusButton(itemName: String, entry: ScrollListEntry, logMessage: String, nextInventory: MutableMap<String, Int>, recheck: Boolean = false): Boolean {
+		val bitmapToUse: Bitmap = if (recheck) {
+			val source = game.imageUtils.getSourceBitmap()
+			game.imageUtils.createSafeBitmap(source, entry.bbox.x, entry.bbox.y, entry.bbox.w, entry.bbox.h, "recheck item")
+		} else {
+			entry.bitmap
+		} ?: return false
 
-        val plusPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
+        if (ButtonSkillUp.checkDisabled(game.imageUtils, bitmapToUse) == true) return false
+
+        val plusPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmapToUse)
         if (plusPoint != null) {
             MessageLog.i(TAG, logMessage)
             game.tap(entry.bbox.x + plusPoint.x, entry.bbox.y + plusPoint.y)
-            useInventoryItem(itemName)
+
+			// Update the provided inventory map.
+			val count = nextInventory[itemName] ?: 0
+			if (count > 0) {
+				nextInventory[itemName] = count - 1
+				MessageLog.v(TAG, "[INVENTORY] Decremented $itemName via nextInventory. Remaining: ${nextInventory[itemName]}")
+			}
+
             return true
         }
         return false
@@ -965,7 +981,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
                     if (bQuickUseOnly) {
                         if (isQuick && !isDisabled) {
-                            if (clickItemPlusButton(itemName, entry, "Using quick-use item: \"$itemName\".")) {
+                            if (clickItemPlusButton(itemName, entry, "Using quick-use item: \"$itemName\".", nextInventory)) {
                                 anyUsed = true
                             }
                         }
@@ -973,7 +989,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         if (isStat && !isDisabled) {
                             var clicks = 0
                             while (true) {
-                                if (clickItemPlusButton(itemName, entry, "Queuing stat item: \"$itemName\".")) {
+                                if (clickItemPlusButton(itemName, entry, "Queuing stat item: \"$itemName\".", nextInventory, recheck = clicks > 0)) {
                                     anyUsed = true
                                     clicks++
                                     if (clicks >= 5) break
@@ -983,17 +999,17 @@ class Trackblazer(game: Game) : Campaign(game) {
                                 }
                             }
                         } else if (isBad && !isDisabled) {
-                            if (clickItemPlusButton(itemName, entry, "Queuing bad condition item: \"$itemName\".")) {
+                            if (clickItemPlusButton(itemName, entry, "Queuing bad condition item: \"$itemName\".", nextInventory)) {
                                 anyUsed = true
                             }
                         } else if (isQuick && !isDisabled) {
-                            if (clickItemPlusButton(itemName, entry, "Queuing quick-use item: \"$itemName\".")) {
+                            if (clickItemPlusButton(itemName, entry, "Queuing quick-use item: \"$itemName\".", nextInventory)) {
                                 anyUsed = true
                             }
                         } else if (trainee != null) {
                             // Handle Energy, Mood, Ankle Weights, Charm, etc.
                             // Megaphones are NOT handled here to ensure the best one is selected after the scan.
-                            if (handleInlineUsage(trainee, itemName, entry, isDisabled, trainingSelected)) {
+                            if (handleInlineUsage(trainee, itemName, entry, isDisabled, trainingSelected, nextInventory)) {
                                 anyUsed = true
                             }
                         }
@@ -1045,7 +1061,7 @@ class Trackblazer(game: Game) : Campaign(game) {
     /**
      * Handles usage of a specific item discovered during the scan loop.
      */
-    private fun handleInlineUsage(trainee: Trainee, itemName: String, entry: ScrollListEntry, isDisabled: Boolean, trainingSelected: StatName?): Boolean {
+    private fun handleInlineUsage(trainee: Trainee, itemName: String, entry: ScrollListEntry, isDisabled: Boolean, trainingSelected: StatName?, nextInventory: MutableMap<String, Int>): Boolean {
         if (isDisabled) return false
         
         // 1. Megaphone Check. (Legacy: Megaphones are now handled in manageInventoryItems)
@@ -1060,7 +1076,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                 else -> ""
             }
             if (itemName == neededWeight) {
-                if (clickItemPlusButton(itemName, entry, "Queuing $itemName via inline pass.")) {
+                if (clickItemPlusButton(itemName, entry, "Queuing $itemName via inline pass.", nextInventory)) {
                     return true
                 }
             }
@@ -1069,7 +1085,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         // 3. Good-Luck Charm Check.
         val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
         if (date.day >= 13 && !bUsedCharmToday && failureChance >= 20 && itemName == "Good-Luck Charm") {
-            if (clickItemPlusButton(itemName, entry, "Queuing Good-Luck Charm via inline pass.")) {
+            if (clickItemPlusButton(itemName, entry, "Queuing Good-Luck Charm via inline pass.", nextInventory)) {
                 bUsedCharmToday = true
                 return true
             }
@@ -1080,7 +1096,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             val gainMap = mapOf("Vita 65" to 65, "Vita 40" to 40, "Vita 20" to 20)
             val gain = gainMap[itemName] ?: 0
             if (trainee.energy + gain <= 100) {
-                if (clickItemPlusButton(itemName, entry, "Queuing $itemName for use (Energy: ${trainee.energy}%, Gain: +$gain).")) {
+                if (clickItemPlusButton(itemName, entry, "Queuing $itemName for use (Energy: ${trainee.energy}%, Gain: +$gain).", nextInventory)) {
                     trainee.energy += gain
                     return true
                 }
@@ -1090,7 +1106,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         // 5. Mood Items Check.
         if (trainee.mood.ordinal <= Mood.BAD.ordinal && (itemName == "Berry Sweet Cupcake" || itemName == "Plain Cupcake")) {
             // Very simple inline mood: use the first one seen.
-            if (clickItemPlusButton(itemName, entry, "Queuing $itemName for mood recovery.")) {
+            if (clickItemPlusButton(itemName, entry, "Queuing $itemName for mood recovery.", nextInventory)) {
                 trainee.mood = if (itemName == "Berry Sweet Cupcake") Mood.GOOD else Mood.NORMAL 
                 return true
             }
