@@ -297,6 +297,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 					MessageLog.i(TAG, "[TRACKBLAZER] Non-G1/G2/G3 race detected (${raceData.grade}). Skipping race item usage.")
 				}
 				
+				racing.lastRaceGrade = raceData.grade
+				racing.lastRaceIsRival = raceData.isRival
 				game.tap(suitableRaceLocation.x, suitableRaceLocation.y, "race_list_prediction_double_star", ignoreWaiting = true)
 				game.wait(0.5)
 			} else {
