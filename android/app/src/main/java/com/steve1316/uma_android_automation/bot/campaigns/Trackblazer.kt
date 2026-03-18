@@ -1091,7 +1091,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 		val hasBadConditionItems = currentInventory.any { (name, count) -> count > 0 && shopList.badConditionHealItemNames.contains(name) && !disabledItems.contains(name) }
 		val hasStatItems = currentInventory.any { (name, count) -> count > 0 && shopList.statItemNames.contains(name) && !disabledItems.contains(name) }
 		
-		val hasMegaphones = trainee.megaphoneTurnCounter == 0 && currentInventory.any { (name, count) -> count > 0 && (name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone") && !disabledItems.contains(name) }
+		val hasMegaphones = trainingSelected != null && trainee.megaphoneTurnCounter == 0 && currentInventory.any { (name, count) -> count > 0 && (name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone") && !disabledItems.contains(name) }
 		val hasAnkleWeights = trainingSelected != null && currentInventory.any { (name, count) -> 
 			count > 0 && name == when (trainingSelected) {
 				StatName.SPEED -> "Speed Ankle Weights"
@@ -1101,8 +1101,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 				else -> ""
 			} && !disabledItems.contains(name)
 		}
-		val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
-		val hasCharm = !bUsedCharmToday && failureChance >= 20 && (currentInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm")
+		val failureChance = if (trainingSelected != null) training.trainingMap[trainingSelected]?.failureChance ?: 0 else 0
+		val hasCharm = trainingSelected != null && !bUsedCharmToday && failureChance >= 20 && (currentInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm")
 
 		val potentialUse = (trainee.energy <= 20 && hasEnergyItems) || 
 						   (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) ||
