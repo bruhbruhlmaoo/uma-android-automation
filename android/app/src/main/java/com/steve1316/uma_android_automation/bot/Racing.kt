@@ -2655,9 +2655,21 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 		val scrollList = ScrollList.create(game)
 		if (scrollList != null) {
 			MessageLog.i(TAG, "[RACE] Scanning the whole race list for suitable Trackblazer races...")
-			scrollList.process { _, entry ->
+			val entryRaceNamesMap = mutableMapOf<Int, List<String>>()
+			scrollList.process(
+				keyExtractor = { entry ->
+					val doubleStarPredictions = IconRaceListPredictionDoubleStar.findAll(game.imageUtils, sourceBitmap = entry.bitmap, region = intArrayOf(0, 0, 0, 0))
+					val names = doubleStarPredictions.map { predLoc ->
+						val screenPoint = Point(entry.bbox.x + predLoc.x, entry.bbox.y + predLoc.y)
+						game.imageUtils.extractRaceName(screenPoint)
+					}
+					if (names.isNotEmpty()) entryRaceNamesMap[entry.index] = names
+					if (names.isEmpty()) null else names.joinToString("|")
+				}
+			) { _, entry ->
 				val doubleStarPredictions = IconRaceListPredictionDoubleStar.findAll(game.imageUtils, sourceBitmap = entry.bitmap, region = intArrayOf(0, 0, 0, 0))
-				for (predLoc in doubleStarPredictions) {
+				val cachedNames = entryRaceNamesMap[entry.index] ?: emptyList()
+				for ((idx, predLoc) in doubleStarPredictions.withIndex()) {
 					// Check for Rival status on the entry's bitmap using relative coordinates.
 					val rivalBitmap = game.imageUtils.createSafeBitmap(
 						entry.bitmap,
@@ -2678,7 +2690,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 					}
 
 					val screenPoint = Point(entry.bbox.x + predLoc.x, entry.bbox.y + predLoc.y)
-					val detectedName = game.imageUtils.extractRaceName(screenPoint)
+					val detectedName = if (idx < cachedNames.size) cachedNames[idx] else game.imageUtils.extractRaceName(screenPoint)
 					val matches = lookupRaceInDatabase(campaign.date.day, detectedName)
 
 					for (race in matches) {

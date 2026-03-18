@@ -948,9 +948,16 @@ class Trackblazer(game: Game) : Campaign(game) {
 		val currentDisabledItems = mutableSetOf<String>()
 		var anyUsed = false
 
-		shopList.processItemsWithFallback { entry ->
+		val itemNameMapInManage = mutableMapOf<Int, String>()
+		shopList.processItemsWithFallback(
+			keyExtractor = { entry -> 
+				val name = shopList.getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
+				if (name != null) itemNameMapInManage[entry.index] = name
+				name
+			}
+		) { entry ->
 			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
-			val itemName = shopList.getShopItemName(entry, isDisabled)
+			val itemName = itemNameMapInManage[entry.index] ?: shopList.getShopItemName(entry, isDisabled)
 			
 			if (itemName != null) {
 				MessageLog.d(TAG, "[TRACKBLAZER] Detected item \"$itemName\" (Disabled: $isDisabled) at index ${entry.index}.")
@@ -1070,9 +1077,16 @@ class Trackblazer(game: Game) : Campaign(game) {
         
         // Scan for Vita items.
         val availableVitas = mutableListOf<String>()
-        shopList.processItemsWithFallback { entry: ScrollListEntry ->
+		val itemNameMapInEnergy = mutableMapOf<Int, String>()
+        shopList.processItemsWithFallback(
+			keyExtractor = { entry -> 
+				val name = shopList.getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
+				if (name != null) itemNameMapInEnergy[entry.index] = name
+				name
+			}
+		) { entry: ScrollListEntry ->
             val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
-            val itemName = shopList.getShopItemName(entry, isDisabled)
+            val itemName = itemNameMapInEnergy[entry.index] ?: shopList.getShopItemName(entry, isDisabled)
             if (itemName != null) {
                 MessageLog.d(TAG, "[TRACKBLAZER] useEnergyItems: Detected \"$itemName\".")
                 if (shopList.energyItemNames.contains(itemName)) {
@@ -1117,9 +1131,16 @@ class Trackblazer(game: Game) : Campaign(game) {
             var hasKaleJuice = false
             var bestCupcake: String? = null
 
-            shopList.processItemsWithFallback { entry: ScrollListEntry ->
+			val itemNameMapInMood = mutableMapOf<Int, String>()
+            shopList.processItemsWithFallback(
+				keyExtractor = { entry -> 
+					val name = shopList.getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
+					if (name != null) itemNameMapInMood[entry.index] = name
+					name
+				}
+			) { entry: ScrollListEntry ->
                 val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
-                val itemName = shopList.getShopItemName(entry, isDisabled)
+                val itemName = itemNameMapInMood[entry.index] ?: shopList.getShopItemName(entry, isDisabled)
                 if (itemName == "Royal Kale Juice" && !isDisabled) {
                     hasKaleJuice = true
                 }
