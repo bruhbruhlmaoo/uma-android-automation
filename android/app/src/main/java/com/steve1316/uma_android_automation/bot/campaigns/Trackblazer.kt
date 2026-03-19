@@ -118,13 +118,24 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         when (detectedDialog.name) {
             "exchange_complete" -> {
-                // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
-                if (detectedDialog.ok(game.imageUtils)) {
-                    game.wait(0.5)
-                    // This clicks the "Use Training Items" button on the "Confirm Use" dialog.
-                    handleDialogs(DialogConfirmUse)
+                val boughtItems = args["itemsBought"] as? List<String> ?: emptyList()
+                val hasQuickUseItems = boughtItems.any { shopList.shopItems[it]?.isQuickUsage == true }
+
+                if (hasQuickUseItems) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were purchased. Clicking \"Confirm Use\"...")
+                    // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
+                    if (detectedDialog.ok(game.imageUtils)) {
+                        game.wait(0.5)
+                        // This clicks the "Use Training Items" button on the "Confirm Use" dialog.
+                        handleDialogs(DialogConfirmUse)
+                        // This clicks the "Close" button on the "Exchange Complete" dialog after handling quick-use.
+                        detectedDialog.close(game.imageUtils)
+                    } else {
+                        // Fallback to closing the dialog if "Confirm Use" button was not found.
+                        detectedDialog.close(game.imageUtils)
+                    }
                 } else {
-                    // Fallback to closing the dialog if "Confirm Use" button was not found.
+                    MessageLog.i(TAG, "[TRACKBLAZER] No quick-use items were purchased. Closing dialog...")
                     detectedDialog.close(game.imageUtils)
                 }
             }
@@ -730,7 +741,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 			currentInventory = nextInventory.toMap()
 
 			// Handle "Exchange Complete" dialog.
-			if (handleDialogs(DialogExchangeComplete) is DialogHandlerResult.Handled) {
+			if (handleDialogs(DialogExchangeComplete, args = mapOf("itemsBought" to itemsBought)) is DialogHandlerResult.Handled) {
 				MessageLog.i(TAG, "Successfully handled \"Exchange Complete\" dialog.")
 			}
 
