@@ -7,6 +7,7 @@ import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.bot.CampaignBreakpointException
 import com.steve1316.uma_android_automation.bot.DialogHandlerResult
+import com.steve1316.uma_android_automation.bot.MainScreenAction
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.TextUtils
@@ -58,9 +59,6 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /** Whether a race hammer has been used this turn. */
     private var bUsedHammerToday: Boolean = false
-
-    /** Tracks whether we have already updated trainee information this turn. */
-    private var bHasUpdatedThisTurn: Boolean = false
 
 	/** Tracks whether the inventory has been synced at least once or needs a re-sync. */
 	private var bInventorySynced: Boolean = false
@@ -303,11 +301,11 @@ class Trackblazer(game: Game) : Campaign(game) {
 		return super.recoverEnergy(sourceBitmap)
 	}
 
-    override fun recoverMood(sourceBitmap: Bitmap?): Boolean {
-        MessageLog.i(TAG, "[TRACKBLAZER] Resetting consecutive race counter due to mood recovery.")
-        consecutiveRaceCount = 0
-        return super.recoverMood(sourceBitmap)
-    }
+	override fun recoverMood(sourceBitmap: Bitmap?): Boolean {
+		MessageLog.i(TAG, "[TRACKBLAZER] Resetting consecutive race counter due to mood recovery.")
+		consecutiveRaceCount = 0
+		return super.recoverMood(sourceBitmap)
+	}
 
 	/**
 	 * Handles race events specific to the Trackblazer campaign.
@@ -390,16 +388,20 @@ class Trackblazer(game: Game) : Campaign(game) {
 		return result
 	}
 
-    /**
-     * Handles the main screen logic for Trackblazer, prioritizing racing.
-     *
-     * @return True if an action was performed, false otherwise.
-     */
-    override fun handleMainScreen(): Boolean {
-        if (!checkMainScreen()) {
-            return false
-        }
+	/**
+	 * Handles turn-start resets for Trackblazer-specific daily flags.
+	 */
+	override fun resetDailyFlags() {
+		MessageLog.i(TAG, "[TRACKBLAZER] Resetting daily item usage flags.")
+		bUsedWhistleToday = false
+		bUsedCharmToday = false
+		bUsedHammerToday = false
+	}
 
+	/**
+	 * Handles the shop check before the main screen update process begins.
+	 */
+	override fun onBeforeMainScreenUpdate() {
 		// Buy items if a shop check is pending after a race.
 		if (bShouldCheckShop) {
 			MessageLog.i(TAG, "[TRACKBLAZER] Pending shop check detected! Checking Shop for new items...")
@@ -409,235 +411,80 @@ class Trackblazer(game: Game) : Campaign(game) {
 				buyItems(bAfterRacePurchase = true)
 			}
 		}
-
-        // Update date first.
-        val dateChanged = date.update(game.imageUtils, scenario = game.scenario, isOnMainScreen = true)
-        if (!dateChanged) {
-            MessageLog.e(TAG, "Failed to update date on main screen.")
-            return false
-        }
-
-        // Handle turn-start updates if the date changed or we haven't updated yet this turn.
-        if (dateChanged || !bHasUpdatedThisTurn) {
-            // Reset daily usage flags.
-            bUsedWhistleToday = false
-            bUsedCharmToday = false
-            bUsedHammerToday = false
-
-            // Update the fan count if needed.
-            if (bNeedToCheckFans && !bHasTriedCheckingFansToday) {
-                openFansDialog()
-                tryHandleAllDialogs()
-            }
-
-            // Update trainee information using parallel processing with shared screenshot.
-            val sourceBitmap = game.imageUtils.getSourceBitmap()
-            val skillPointsLocation = LabelStatTableHeaderSkillPoints.findImageWithBitmap(game.imageUtils, sourceBitmap = sourceBitmap)
-            
-            // No need to check for racing requirements if it is the Summer.
-            val latch = if (date.isSummer()) CountDownLatch(8) else CountDownLatch(9)
-            MessageLog.disableOutput = true
-            
-            // First update current stats and spin up 5 Threads for each stat here.
-            trainee.updateStats(game.imageUtils, sourceBitmap, skillPointsLocation, latch)
-            
-            // Thread 6: Update skill points.
-            Thread {
-                try { trainee.updateSkillPoints(game.imageUtils, sourceBitmap, skillPointsLocation) }
-                catch (e: Exception) { MessageLog.e(TAG, "Error in updateSkillPoints thread: ${e.stackTraceToString()}") }
-                finally { latch.countDown() }
-            }.apply { isDaemon = true }.start()
-            
-            // Thread 7: Update mood.
-            Thread {
-                try { trainee.updateMood(game.imageUtils, sourceBitmap) }
-                catch (e: Exception) { MessageLog.e(TAG, "Error in updateMood thread: ${e.stackTraceToString()}") }
-                finally { latch.countDown() }
-            }.apply { isDaemon = true }.start()
-
-            if (!date.isSummer()) {
-                // Thread 8: Check racing requirements.
-                Thread {
-                    try { racing.checkRacingRequirements(sourceBitmap) }
-                    catch (e: Exception) { MessageLog.e(TAG, "Error in checkRacingRequirements thread: ${e.stackTraceToString()}") }
-                    finally { latch.countDown() }
-                }.apply { isDaemon = true }.start()
-            }
-
-            // Thread 8/9: Update energy.
-            Thread {
-                try { trainee.updateEnergy(game.imageUtils) }
-                catch (e: Exception) { MessageLog.e(TAG, "Error in updateEnergy thread: ${e.stackTraceToString()}") }
-                finally { latch.countDown() }
-            }.apply { isDaemon = true }.start()
-            
-            try {
-                latch.await(10, TimeUnit.SECONDS)
-            } catch (_: InterruptedException) {
-                MessageLog.e(TAG, "Turn start updates timed out.")
-            } finally {
-                MessageLog.disableOutput = false
-            }
-
-            // Log the updates.
-            MessageLog.i(TAG, "[TRACKBLAZER] Turn start updates complete for $date.")
-            MessageLog.i(TAG, "[TRAINEE] Stats: ${trainee.getStatsString()}, Skill Points: ${trainee.skillPoints}, Mood: ${trainee.mood}, Energy: ${trainee.energy}%, Fans: ${trainee.fans}")
-            if (trainee.bHasUpdatedAptitudes) {
-                trainee.logDetailedPlayerInfo()
-            }
-
-            // Update the fan count class.
-            val fanCountClass: FanCountClass? = getFanCountClass(sourceBitmap)
-            if (fanCountClass != null) {
-                trainee.fanCountClass = fanCountClass
-            }
-
-			bHasUpdatedThisTurn = true
-
-			// Now check if we need to handle skills before finals.
-			if (date.day == 72 && skillPlan.skillPlans["preFinals"]?.bIsEnabled ?: false) {
-				ButtonSkills.click(game.imageUtils)
-				game.wait(1.0)
-				if (!handleSkillListScreen()) {
-					MessageLog.w(TAG, "handleMainScreen:: handleSkillList() for Pre-Finals failed.")
-				}
-			}
-		}
-
-		// Check if we need to handle the skill point check this run.
-		if (trainee.skillPoints < skillPointsRequired) {
-			// Reset the flag if the skill points drop below the threshold.
-			bHasHandledSkillPointCheck = false
-		}
-
-		if (
-			!bHasHandledSkillPointCheck &&
-			enableSkillPointCheck &&
-			trainee.skillPoints >= skillPointsRequired
-		) {
-			if (skillPlan.skillPlans["skillPointCheck"]?.bIsEnabled ?: false) {
-				ButtonSkills.click(game.imageUtils)
-				game.wait(1.0)
-				if (!handleSkillListScreen("skillPointCheck")) {
-					throw InterruptedException("handleMainScreen:: handleSkillList() for Skill Point Check failed. Stopping bot...")
-				}
-				bHasHandledSkillPointCheck = true
-			} else {
-				throw CampaignBreakpointException("Bot reached skill point check threshold. Stopping bot...")
-			}
-		}
-
-		// Check if bot should stop before the finals.
-		if (checkFinalsStop()) {
-			throw InterruptedException(game.notificationMessage)
-		}
-
-		// Check if bot should stop at the user specified date.
-		if (checkStopAtDate()) {
-			throw InterruptedException(game.notificationMessage)
-		}
-
-        // Before taking any action, check for items to use.
-        // This handles Stats, Energy, Mood, and Bad Conditions.
-        // Training items are only available starting Turn 13 (Junior Year Early July).
-        // We would have already bought some items during handleDialog() for the Shop dialog during the transition from Day 12 and Day 13.
-        if (date.day >= 13) {
-            useItems(trainee)
-        }
-
-        // Recover mood if it is below Normal and we do not have any mood recovery items.
-        if (trainee.mood < Mood.NORMAL) {
-            val hasMoodItems = currentInventory.any { (name, count) ->
-                count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake")
-            }
-
-            if (!hasMoodItems) {
-                MessageLog.i(TAG, "[TRACKBLAZER] Mood is ${trainee.mood} and no mood items are available. Attempting to recover mood...")
-                if (recoverMood()) {
-                    // Turn is over if we recovered mood.
-                    bHasUpdatedThisTurn = false
-                    if (trainee.megaphoneTurnCounter > 0) {
-                        trainee.megaphoneTurnCounter--
-                        MessageLog.i(TAG, "[TRACKBLAZER] Megaphone duration reduced after mood recovery. Turns remaining: ${trainee.megaphoneTurnCounter}")
-                    }
-                    return true
-                }
-            }
-        }
-
-        // Flag on whether to race or train.
-        val sourceBitmap = game.imageUtils.getSourceBitmap()
-        val bIsScheduledRaceDay = LabelScheduledRace.check(game.imageUtils, sourceBitmap = sourceBitmap)
-        val bIsMandatoryRaceDay = IconRaceDayRibbon.check(game.imageUtils, sourceBitmap = sourceBitmap)
-        var needToRace = bIsMandatoryRaceDay || bIsScheduledRaceDay
-        
-        // Summer Training: Train during July and August in Classic/Senior.
-        if (date.isSummer()) {
-            MessageLog.i(TAG, "[TRACKBLAZER] It is Summer. Prioritizing training.")
-        } else if (date.bIsFinaleSeason && date.day >= 73) {
-            // Finale: Train during the final 3 turns (Qualifier, Semifinal, Finals).
-            MessageLog.i(TAG, "[TRACKBLAZER] It is the Finale. Prioritizing training.")
-        } else {
-            // Otherwise, we want to race if possible.
-            if (!needToRace && racing.checkEligibilityToStartExtraRacingProcess()) {
-                needToRace = true
-            }
-        }
-
-        if (needToRace) {
-            MessageLog.i(TAG, "[TRACKBLAZER] Decision made to race. Entering race events...")
-            if (handleRaceEvents(isScheduledRace = bIsScheduledRaceDay)) {
-                // Turn is over if we raced.
-                bHasUpdatedThisTurn = false
-                if (trainee.megaphoneTurnCounter > 0) {
-                    trainee.megaphoneTurnCounter--
-                    MessageLog.i(TAG, "[TRACKBLAZER] Megaphone duration reduced after racing. Turns remaining: ${trainee.megaphoneTurnCounter}")
-                }
-                return true
-            } else {
-                MessageLog.i(TAG, "[TRACKBLAZER] Race events returned false. Falling back to training...")
-                ButtonBack.click(game.imageUtils)
-                game.wait(0.5)
-            }
-        }
-
-        // Fallback to training if not racing.
-        MessageLog.i(TAG, "[TRACKBLAZER] Decision made to train.")
-        handleTrackblazerTraining()
-        
-        // Turn is over, reset the update flag so we update next time the date changes.
-        // Also decrement the megaphone turn counter.
-        bHasUpdatedThisTurn = false
-        if (trainee.megaphoneTurnCounter > 0) {
-            trainee.megaphoneTurnCounter--
-            MessageLog.i(TAG, "[TRACKBLAZER] Megaphone duration reduced. Turns remaining: ${trainee.megaphoneTurnCounter}")
-        }
-        
-        return true
-    }
+	}
 
 	/**
-	 * Checks for campaign-specific conditions.
-	 *
-	 * @return True if a condition was handled, false otherwise.
+	 * Handles Trackblazer-specific actions when at the main screen.
 	 */
-	override fun checkCampaignSpecificConditions(): Boolean {
+	override fun onMainScreenEntry() {
+		// Before taking any action, check for items to use.
+		// This handles Stats, Energy, Mood, and Bad Conditions.
+		// Training items are only available starting Turn 13 (Junior Year Early July).
+		if (date.day >= 13) {
+			useItems(trainee)
+		}
+	}
+
+	override fun shouldRecoverMood(sourceBitmap: Bitmap): Boolean {
+		// Recover mood if it is below Normal and we do not have any mood recovery items.
+		if (trainee.mood < Mood.NORMAL) {
+			val hasMoodItems = currentInventory.any { (name, count) ->
+				count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake")
+			}
+			if (!hasMoodItems) {
+				MessageLog.i(TAG, "[TRACKBLAZER] Mood is ${trainee.mood} and no mood items are available. Attempting to recover mood via rest/recreation...")
+				return true
+			}
+		}
 		return false
+	}
+
+	override fun performMoodRecovery(sourceBitmap: Bitmap): Boolean {
+		return recoverMood()
+	}
+
+	override fun decideNextAction(): MainScreenAction {
+		// Summer Training: Train during July and August in Classic/Senior.
+		if (date.isSummer()) {
+			MessageLog.i(TAG, "[TRACKBLAZER] It is Summer. Prioritizing training.")
+			return MainScreenAction.TRAIN
+		}
+		
+		// Finale: Train during the final 3 turns (Qualifier, Semifinal, Finals).
+		if (date.bIsFinaleSeason && date.day >= 73) {
+			MessageLog.i(TAG, "[TRACKBLAZER] It is the Finale. Prioritizing training.")
+			return MainScreenAction.TRAIN
+		}
+
+		// Otherwise, use base class decision logic.
+		return super.decideNextAction()
+	}
+
+	override fun executeAction(action: MainScreenAction, bIsScheduledRaceDay: Boolean): Boolean {
+		val result = when (action) {
+			MainScreenAction.TRAIN -> {
+				MessageLog.i(TAG, "[TRACKBLAZER] Decision made to train.")
+				handleTrackblazerTraining()
+				bHasCheckedDateThisTurn = false
+				true
+			}
+			else -> super.executeAction(action, bIsScheduledRaceDay)
+		}
+
+		if (result && action != MainScreenAction.NONE) {
+			// Turn is over, decrement megaphone counter.
+			if (trainee.megaphoneTurnCounter > 0) {
+				trainee.megaphoneTurnCounter--
+				MessageLog.i(TAG, "[TRACKBLAZER] Megaphone duration reduced. Turns remaining: ${trainee.megaphoneTurnCounter}")
+			}
+		}
+
+		return result
 	}
 
 	override fun onRaceWin() {
 		MessageLog.i(TAG, "[TRACKBLAZER] Rival Race win detected via post-race popup.")
 		bShouldCheckShop = true
-	}
-
-	/**
-	 * Opens the fans dialog.
-	 */
-	override fun openFansDialog() {
-		MessageLog.d(TAG, "Opening fans dialog for Trackblazer...")
-		ButtonHomeFansInfo.click(game.imageUtils, region = game.imageUtils.regionBottomHalf, tries = 10)
-		bHasTriedCheckingFansToday = true
-		game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
 	}
 
     /**

@@ -137,13 +137,6 @@ class UnityCup(game: Game) : Campaign(game) {
 	override fun checkCampaignSpecificConditions(): Boolean {
         return handleRaceEventsUnityCup()
 	}
-
-    override fun openFansDialog() {
-        MessageLog.d(TAG, "Opening fans dialog...")
-        ButtonHomeFansInfo.click(game.imageUtils, region = game.imageUtils.regionBottomHalf, tries = 10)
-        bHasTriedCheckingFansToday = true
-        game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-    }
 	
 	/**
 	 * Handles the Unity Cup race event.

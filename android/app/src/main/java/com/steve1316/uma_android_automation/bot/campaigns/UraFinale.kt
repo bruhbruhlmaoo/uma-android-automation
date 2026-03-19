@@ -25,21 +25,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 open class UraFinale(game: Game) : Campaign(game) {
-    override fun handleTrainingEvent() {
-        trainingEvent.handleTrainingEvent()
-    }
-
-    override fun handleRaceEvents(isScheduledRace: Boolean): Boolean {
-        val bDidRace: Boolean = racing.handleRaceEvents(isScheduledRace)
-        bNeedToCheckFans = bDidRace
-
-        return bDidRace
-    }
-
-    override fun checkCampaignSpecificConditions(): Boolean {
-        return false
-    }
-
     override fun openFansDialog() {
         MessageLog.d(TAG, "Opening fans dialog...")
         ButtonHomeFansInfo.click(game.imageUtils, region = game.imageUtils.regionTopHalf, tries = 10)
