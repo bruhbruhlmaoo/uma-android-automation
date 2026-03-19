@@ -1194,6 +1194,11 @@ abstract class Campaign(game: Game) : Task(game) {
         // If we haven't already handled the skill point check this run and
         // if the required skill points has been reached,
         // stop the bot or run the skill plan if it is enabled.
+        if (trainee.skillPoints < skillPointsRequired) {
+            // Reset the flag if the skill points drop below the threshold.
+            bHasHandledSkillPointCheck = false
+        }
+
         if (
             !bHasHandledSkillPointCheck &&
             enableSkillPointCheck &&

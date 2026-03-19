@@ -505,6 +505,11 @@ class Trackblazer(game: Game) : Campaign(game) {
 		}
 
 		// Check if we need to handle the skill point check this run.
+		if (trainee.skillPoints < skillPointsRequired) {
+			// Reset the flag if the skill points drop below the threshold.
+			bHasHandledSkillPointCheck = false
+		}
+
 		if (
 			!bHasHandledSkillPointCheck &&
 			enableSkillPointCheck &&
