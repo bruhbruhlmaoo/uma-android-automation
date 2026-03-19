@@ -656,20 +656,34 @@ class ScrollList private constructor(
 
         var index = 0
         while (System.currentTimeMillis() - startTime < maxTimeMs) {
-            bitmap = game.imageUtils.getSourceBitmap()
-
-            val currentFrameEntries: List<ScrollListEntry> = if (bScrollBottomToTop) {
-                detectEntries(bitmap).reversed().map { entryBbox ->
-                    ScrollListEntry(index++, game.imageUtils.createSafeBitmap(bitmap, entryBbox, "ScrollList.process: cropped entry") ?: bitmap, entryBbox)
+            var currentFrameEntries: List<ScrollListEntry> = emptyList()
+            var retries = 3
+            while (retries > 0) {
+                bitmap = game.imageUtils.getSourceBitmap()
+                val detectedRects = detectEntries(bitmap)
+                
+                if (detectedRects.isNotEmpty()) {
+                    currentFrameEntries = if (bScrollBottomToTop) {
+                        detectedRects.reversed().map { entryBbox ->
+                            ScrollListEntry(index++, game.imageUtils.createSafeBitmap(bitmap, entryBbox, "ScrollList.process: cropped entry") ?: bitmap, entryBbox)
+                        }
+                    } else {
+                        detectedRects.map { entryBbox ->
+                            ScrollListEntry(index++, game.imageUtils.createSafeBitmap(bitmap, entryBbox, "ScrollList.process: cropped entry") ?: bitmap, entryBbox)
+                        }
+                    }
+                    break
                 }
-            } else {
-                detectEntries(bitmap).map { entryBbox ->
-                    ScrollListEntry(index++, game.imageUtils.createSafeBitmap(bitmap, entryBbox, "ScrollList.process: cropped entry") ?: bitmap, entryBbox)
+                
+                retries--
+                if (retries > 0) {
+                    MessageLog.d(TAG, "ScrollList.process: No entries detected. Retrying ($retries left)...")
+                    game.wait(0.2, skipWaitingForLoading = true)
                 }
             }
 
             if (currentFrameEntries.isEmpty()) {
-                MessageLog.d(TAG, "ScrollList.process: No entries detected in current frame.")
+                MessageLog.d(TAG, "ScrollList.process: No entries detected in current frame after retries.")
             } else {
                 // Determine the overlap with the previous frame's entries using the provided keyExtractor.
                 var skipCount = 0
