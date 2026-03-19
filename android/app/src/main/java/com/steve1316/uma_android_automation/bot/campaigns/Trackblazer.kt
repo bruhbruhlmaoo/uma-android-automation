@@ -1195,7 +1195,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             val shouldUse = if (trainee.energy <= 20) {
                 true
             } else if (trainee.energy <= energyThresholdToUseEnergyItems) {
-                hasMoodItems
+                hasMoodItems || trainee.mood == Mood.AWFUL
             } else {
                 false
             }
