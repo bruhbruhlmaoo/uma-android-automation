@@ -754,6 +754,11 @@ class Trackblazer(game: Game) : Campaign(game) {
 				manageInventoryItems(bQuickUseOnly = true)
 			}
 		}
+
+		// Exit the Shop to return to the Main screen.
+		MessageLog.i(TAG, "[TRACKBLAZER] Shop process complete. Returning up to the previous screen.")
+		ButtonBack.click(game.imageUtils)
+		game.wait(1.0)
 	}
 
     /**
