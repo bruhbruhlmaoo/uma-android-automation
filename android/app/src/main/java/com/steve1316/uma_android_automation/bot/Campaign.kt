@@ -826,7 +826,7 @@ abstract class Campaign(game: Game) : Task(game) {
         return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
             MessageLog.i(TAG, "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.")
             false
-        } else if ((trainee.mood < Mood.GOOD) && ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
+        } else if ((trainee.mood < Mood.GOOD) && (ButtonRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap) || ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap))) {
             MessageLog.i(TAG, "[MOOD] Current mood is not good (${trainee.mood}). Recovering mood now.")
 
             // Check if a date is available.
