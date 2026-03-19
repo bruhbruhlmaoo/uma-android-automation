@@ -396,6 +396,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 		bUsedWhistleToday = false
 		bUsedCharmToday = false
 		bUsedHammerToday = false
+		bInventorySynced = false
 	}
 
 	/**
@@ -909,6 +910,43 @@ class Trackblazer(game: Game) : Campaign(game) {
 		val currentDisabledItems = mutableSetOf<String>()
         val scannedItemsList = mutableListOf<ScannedItem>()
 		var anyUsed = false
+		var wasEarlyExit = false
+
+		// To improve efficiency, we identify which items we are actually interested in based on our cached inventory.
+		// If we have a cached inventory and have seen all items of interest, we can exit the scroll loop early.
+		val remainingItemsOfInterest = if (currentInventory.isNotEmpty()) {
+			currentInventory.filter { (name, count) ->
+				if (count <= 0) return@filter false
+				
+				val info = shopList.shopItems[name]
+				val isStat = info?.category == "Stats"
+				val isBad = info?.category == "Heal Bad Conditions"
+				val isQuick = info?.isQuickUsage == true
+				val isEnergy = shopList.energyItemNames.contains(name) || name == "Royal Kale Juice"
+				val isMood = name == "Berry Sweet Cupcake" || name == "Plain Cupcake"
+				val isMegaphone = name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone"
+				val isAnkleWeight = name.contains("Ankle Weights")
+				val isCharm = name == "Good-Luck Charm"
+
+				// Determine if this item is actually useful right now.
+				val isUseful = isStat || isBad || isQuick ||
+						(isEnergy && trainee != null && trainee.energy <= 100) || // We might want any energy item if not full.
+						(isMood && trainee != null && trainee.mood < Mood.GREAT) ||
+						(isMegaphone && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0) ||
+						(isAnkleWeight && trainee != null && trainingSelected != null) ||
+						(isCharm && trainee != null && trainingSelected != null)
+				
+				isUseful
+			}.keys.toMutableSet()
+		} else {
+			mutableSetOf()
+		}
+
+		if (remainingItemsOfInterest.isEmpty() && bInventorySynced) {
+			MessageLog.i(TAG, "[TRACKBLAZER] No items of interest found in cached inventory and already synced. Skipping scan.")
+		} else if (remainingItemsOfInterest.isNotEmpty()) {
+			MessageLog.d(TAG, "[TRACKBLAZER] Items of interest for this pass: ${remainingItemsOfInterest.joinToString(", ")}")
+		}
 
 		val itemNameMapInManage = mutableMapOf<Int, String>()
 		shopList.processItemsWithFallback(
@@ -977,17 +1015,29 @@ class Trackblazer(game: Game) : Campaign(game) {
                         }
                     }
                 }
+                finalizeInlineUsage(itemName, remainingItemsOfInterest)
 			} else {
 				MessageLog.w(TAG, "[TRACKBLAZER] Failed to detect item name at index ${entry.index}.")
 			}
-			false
+
+			// Early exit if we've seen all items of interest.
+			// We allow early exit even if not synced for the turn yet, provided we had a non-empty cache to start with.
+			if (remainingItemsOfInterest.isEmpty() && (bInventorySynced || currentInventory.isNotEmpty())) {
+				MessageLog.i(TAG, "[TRACKBLAZER] All items of interest processed. Exiting scan early.")
+				wasEarlyExit = true
+				true
+			} else {
+				false
+			}
 		}
 
 		// Finalize Sync.
-        val scannedItemNames = scannedItemsList.map { it.itemName }.toSet()
-		nextInventory.keys.forEach { name ->
-			if (!scannedItemNames.contains(name) && (nextInventory[name] ?: 0) > 0) {
-				nextInventory[name] = 0
+		if (!wasEarlyExit) {
+			val scannedItemNames = scannedItemsList.map { it.itemName }.toSet()
+			nextInventory.keys.forEach { name ->
+				if (!scannedItemNames.contains(name) && (nextInventory[name] ?: 0) > 0) {
+					nextInventory[name] = 0
+				}
 			}
 		}
 		currentInventory = nextInventory.toMap()
@@ -1099,6 +1149,21 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
         }
     }
+
+	/**
+	 * Removes an item from the remaining interest set during the scan pass.
+	 *
+	 * @param itemName The name of the item detected.
+	 * @param remainingItemsOfInterest The set of items we are still looking for.
+	 */
+	private fun finalizeInlineUsage(itemName: String, remainingItemsOfInterest: MutableSet<String>) {
+		if (remainingItemsOfInterest.contains(itemName)) {
+			remainingItemsOfInterest.remove(itemName)
+			if (remainingItemsOfInterest.isNotEmpty()) {
+				MessageLog.v(TAG, "[TRACKBLAZER] Removed \"$itemName\" from items of interest. Remaining: ${remainingItemsOfInterest.size}")
+			}
+		}
+	}
 
 	/**
 	 * Orchestrates the usage of items based on dynamic conditions and updates internal inventory.
