@@ -77,7 +77,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
 		val numRainbow: Int,
 		val numSpiritGaugesCanFill: Int = 0,
 		val numSpiritGaugesReadyToBurst: Int = 0,
-		val numSkillHints: Int = 0
+		val numSkillHints: Int = 0,
+		val skipReason: String? = null
 	) {
 		override fun equals(other: Any?): Boolean {
 			if (this === other) return true
@@ -94,6 +95,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 			if (numSpiritGaugesCanFill != other.numSpiritGaugesCanFill) return false
 			if (numSpiritGaugesReadyToBurst != other.numSpiritGaugesReadyToBurst) return false
 			if (numSkillHints != other.numSkillHints) return false
+			if (skipReason != other.skipReason) return false
 
 			return true
 		}
@@ -108,6 +110,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 			result = 31 * result + numSpiritGaugesCanFill
 			result = 31 * result + numSpiritGaugesReadyToBurst
 			result = 31 * result + numSkillHints
+			result = 31 * result + (skipReason?.hashCode() ?: 0)
 			return result
 		}
 	}
@@ -1203,10 +1206,12 @@ class Training(private val game: Game, private val campaign: Campaign) {
                     
                     // Filter out trainings that exceed the effective failure chance threshold.
                     if (!test && !ignoreFailureChance && result.failureChance > effectiveFailureChance) {
-                        if (enableRiskyTraining && mainStatGain >= riskyTrainingMinStatGain) {
+                        val skipReason = if (enableRiskyTraining && mainStatGain >= riskyTrainingMinStatGain) {
                             MessageLog.i(TAG, "[TRAINING] Skipping ${result.name} training due to failure chance (${result.failureChance}%) exceeding risky threshold (${riskyTrainingMaxFailureChance}%) despite high main stat gain of $mainStatGain.")
+                            "high failure chance (risky)"
                         } else {
                             MessageLog.i(TAG, "[TRAINING] Skipping ${result.name} training due to failure chance (${result.failureChance}%) exceeding threshold (${maximumFailureChance}%).")
+                            "high failure chance"
                         }
 
                         // Store the skipped training for logging purposes.
@@ -1220,6 +1225,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
                             numSpiritGaugesCanFill = result.numSpiritGaugesCanFill,
                             numSpiritGaugesReadyToBurst = result.numSpiritGaugesReadyToBurst,
                             numSkillHints = result.numSkillHints,
+                            skipReason = skipReason
                         )
                         skippedTrainingMap[result.name] = skippedTraining
                         continue
@@ -1239,6 +1245,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
                             numSpiritGaugesCanFill = result.numSpiritGaugesCanFill,
                             numSpiritGaugesReadyToBurst = result.numSpiritGaugesReadyToBurst,
                             numSkillHints = result.numSkillHints,
+                            skipReason = "low gain with charm"
                         )
                         skippedTrainingMap[result.name] = skippedTraining
                         continue
@@ -1555,7 +1562,14 @@ class Training(private val game: Game, private val campaign: Campaign) {
 			val numSkipped = skippedScores.size
 			val numBlacklisted = config.blacklist.filterNotNull().size
 			val reasons = mutableListOf<String>()
-			if (numSkipped > 0) reasons.add("$numSkipped skipped due to high failure chance")
+			if (numSkipped > 0) {
+				val skipReasons = skippedTrainingMap.values.mapNotNull { it.skipReason }.distinct()
+				if (skipReasons.isNotEmpty()) {
+					reasons.add("$numSkipped skipped due to: ${skipReasons.joinToString(", ")}")
+				} else {
+					reasons.add("$numSkipped skipped due to high failure chance")
+				}
+			}
 			if (numBlacklisted > 0) reasons.add("$numBlacklisted blacklisted")
 			if (restrictedTrainingNames.isNotEmpty()) reasons.add("${restrictedTrainingNames.size} restricted")
 			
