@@ -172,7 +172,7 @@ class GameDate {
                 return fromDay(currTurn)
             }
 
-            if (s.lowercase().contains("finale")) {
+            if (s.lowercase().contains("finale") || (scenario == "Trackblazer" && s.lowercase().contains("climax races underway"))) {
                 MessageLog.d(TAG, "fromDateString:: Finale season.")
                 // Pass the cached day string to avoid redundant OCR operations.
                 val (finalsDay, _) = getFinalsDay(imageUtils = imageUtils, cachedDayString = s, scenario = scenario)
@@ -278,7 +278,7 @@ class GameDate {
             }
 
             // Early exit if not in finale season.
-            if (!dayString.lowercase().contains("finale")) {
+            if (!dayString.lowercase().contains("finale") && !(scenario == "Trackblazer" && dayString.lowercase().contains("climax races underway"))) {
                 MessageLog.w(TAG, "[DATE] getFinalsDay:: Not in finale season. Day string: $dayString")
                 return Pair(null, dayString)
             }
