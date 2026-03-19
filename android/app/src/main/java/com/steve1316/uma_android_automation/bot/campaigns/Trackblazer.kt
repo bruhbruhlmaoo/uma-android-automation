@@ -409,6 +409,12 @@ class Trackblazer(game: Game) : Campaign(game) {
             bUsedCharmToday = false
             bUsedHammerToday = false
 
+            // Update the fan count if needed.
+            if (bNeedToCheckFans && !bHasTriedCheckingFansToday) {
+                openFansDialog()
+                tryHandleAllDialogs()
+            }
+
             // Update trainee information using parallel processing with shared screenshot.
             val sourceBitmap = game.imageUtils.getSourceBitmap()
             val skillPointsLocation = LabelStatTableHeaderSkillPoints.findImageWithBitmap(game.imageUtils, sourceBitmap = sourceBitmap)
@@ -460,7 +466,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
             // Log the updates.
             MessageLog.i(TAG, "[TRACKBLAZER] Turn start updates complete for $date.")
-            MessageLog.i(TAG, "[TRAINEE] Stats: ${trainee.getStatsString()}, Mood: ${trainee.mood}, Energy: ${trainee.energy}%")
+            MessageLog.i(TAG, "[TRAINEE] Stats: ${trainee.getStatsString()}, Skill Points: ${trainee.skillPoints}, Mood: ${trainee.mood}, Energy: ${trainee.energy}%, Fans: ${trainee.fans}")
             if (trainee.bHasUpdatedAptitudes) {
                 trainee.logDetailedPlayerInfo()
             }
