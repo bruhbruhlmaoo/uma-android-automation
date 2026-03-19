@@ -117,11 +117,11 @@ class Trackblazer(game: Game) : Campaign(game) {
         when (detectedDialog.name) {
             "exchange_complete" -> {
                 val boughtItems = args["itemsBought"] as? List<String> ?: emptyList()
-                val hasQuickUseItems = boughtItems.any { shopList.shopItems[it]?.isQuickUsage == true }
+                val quickUseItemsOnly = boughtItems.filter { shopList.shopItems[it]?.isQuickUsage == true }
 
-                if (hasQuickUseItems) {
+                if (quickUseItemsOnly.isNotEmpty()) {
                     MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were purchased. Navigating and queuing for usage...")
-                    val usedItems = shopList.useSpecificItems(boughtItems, bUseAll = true)
+                    val usedItems = shopList.useSpecificItems(quickUseItemsOnly, bUseAll = true)
                     usedItems.forEach { useInventoryItem(it) }
 
                     // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
