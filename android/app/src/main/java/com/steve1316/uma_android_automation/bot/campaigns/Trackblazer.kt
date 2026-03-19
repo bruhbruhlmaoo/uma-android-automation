@@ -122,7 +122,10 @@ class Trackblazer(game: Game) : Campaign(game) {
                 val hasQuickUseItems = boughtItems.any { shopList.shopItems[it]?.isQuickUsage == true }
 
                 if (hasQuickUseItems) {
-                    MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were purchased. Clicking \"Confirm Use\"...")
+                    MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were purchased. Navigating and queuing for usage...")
+                    val usedItems = shopList.useSpecificItems(boughtItems, bUseAll = true)
+                    usedItems.forEach { useInventoryItem(it) }
+
                     // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
                     if (detectedDialog.ok(game.imageUtils)) {
                         game.wait(0.5)
@@ -132,6 +135,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         detectedDialog.close(game.imageUtils)
                     } else {
                         // Fallback to closing the dialog if "Confirm Use" button was not found.
+                        MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were identified but the \"Confirm Use\" button was not found. Closing dialog...")
                         detectedDialog.close(game.imageUtils)
                     }
                 } else {
