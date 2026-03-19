@@ -752,16 +752,12 @@ class Trackblazer(game: Game) : Campaign(game) {
 			// Handle "Exchange Complete" dialog.
 			if (handleDialogs(DialogExchangeComplete, args = mapOf("itemsBought" to itemsBought)) is DialogHandlerResult.Handled) {
 				MessageLog.i(TAG, "Successfully handled \"Exchange Complete\" dialog.")
+                ButtonBack.click(game.imageUtils)
+                game.wait(0.5)
 			}
 
 			// Update internal coins count via OCR after purchase.
 			updateShopCoins()
-
-			// Open "Training Items" dialog and use items.
-			if (shopList.openTrainingItemsDialog()) {
-				// Use items according to quick use categories and update inventory.
-				manageInventoryItems(bQuickUseOnly = true)
-			}
 		}
 
 		// Exit the Shop to return to the Main screen.
