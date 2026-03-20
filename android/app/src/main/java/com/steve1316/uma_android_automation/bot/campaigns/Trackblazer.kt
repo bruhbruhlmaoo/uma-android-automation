@@ -1013,7 +1013,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                             }
                         } else if (trainee != null) {
                             // Handle Energy, Mood, Ankle Weights, Charm, Megaphones, etc.
-                            if (handleInlineUsage(trainee, itemName, entry, isDisabled, trainingSelected, nextInventory)) {
+                            if (handleInlineUsage(trainee, itemName, entry, isDisabled, trainingSelected, nextInventory, remainingItemsOfInterest)) {
                                 itemsUsedCount++
                             }
                         }
@@ -1055,10 +1055,19 @@ class Trackblazer(game: Game) : Campaign(game) {
         finalizeManageInventoryItems(itemsUsedCount, bDryRun)
     }
 
-    /**
-     * Handles usage of a specific item discovered during the scan loop.
-     */
-    private fun handleInlineUsage(trainee: Trainee, itemName: String, entry: ScrollListEntry, isDisabled: Boolean, trainingSelected: StatName?, nextInventory: MutableMap<String, Int>): Boolean {
+	/**
+	 * Handles usage of a specific item discovered during the scan loop.
+	 *
+	 * @param trainee Reference to the trainee's state.
+	 * @param itemName The name of the item detected.
+	 * @param entry The ScrollListEntry of the item.
+	 * @param isDisabled Whether the item is disabled in the UI.
+	 * @param trainingSelected The stat name of the selected training.
+	 * @param nextInventory The updated inventory map reflecting changes in this pass.
+	 * @param remainingItemsOfInterest The set of items we are still looking for.
+	 * @return True if an item was successfully queued for use, false otherwise.
+	 */
+	private fun handleInlineUsage(trainee: Trainee, itemName: String, entry: ScrollListEntry, isDisabled: Boolean, trainingSelected: StatName?, nextInventory: MutableMap<String, Int>, remainingItemsOfInterest: Set<String>): Boolean {
         if (isDisabled) return false
 
         // Ankle Weights Check.
@@ -1138,8 +1147,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 			}
 
 			// We check both the updated scan result (nextInventory) AND the persistent disabledItems cache.
+			// An item is considered available if it's already scanned as enabled OR if it's still in the interest set (meaning we haven't seen its current state yet).
 			val hasBetterAvailable = betterMegaphones.any { better ->
-				(nextInventory[better] ?: 0) > 0 && !disabledItems.contains(better)
+				(nextInventory[better] ?: 0) > 0 && (!disabledItems.contains(better) || remainingItemsOfInterest.contains(better))
 			}
 
 			if (!hasBetterAvailable) {
