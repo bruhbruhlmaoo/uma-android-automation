@@ -74,7 +74,7 @@ object LogStreamServer {
 
 	// Regex patterns for structured detail extraction.
 	private val actionTrainingPattern = Pattern.compile("\\[TRAINING\\] Now starting process to execute training")
-	private val actionRacePattern = Pattern.compile("\\[RACE\\] Racing process for .*? Race is completed")
+	private val actionRacePattern = Pattern.compile("\\[RACE\\] Racing process for .*? Race is completed", Pattern.CASE_INSENSITIVE)
 	private val actionMoodPattern = Pattern.compile("Recovering mood now", Pattern.CASE_INSENSITIVE)
 	private val actionEnergyPattern = Pattern.compile("\\[ENERGY\\] Successfully recovered energy")
 	private val actionInjuryPattern = Pattern.compile("\\[INJURY\\] Injury detected and attempted to heal")
