@@ -171,7 +171,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 				}
                 
                 detectedDialog.ok(game.imageUtils)
-                game.wait(game.dialogWaitDelay)
+                game.wait(3.0)
 
 				// Clear the shop check flag as the shop is already being handled.
 				if (bShouldCheckShop) {
