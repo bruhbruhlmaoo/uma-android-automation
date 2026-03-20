@@ -98,6 +98,8 @@ abstract class Campaign(game: Game) : Task(game) {
     // To resolve this, we only allow the skill point check to be handled
     // once per run.
     protected var bHasHandledSkillPointCheck: Boolean = false
+    // Flag for whether we have handled the pre-finals condition during this run.
+    protected var bHasHandledPreFinalsCheck: Boolean = false
     // Flag for only checking for maiden races once per day.
     var bHasCheckedForMaidenRaceToday: Boolean = false
     // Flag to skip redundant date checks when no game-advancing action was taken.
@@ -1300,12 +1302,15 @@ abstract class Campaign(game: Game) : Task(game) {
      */
     open fun performGlobalChecks(): Boolean {
         // Now check if we need to handle skills before finals.
-        if (date.day == 72 && skillPlan.skillPlans["preFinals"]?.bIsEnabled ?: false) {
+        if (!bHasHandledPreFinalsCheck && date.day == 72 && skillPlan.skillPlans["preFinals"]?.bIsEnabled ?: false) {
             ButtonSkills.click(game.imageUtils)
             game.wait(1.0)
             if (!handleSkillListScreen()) {
                 MessageLog.w(TAG, "performGlobalChecks:: handleSkillList() for Pre-Finals failed.")
+                return false
             }
+            bHasHandledPreFinalsCheck = true
+            return true
         }
 
         // If we haven't already handled the skill point check this run and
@@ -1324,6 +1329,7 @@ abstract class Campaign(game: Game) : Task(game) {
                     throw InterruptedException("performGlobalChecks:: handleSkillList() for Skill Point Check failed. Stopping bot...")
                 }
                 bHasHandledSkillPointCheck = true
+                return true
             } else {
                 throw CampaignBreakpointException("Bot reached skill point check threshold. Stopping bot...")
             }
