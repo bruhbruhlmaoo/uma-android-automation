@@ -111,6 +111,9 @@ const Home = () => {
         }
     }, [])
 
+    /**
+     * Checks if the currently selected scenario exists in the available scenarios data.
+     */
     const isScenarioValid: boolean = useMemo(() => {
         return scenarios.some(it => it.value === bsc.settings.general.scenario)
     }, [bsc.settings.general.scenario])
