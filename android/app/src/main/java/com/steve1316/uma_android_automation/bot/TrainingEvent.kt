@@ -652,39 +652,43 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                 game.tap(selectedLocation.x + game.imageUtils.relWidth(100), selectedLocation.y, IconTrainingEventHorseshoe.template.path)
                 MessageLog.i(TAG, "[TRAINING_EVENT] Selected option ${optionSelected + 1} for Tutorial.")
             }
-            
-            // Wait 3 seconds after selecting Tutorial event options.
-            MessageLog.i(TAG, "[TRAINING_EVENT] Waiting 3 seconds before handling Next/Close buttons for Tutorial.")
-            game.wait(3.0)
-            
-            // Start searching for Next buttons and clicking them until Close button is found.
-            var closeButtonFound = false
-            var maxIterations = 20 // Prevent infinite loops.
-            var iterationCount = 0
-            
-            while (!closeButtonFound && iterationCount < maxIterations) {
-                iterationCount++
+
+            // The following logic is for scenarios that needs this handling to be done.
+            // Some scenarios do not need to do this.
+            if (game.scenario != "Trackblazer") {
+                // Wait 3 seconds after selecting Tutorial event options.
+                MessageLog.i(TAG, "[TRAINING_EVENT] Waiting 3 seconds before handling Next/Close buttons for Tutorial.")
+                game.wait(3.0)
                 
-                // First check for Close button.
-                if (ButtonClose.click(game.imageUtils)) {
-                    MessageLog.i(TAG, "[TRAINING_EVENT] Close button found and clicked. Tutorial event handling complete.")
-                    closeButtonFound = true
-                    break
+                // Start searching for Next buttons and clicking them until Close button is found.
+                var closeButtonFound = false
+                var maxIterations = 20 // Prevent infinite loops.
+                var iterationCount = 0
+                
+                while (!closeButtonFound && iterationCount < maxIterations) {
+                    iterationCount++
+                    
+                    // First check for Close button.
+                    if (ButtonClose.click(game.imageUtils)) {
+                        MessageLog.i(TAG, "[TRAINING_EVENT] Close button found and clicked. Tutorial event handling complete.")
+                        closeButtonFound = true
+                        break
+                    }
+                    
+                    // If Close button not found, look for Next button.
+                    if (ButtonNext.click(game.imageUtils)) {
+                        MessageLog.i(TAG, "[TRAINING_EVENT] Next button found and clicked. Waiting for next screen...")
+                        game.wait(1.0)
+                    } else {
+                        // Neither button found, wait a bit and try again.
+                        MessageLog.d(TAG, "[TRAINING_EVENT] Neither Next nor Close button found. Waiting...")
+                        game.wait(0.5)
+                    }
                 }
                 
-                // If Close button not found, look for Next button.
-                if (ButtonNext.click(game.imageUtils)) {
-                    MessageLog.i(TAG, "[TRAINING_EVENT] Next button found and clicked. Waiting for next screen...")
-                    game.wait(1.0)
-                } else {
-                    // Neither button found, wait a bit and try again.
-                    MessageLog.d(TAG, "[TRAINING_EVENT] Neither Next nor Close button found. Waiting...")
-                    game.wait(0.5)
+                if (!closeButtonFound && iterationCount >= maxIterations) {
+                    MessageLog.w(TAG, "[TRAINING_EVENT] Reached maximum iterations while searching for Close button. Tutorial handling may be incomplete.")
                 }
-            }
-            
-            if (!closeButtonFound && iterationCount >= maxIterations) {
-                MessageLog.w(TAG, "[TRAINING_EVENT] Reached maximum iterations while searching for Close button. Tutorial handling may be incomplete.")
             }
         } else {
             // Normal event handling.
