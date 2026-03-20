@@ -1,0 +1,17 @@
+path: C:\Users\steve1316\Desktop\yolo
+train: train/images
+val: val/images
+
+# Classes mapping (Must match the order in your classes.txt)
+names:
+  0: "+"
+  1: "0"
+  2: "1"
+  3: "2"
+  4: "3"
+  5: "4"
+  6: "5"
+  7: "6"
+  8: "7"
+  9: "8"
+  10: "9"
