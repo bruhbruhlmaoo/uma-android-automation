@@ -116,7 +116,7 @@ const REGEX = {
     // Extract timestamp: "00:12:22.190" or "00:00:14.810"
     timestamp: /^(\d{2}):(\d{2}):(\d{2})\.(\d{3})/,
     // Extract trainee name from content: "[TRAINEE] Detected trainee name: Special Week"
-    traineeName: /\[TRAINEE\][^\n]*Detected trainee name:\s*(.+)$/i,
+    traineeName: /\[TRAINEE\][^\n]*(?:Detected trainee name|Name):\s*(.+)$/i,
 }
 
 /** Generic matcher that supports substring contains checks only. */

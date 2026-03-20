@@ -78,7 +78,7 @@ object LogStreamServer {
 	private val actionMoodPattern = Pattern.compile("Recovering mood now", Pattern.CASE_INSENSITIVE)
 	private val actionEnergyPattern = Pattern.compile("\\[ENERGY\\] Successfully recovered energy")
 	private val actionInjuryPattern = Pattern.compile("\\[INJURY\\] Injury detected and attempted to heal")
-	private val traineeDetailedPattern = Pattern.compile("\\[TRAINEE_DETAILED\\] ([^:]+): (.*)")
+	private val traineePattern = Pattern.compile("\\[TRAINEE\\] ([^:]+): (.*)")
 	private val dateNewPattern = Pattern.compile("\\[DATE\\] New date: (.*?) \\(Turn (\\d+)\\)", Pattern.CASE_INSENSITIVE)
 
 	/**
@@ -584,7 +584,7 @@ object LogStreamServer {
 	 * @return A JSONObject containing the trainee details if detected, otherwise NULL.
 	 */
 	private fun parseTraineeInfo(text: String): JSONObject? {
-		val matcher = traineeDetailedPattern.matcher(text)
+		val matcher = traineePattern.matcher(text)
 		return if (matcher.find()) {
 			JSONObject().apply {
 				put("category", matcher.group(1))

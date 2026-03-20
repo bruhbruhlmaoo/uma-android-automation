@@ -1290,7 +1290,6 @@ abstract class Campaign(game: Game) : Task(game) {
         MessageLog.i(TAG, "[TRAINEE] Energy Updated: ${trainee.energy}%")
         if (trainee.bHasUpdatedAptitudes) {
             trainee.logInfo()
-            trainee.logDetailedPlayerInfo()
         }
     }
 
@@ -1643,7 +1642,6 @@ abstract class Campaign(game: Game) : Task(game) {
 
                 // Print the trainee info with the updated fan count.
                 trainee.logInfo()
-                trainee.logDetailedPlayerInfo()
             }
             "umamusume_details" -> {
                 val prevTrackSurface = trainee.trackSurface

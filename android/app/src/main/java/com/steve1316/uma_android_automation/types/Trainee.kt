@@ -523,7 +523,7 @@ class Trainee {
 
         if (detectedName.isNotEmpty()) {
             name = detectedName
-            MessageLog.i(TAG, "[TRAINEE] Detected trainee name: $name")
+            MessageLog.i(TAG, "[TRAINEE] Name: $name")
 
             // Set the log file name prefix to the trainee name with spaces replaced by underscores.
             // This is done to differentiate which logs belong to which trainee.
@@ -758,27 +758,20 @@ class Trainee {
         }
 	}
 
-    /** Logs the trainee's current state to the message log. */
-    fun logInfo() {
-        MessageLog.i(TAG, "[TRAINEE] Current State:\n${this}")
-    }
-
     /** Logs the trainee's current state in a structured format for the Remote Log Viewer dashboard. */
-    fun logDetailedPlayerInfo() {
-        val statsString = "Spd=${stats.speed}, Sta=${stats.stamina}, Pow=${stats.power}, Gut=${stats.guts}, Wit=${stats.wit}"
+    fun logInfo() {
+        if (name.isNotEmpty()) {
+            MessageLog.i(TAG, "[TRAINEE] Name: $name")
+        }
+        MessageLog.i(TAG, "[TRAINEE] Stats: $stats")
+        MessageLog.i(TAG, "[TRAINEE] Energy: $energy%")
+        MessageLog.i(TAG, "[TRAINEE] Fans: $fans")
         val trackString = "Turf=${trackSurfaceAptitudes[TrackSurface.TURF]}, Dirt=${trackSurfaceAptitudes[TrackSurface.DIRT]}"
         val distanceString = "Sprint=${trackDistanceAptitudes[TrackDistance.SPRINT]}, Mile=${trackDistanceAptitudes[TrackDistance.MILE]}, Medium=${trackDistanceAptitudes[TrackDistance.MEDIUM]}, Long=${trackDistanceAptitudes[TrackDistance.LONG]}"
         val styleString = "Front=${runningStyleAptitudes[RunningStyle.FRONT_RUNNER]}, Pace=${runningStyleAptitudes[RunningStyle.PACE_CHASER]}, Late=${runningStyleAptitudes[RunningStyle.LATE_SURGER]}, End=${runningStyleAptitudes[RunningStyle.END_CLOSER]}"
-
-        // Log the trainee name if it has been detected.
-        if (name.isNotEmpty()) {
-            MessageLog.i(TAG, "[TRAINEE_DETAILED] Name: $name")
-        }
-        MessageLog.i(TAG, "[TRAINEE_DETAILED] Stats: $statsString")
-        MessageLog.i(TAG, "[TRAINEE_DETAILED] Energy: $energy%")
-        MessageLog.i(TAG, "[TRAINEE_DETAILED] Track: $trackString")
-        MessageLog.i(TAG, "[TRAINEE_DETAILED] Distance: $distanceString")
-        MessageLog.i(TAG, "[TRAINEE_DETAILED] Style: $styleString")
+        MessageLog.i(TAG, "[TRAINEE] Track: $trackString")
+        MessageLog.i(TAG, "[TRAINEE] Distance: $distanceString")
+        MessageLog.i(TAG, "[TRAINEE] Style: $styleString")
     }
 
     /** Returns a formatted string of the trainee's preferred aptitudes.
