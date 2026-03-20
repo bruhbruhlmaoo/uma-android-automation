@@ -763,6 +763,7 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
         // No skills to buy. Return to previous screen.
         if (result.isEmpty()) {
             skillList.cancelAndExit()
+            campaign.trainee.skillPoints = skillList.skillPoints
             return true
         }
 
@@ -781,6 +782,7 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
         }
 
         skillList.confirmAndExit()
+        campaign.trainee.skillPoints = skillList.skillPoints
         return true
     }
 
