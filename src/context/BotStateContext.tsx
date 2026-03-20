@@ -189,6 +189,10 @@ export interface Settings {
     // Scenario specific overrides
     scenarioOverrides: {
         trackblazerConsecutiveRacesLimit: number
+        trackblazerEnergyThreshold: number
+        trackblazerShopCheckGrades: string[]
+        trackblazerMinStatGainForCharm: number
+        trackblazerMaxRetriesPerRace: number
     }
 }
 
@@ -393,6 +397,10 @@ export const defaultSettings: Settings = {
     },
     scenarioOverrides: {
         trackblazerConsecutiveRacesLimit: 5,
+        trackblazerEnergyThreshold: 40,
+        trackblazerShopCheckGrades: ["G1", "G2", "G3"],
+        trackblazerMinStatGainForCharm: 30,
+        trackblazerMaxRetriesPerRace: 1,
     },
 }
 

@@ -515,6 +515,30 @@ const searchConfig: SearchOption[] = [
         description: "Sets the maximum number of consecutive races the bot is allowed to run in the Trackblazer scenario before stopping.",
         page: "ScenarioOverridesSettings",
     },
+    {
+        id: "trackblazer-energy-threshold",
+        title: "Trackblazer Energy Threshold",
+        description: "Sets the energy threshold below which the bot will use energy recovery items in the Trackblazer scenario.",
+        page: "ScenarioOverridesSettings",
+    },
+    {
+        id: "trackblazer-shop-check-grades",
+        title: "Trackblazer Shop Check Grades",
+        description: "Select which race grades should trigger a shop check after the race in the Trackblazer scenario.",
+        page: "ScenarioOverridesSettings",
+    },
+    {
+        id: "trackblazer-min-stat-gain-for-charm",
+        title: "Trackblazer Min Main Stat Gain for Good-Luck Charm",
+        description: "Sets the minimum main stat gain required to justify using a Good-Luck Charm during training in the Trackblazer scenario.",
+        page: "ScenarioOverridesSettings",
+    },
+    {
+        id: "trackblazer-max-retries-per-race",
+        title: "Trackblazer Max Retries per Race",
+        description: "Sets the maximum number of retries allowed for a single race in the Trackblazer scenario.",
+        page: "ScenarioOverridesSettings",
+    },
 
     // ============================================================
     // Debug Settings
