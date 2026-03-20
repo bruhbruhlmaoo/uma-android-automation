@@ -31,6 +31,7 @@ import com.steve1316.uma_android_automation.types.FanCountClass
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.CountDownLatch
 
+import org.json.JSONArray
 import org.opencv.core.Point
 
 class Trackblazer(game: Game) : Campaign(game) {
@@ -44,6 +45,24 @@ class Trackblazer(game: Game) : Campaign(game) {
     var currentInventory: Map<String, Int> = mapOf()
 
 	private val consecutiveRacesLimit: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerConsecutiveRacesLimit", 5)
+
+	/** List of race grades that trigger a shop check afterwards. */
+	private val shopCheckGrades: List<RaceGrade> = try {
+		val gradesString = SettingsHelper.getStringSetting("scenarioOverrides", "trackblazerShopCheckGrades", "[\"G1\",\"G2\",\"G3\"]")
+		val jsonArray = JSONArray(gradesString)
+		val grades = mutableListOf<RaceGrade>()
+		for (i in 0 until jsonArray.length()) {
+			val gradeName = jsonArray.getString(i)
+			val grade = RaceGrade.fromName(gradeName)
+			if (grade != null) {
+				grades.add(grade)
+			}
+		}
+		grades
+	} catch (e: Exception) {
+		Log.e(TAG, "[TRACKBLAZER] Failed to parse shopCheckGrades setting: ${e.message}")
+		listOf(RaceGrade.G1, RaceGrade.G2, RaceGrade.G3)
+	}
 
 	/** Tracks the number of consecutive races performed. */
 	private var consecutiveRaceCount: Int = 0
@@ -70,7 +89,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 	private var bShouldCheckShop: Boolean = false
 
     /** Threshold for energy level to use energy items. */
-    private var energyThresholdToUseEnergyItems: Int = 40
+    private var energyThresholdToUseEnergyItems: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerEnergyThreshold", 40)
 
     /**
      * Detects and handles any dialog popups.
@@ -338,7 +357,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             
 			// Handle any consecutive race warning dialogs that might pop up after clicking "Races".
 			val dialogResult = handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
-			if (dialogResult is DialogHandlerResult.Handled && consecutiveRaceCount >= 6 && game.imageUtils.determineTurnsRemainingBeforeNextGoal() != 1) {
+			if (dialogResult is DialogHandlerResult.Handled && consecutiveRaceCount >= consecutiveRacesLimit && game.imageUtils.determineTurnsRemainingBeforeNextGoal() != 1) {
 				MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning obeyed. Aborting racing.")
 				return false
 			}
@@ -379,8 +398,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 			}
 
 			// Check if we should perform a shop check after this race.
-			// Any graded race (G1, G2, or G3) should trigger a shop check regardless whether it is a Rival Race or not.
-			if (racing.lastRaceGrade == RaceGrade.G1 || racing.lastRaceGrade == RaceGrade.G2 || racing.lastRaceGrade == RaceGrade.G3) {
+			// Any graded race defined in the settings should trigger a shop check.
+			if (shopCheckGrades.contains(racing.lastRaceGrade)) {
 				MessageLog.i(TAG, "[TRACKBLAZER] Graded race detected (${racing.lastRaceGrade}). Shop check will be performed on main screen.")
 				bShouldCheckShop = true
 			}

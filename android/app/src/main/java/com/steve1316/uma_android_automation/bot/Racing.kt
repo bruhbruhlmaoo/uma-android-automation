@@ -86,8 +86,11 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     private val raceData: Map<String, RaceData> = loadRaceData()
     private val userPlannedRaces: List<PlannedRace> = loadUserPlannedRaces()
 
+    private val maxRetriesPerRace = if (game.scenario == "Trackblazer") SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerMaxRetriesPerRace", 1) else 1
+
     init {
         if (game.scenario == "Trackblazer") {
+            // Total pool of retries for the entire run.
             raceRetries = 5
         }
     }
@@ -2020,6 +2023,8 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         // Flag used to prevent us from attempting to select a running style after
         // we've already successfully selected a running style once.
         var bDidSelectRaceStrategy: Boolean = false
+        var retriesThisRace = 0
+        var lastRaceRetries = raceRetries
 
         do {
             if (campaign.tryHandleAllDialogs()) {
@@ -2085,6 +2090,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                         MessageLog.i(TAG, "[RACE] [TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
                         if (ButtonTryAgainAlt.click(game.imageUtils)) {
                             game.wait(3.0)
+                            retriesThisRace++
+                            raceRetries--
+                            lastRaceRetries = raceRetries
                         }
                     } else if (lastRaceIsRival && !bRetriedCurrentRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils) == false) {
                         // Trackblazer Rival Race retry logic: retry once then stop.
@@ -2092,6 +2100,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                         bRetriedCurrentRace = true
                         if (ButtonTryAgainAlt.click(game.imageUtils)) {
                             game.wait(3.0)
+                            retriesThisRace++
+                            raceRetries--
+                            lastRaceRetries = raceRetries
                         }
                     }
                 }
@@ -2100,6 +2111,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                     MessageLog.i(TAG, "[RACE] [TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
                     if (ButtonTryAgainAlt.click(game.imageUtils, sourceBitmap = bitmap)) {
                         game.wait(3.0)
+                        retriesThisRace++
+                        raceRetries--
+                        lastRaceRetries = raceRetries
                     }
                 }
                 game.scenario == "Trackblazer" && lastRaceIsRival && !bRetriedCurrentRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils, sourceBitmap = bitmap) == false -> {
@@ -2108,6 +2122,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                     bRetriedCurrentRace = true
                     if (ButtonTryAgainAlt.click(game.imageUtils, sourceBitmap = bitmap)) {
                         game.wait(3.0)
+                        retriesThisRace++
+                        raceRetries--
+                        lastRaceRetries = raceRetries
                     }
                 }
                 ButtonNext.check(game.imageUtils, sourceBitmap = bitmap) -> {
@@ -2120,7 +2137,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                     game.tap(350.0, 450.0, taps = 3)
                 }
             }
-        } while (raceRetries >= 0)
+        } while (raceRetries >= 0 && retriesThisRace < maxRetriesPerRace)
 
         MessageLog.d(TAG, "runRaceWithRetries: No retries remaining ($raceRetries). Returning FALSE.")
         return false

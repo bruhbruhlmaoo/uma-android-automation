@@ -606,6 +606,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
 	private fun getCurrentStatCap(statName: StatName): Int {
 		return getScenarioStatCap(game.scenario, statName)
 	}
+    private val minStatGainForCharm = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerMinStatGainForCharm", 30)
 
 	////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////
@@ -1231,8 +1232,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
                         continue
                     }
 
-                    if (!test && ignoreFailureChance && result.failureChance > effectiveFailureChance && mainStatGain < 30) {
-                        MessageLog.i(TAG, "[TRAINING] Skipping ${result.name} training with Good-Luck Charm because main stat gain ($mainStatGain) is less than 30 and failure chance (${result.failureChance}%) is risky.")
+                    if (!test && ignoreFailureChance && result.failureChance > effectiveFailureChance && mainStatGain < minStatGainForCharm) {
+                        MessageLog.i(TAG, "[TRAINING] Skipping ${result.name} training with Good-Luck Charm because main stat gain ($mainStatGain) is less than $minStatGainForCharm and failure chance (${result.failureChance}%) is risky.")
                         
                         // Store the skipped training for logging purposes.
                         val skippedTraining = TrainingOption(
