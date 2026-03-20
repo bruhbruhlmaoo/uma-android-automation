@@ -128,9 +128,9 @@ class TrainingScoringTest {
 		focusOnSparkStatTarget: List<StatName> = emptyList(),
 		blacklist: List<StatName?> = emptyList(),
 		disableTrainingOnMaxedStat: Boolean = false,
-		currentStatCap: Int = 1200,
 		skillHintsPerLocation: Map<StatName, Int> = StatName.entries.associateWith { 0 },
-		enablePrioritizeSkillHints: Boolean = false
+		enablePrioritizeSkillHints: Boolean = false,
+		statsTrainedOverBuffer: Set<StatName> = emptySet()
 	): TrainingConfig {
 		return TrainingConfig(
 			currentStats = currentStats,
@@ -142,10 +142,10 @@ class TrainingScoringTest {
 			focusOnSparkStatTarget = focusOnSparkStatTarget,
 			blacklist = blacklist,
 			disableTrainingOnMaxedStat = disableTrainingOnMaxedStat,
-			currentStatCap = currentStatCap,
 			trainingOptions = trainingOptions,
 			skillHintsPerLocation = skillHintsPerLocation,
-			enablePrioritizeSkillHints = enablePrioritizeSkillHints
+			enablePrioritizeSkillHints = enablePrioritizeSkillHints,
+			statsTrainedOverBuffer = statsTrainedOverBuffer
 		)
 	}
 
@@ -504,8 +504,7 @@ class TrainingScoringTest {
 
 		val config = createDefaultConfig(
 			trainingOptions = listOf(training),
-			currentStats = currentStats,
-			currentStatCap = 1200
+			currentStats = currentStats
 		)
 
 		val score = calculateRawTrainingScore(config, training)
@@ -532,8 +531,7 @@ class TrainingScoringTest {
 		val config = createDefaultConfig(
 			trainingOptions = listOf(training),
 			currentStats = currentStats,
-			disableTrainingOnMaxedStat = true,
-			currentStatCap = 1000
+			disableTrainingOnMaxedStat = true
 		)
 
 		val score = calculateRawTrainingScore(config, training)
