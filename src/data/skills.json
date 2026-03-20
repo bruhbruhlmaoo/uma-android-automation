@@ -560,7 +560,7 @@
         "condition": "distance_type==4&straight_random==1",
         "precondition": "",
         "inherited": false,
-        "community_tier": null,
+        "community_tier": 0,
         "versions": [
             201171,
             201172
@@ -2424,7 +2424,7 @@
         "condition": "ground_condition==1",
         "precondition": "",
         "inherited": false,
-        "community_tier": null,
+        "community_tier": 1,
         "versions": [
             200151,
             200152,
@@ -3106,7 +3106,7 @@
         "condition": "distance_rate_after_random==50",
         "precondition": "",
         "inherited": false,
-        "community_tier": null,
+        "community_tier": 2,
         "versions": [
             210061
         ],
@@ -3146,7 +3146,7 @@
         "condition": "distance_rate>=50&phase==1&order>=3&order_rate<=70",
         "precondition": "",
         "inherited": true,
-        "community_tier": null,
+        "community_tier": 2,
         "versions": [],
         "upgrade": null,
         "downgrade": null
@@ -6555,7 +6555,7 @@
         "condition": "distance_rate_after_random==50",
         "precondition": "",
         "inherited": false,
-        "community_tier": null,
+        "community_tier": 2,
         "versions": [
             210062
         ],
@@ -6694,7 +6694,7 @@
         "condition": "distance_rate>=50&phase==1&order>=3&order_rate<=70",
         "precondition": "",
         "inherited": true,
-        "community_tier": null,
+        "community_tier": 2,
         "versions": [],
         "upgrade": null,
         "downgrade": null
@@ -9328,7 +9328,7 @@
         "condition": "phase==2&straight_front_type==2&order<=2@distance_rate>=50&corner==3&order<=2",
         "precondition": "",
         "inherited": true,
-        "community_tier": null,
+        "community_tier": 0,
         "versions": [],
         "upgrade": null,
         "downgrade": null
