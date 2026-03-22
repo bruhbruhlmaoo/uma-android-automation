@@ -2,32 +2,12 @@ package com.steve1316.uma_android_automation.types
 
 import android.graphics.Bitmap
 import android.util.Log
-import org.opencv.core.Point
-import kotlin.enums.enumEntries
-import kotlin.math.abs
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-
-import net.ricecode.similarity.JaroWinklerStrategy
-import net.ricecode.similarity.StringSimilarityServiceImpl
-
-import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.BotService
-
-import com.steve1316.uma_android_automation.MainActivity
+import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.SettingsHelper
-import com.steve1316.uma_android_automation.utils.CustomImageUtils
+import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.bot.Game
-
-import com.steve1316.uma_android_automation.types.Aptitude
-import com.steve1316.uma_android_automation.types.FanCountClass
-import com.steve1316.uma_android_automation.types.Mood
-import com.steve1316.uma_android_automation.types.RunningStyle
-import com.steve1316.uma_android_automation.types.StatName
-import com.steve1316.uma_android_automation.types.TrackDistance
-import com.steve1316.uma_android_automation.types.TrackSurface
-
+import com.steve1316.uma_android_automation.components.ButtonConditions
 import com.steve1316.uma_android_automation.components.ComponentInterface
 import com.steve1316.uma_android_automation.components.IconMoodAwful
 import com.steve1316.uma_android_automation.components.IconMoodBad
@@ -45,39 +25,50 @@ import com.steve1316.uma_android_automation.components.LabelStatAptitudeS
 import com.steve1316.uma_android_automation.components.LabelStatDistance
 import com.steve1316.uma_android_automation.components.LabelStatStyle
 import com.steve1316.uma_android_automation.components.LabelStatTrackSurface
-import com.steve1316.uma_android_automation.components.ButtonConditions
+import com.steve1316.uma_android_automation.types.Aptitude
+import com.steve1316.uma_android_automation.types.FanCountClass
+import com.steve1316.uma_android_automation.types.Mood
+import com.steve1316.uma_android_automation.types.RunningStyle
+import com.steve1316.uma_android_automation.types.StatName
+import com.steve1316.uma_android_automation.types.TrackDistance
+import com.steve1316.uma_android_automation.types.TrackSurface
+import com.steve1316.uma_android_automation.utils.CustomImageUtils
+import net.ricecode.similarity.JaroWinklerStrategy
+import net.ricecode.similarity.StringSimilarityServiceImpl
+import org.opencv.core.Point
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.enums.enumEntries
+import kotlin.math.abs
 
-/** Defines the state and properties of a trainee (Uma Musume).
+/**
+ * Defines the state and properties of a trainee (Uma Musume).
  *
- * This class serves as the central data structure for tracking a trainee's progress
- * throughout the bot's runtime. It maintains real-time information about stats, 
- * aptitudes, fan counts, mood, and status effects.
+ * This class serves as the central data structure for tracking a trainee's progress throughout the bot's runtime. It maintains real-time information about stats, aptitudes, fan counts, mood, and
+ * status effects.
  */
 class Trainee {
     companion object {
         const val TAG: String = "[${MainActivity.loggerTag}]Trainee"
 
         /** Mapping of [Aptitude] levels to their corresponding UI label components. */
-        val aptitudeComponentMap: Map<Aptitude, ComponentInterface> = mapOf(
-            Aptitude.A to LabelStatAptitudeA,
-            Aptitude.B to LabelStatAptitudeB,
-            Aptitude.C to LabelStatAptitudeC,
-            Aptitude.D to LabelStatAptitudeD,
-            Aptitude.E to LabelStatAptitudeE,
-            Aptitude.F to LabelStatAptitudeF,
-            Aptitude.G to LabelStatAptitudeG,
-            Aptitude.S to LabelStatAptitudeS,
-        )
+        val aptitudeComponentMap: Map<Aptitude, ComponentInterface> =
+            mapOf(
+                Aptitude.A to LabelStatAptitudeA,
+                Aptitude.B to LabelStatAptitudeB,
+                Aptitude.C to LabelStatAptitudeC,
+                Aptitude.D to LabelStatAptitudeD,
+                Aptitude.E to LabelStatAptitudeE,
+                Aptitude.F to LabelStatAptitudeF,
+                Aptitude.G to LabelStatAptitudeG,
+                Aptitude.S to LabelStatAptitudeS,
+            )
 
         /** Container for the trainee's five stat values. */
-        data class Stats(
-            var speed: Int = -1,
-            var stamina: Int = -1,
-            var power: Int = -1,
-            var guts: Int = -1,
-            var wit: Int = -1,
-        ) {
-            /** Sets a specific stat value using its enum identifier.
+        data class Stats(var speed: Int = -1, var stamina: Int = -1, var power: Int = -1, var guts: Int = -1, var wit: Int = -1) {
+            /**
+             * Sets a specific stat value using its enum identifier.
              *
              * @param statName The [StatName] to update.
              * @param value The new integer value for the stat.
@@ -96,7 +87,8 @@ class Trainee {
                 return "Spd=$speed, Sta=$stamina, Pow=$power, Gut=$guts, Wit=$wit"
             }
 
-            /** Returns the stat values as an [IntArray] in a fixed order.
+            /**
+             * Returns the stat values as an [IntArray] in a fixed order.
              *
              * @return An array of stat values in order: Speed, Stamina, Power, Guts, Wit.
              */
@@ -104,7 +96,8 @@ class Trainee {
                 return intArrayOf(speed, stamina, power, guts, wit)
             }
 
-            /** Returns a copy of the current stat values as a [Map].
+            /**
+             * Returns a copy of the current stat values as a [Map].
              *
              * @return A map keyed by [StatName].
              */
@@ -128,27 +121,32 @@ class Trainee {
 
     /** The trainee's current stat values (Speed, Stamina, Power, Guts, Wit). */
     val stats: Stats = Stats()
+
     /** Mapping of [TrackSurface] types to the trainee's [Aptitude]. */
-    val trackSurfaceAptitudes: MutableMap<TrackSurface, Aptitude> = mutableMapOf(
-        TrackSurface.TURF to Aptitude.G,
-        TrackSurface.DIRT to Aptitude.G,
-    )
+    val trackSurfaceAptitudes: MutableMap<TrackSurface, Aptitude> =
+        mutableMapOf(
+            TrackSurface.TURF to Aptitude.G,
+            TrackSurface.DIRT to Aptitude.G,
+        )
 
     /** Mapping of [TrackDistance] types to the trainee's [Aptitude]. */
-    val trackDistanceAptitudes: MutableMap<TrackDistance, Aptitude> = mutableMapOf(
-        TrackDistance.SPRINT to Aptitude.G,
-        TrackDistance.MILE to Aptitude.G,
-        TrackDistance.MEDIUM to Aptitude.G,
-        TrackDistance.LONG to Aptitude.G,
-    )
+    val trackDistanceAptitudes: MutableMap<TrackDistance, Aptitude> =
+        mutableMapOf(
+            TrackDistance.SPRINT to Aptitude.G,
+            TrackDistance.MILE to Aptitude.G,
+            TrackDistance.MEDIUM to Aptitude.G,
+            TrackDistance.LONG to Aptitude.G,
+        )
 
     /** Mapping of [RunningStyle] types to the trainee's [Aptitude]. */
-    val runningStyleAptitudes: MutableMap<RunningStyle, Aptitude> = mutableMapOf(
-        RunningStyle.FRONT_RUNNER to Aptitude.G,
-        RunningStyle.PACE_CHASER to Aptitude.G,
-        RunningStyle.LATE_SURGER to Aptitude.G,
-        RunningStyle.END_CLOSER to Aptitude.G,
-    )
+    val runningStyleAptitudes: MutableMap<RunningStyle, Aptitude> =
+        mutableMapOf(
+            RunningStyle.FRONT_RUNNER to Aptitude.G,
+            RunningStyle.PACE_CHASER to Aptitude.G,
+            RunningStyle.LATE_SURGER to Aptitude.G,
+            RunningStyle.END_CLOSER to Aptitude.G,
+        )
+
     /** The trainee's current pool of skill points. */
     var skillPoints: Int = 120
 
@@ -157,12 +155,13 @@ class Trainee {
 
     /** The trainee's current [Mood] level. */
     var mood: Mood = Mood.NORMAL
+
     /** The name of the trainee detected from the UI. */
     var name: String = ""
 
     /** The screen-space location of the track surface label used as an OCR reference point. */
     var statTrackLocation: Point? = null
-    
+
     /** List of all positive status names that can be detected. */
     private val positiveStatusList = listOf("Charming", "Fast Learner", "Practice Practice")
 
@@ -215,24 +214,27 @@ class Trainee {
 
     /** The trainee's calculated or overridden preferred [TrackSurface]. */
     val trackSurface: TrackSurface
-        get() = getMaxAptitude<TrackSurface>(
-            aptitudeMap=trackSurfaceAptitudes,
-            defaultMaxKey=TrackSurface.TURF,
-        )
+        get() =
+            getMaxAptitude<TrackSurface>(
+                aptitudeMap = trackSurfaceAptitudes,
+                defaultMaxKey = TrackSurface.TURF,
+            )
 
     /** The trainee's calculated or overridden preferred [TrackDistance]. */
     val trackDistance: TrackDistance
-        get() = TrackDistance.fromName(preferredDistanceOverride) ?: getMaxAptitude<TrackDistance>(
-            aptitudeMap=trackDistanceAptitudes,
-            defaultMaxKey=TrackDistance.MEDIUM,
-        )
-    
+        get() =
+            TrackDistance.fromName(preferredDistanceOverride) ?: getMaxAptitude<TrackDistance>(
+                aptitudeMap = trackDistanceAptitudes,
+                defaultMaxKey = TrackDistance.MEDIUM,
+            )
+
     /** The trainee's calculated preferred [RunningStyle]. */
     val runningStyle: RunningStyle
-        get() = getMaxAptitude<RunningStyle>(
-            aptitudeMap=runningStyleAptitudes,
-            defaultMaxKey=RunningStyle.FRONT_RUNNER,
-        )
+        get() =
+            getMaxAptitude<RunningStyle>(
+                aptitudeMap = runningStyleAptitudes,
+                defaultMaxKey = RunningStyle.FRONT_RUNNER,
+            )
 
     init {
         setStatTargetsByDistances()
@@ -241,10 +243,10 @@ class Trainee {
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /** Calculates the highest-priority enum key based on current aptitude levels.
+    /**
+     * Calculates the highest-priority enum key based on current aptitude levels.
      *
-     * This logic determines the "best" fit for a trainee among multiple options.
-     * It checks two conditions:
+     * This logic determines the "best" fit for a trainee among multiple options. It checks two conditions:
      * 1. The highest [Aptitude] value (e.g., S > A > B).
      * 2. If aptitudes are equal, the key with the lowest ordinal value (highest priority) is selected.
      *
@@ -252,13 +254,9 @@ class Trainee {
      *
      * @param aptitudeMap A mapping of the generic enum [T] to the trainee's current [Aptitude].
      * @param defaultMaxKey Output value if no better aptitudes are found.
-     *
      * @return The key [T] representing the trainee's strongest aptitude.
      */
-    inline fun <reified T : Enum<T>> getMaxAptitude(
-        aptitudeMap: MutableMap<T, Aptitude>,
-        defaultMaxKey: T,
-    ): T {
+    inline fun <reified T : Enum<T>> getMaxAptitude(aptitudeMap: MutableMap<T, Aptitude>, defaultMaxKey: T): T {
         var maxKey = defaultMaxKey
         var maxVal: Aptitude = Aptitude.G
 
@@ -277,7 +275,8 @@ class Trainee {
         return maxKey
     }
 
-    /** Retrieves a specific stat value using its enum identifier.
+    /**
+     * Retrieves a specific stat value using its enum identifier.
      *
      * @param statName The [StatName] to retrieve.
      * @return The current integer value of the specified stat.
@@ -292,13 +291,12 @@ class Trainee {
         }
     }
 
-    /** Retrieves the target stat thresholds for a specific race distance.
+    /**
+     * Retrieves the target stat thresholds for a specific race distance.
      *
      * These targets are used by the bot to prioritize training sessions.
      *
-     * @param distance The [TrackDistance] to query. If null, the trainee's 
-     * [trackDistance] (preferred distance) is used as the default.
-     *
+     * @param distance The [TrackDistance] to query. If null, the trainee's [trackDistance] (preferred distance) is used as the default.
      * @return A map of [StatName] to their desired target values.
      */
     fun getStatTargetsByDistance(distance: TrackDistance? = null): Map<StatName, Int> {
@@ -319,10 +317,10 @@ class Trainee {
         return statTargetsByDistance[distance]!!.asMap()
     }
 
-    /** Updates the trainee's stats with the provided values.
+    /**
+     * Updates the trainee's stats with the provided values.
      *
-     * Values are only updated if they are not null. This is useful for partial 
-     * updates from OCR results.
+     * Values are only updated if they are not null. This is useful for partial updates from OCR results.
      *
      * @param speed New Speed value, or null to skip.
      * @param stamina New Stamina value, or null to skip.
@@ -330,13 +328,7 @@ class Trainee {
      * @param guts New Guts value, or null to skip.
      * @param wit New Wit value, or null to skip.
      */
-    fun setTraineeStats(
-        speed: Int? = null,
-        stamina: Int? = null,
-        power: Int? = null,
-        guts: Int? = null,
-        wit: Int? = null,
-    ) {
+    fun setTraineeStats(speed: Int? = null, stamina: Int? = null, power: Int? = null, guts: Int? = null, wit: Int? = null) {
         if (speed != null) {
             stats.speed = speed
         }
@@ -354,7 +346,8 @@ class Trainee {
         }
     }
 
-    /** Sets the trainee's aptitude for a specific running style.
+    /**
+     * Sets the trainee's aptitude for a specific running style.
      *
      * @param runningStyle The running style to set the aptitude for.
      * @param aptitude The aptitude value to assign.
@@ -363,7 +356,8 @@ class Trainee {
         runningStyleAptitudes[runningStyle] = aptitude
     }
 
-    /** Returns the trainee's aptitude for a specified [TrackSurface].
+    /**
+     * Returns the trainee's aptitude for a specified [TrackSurface].
      *
      * @param trackSurface The track surface to check the aptitude for.
      * @return The aptitude value for the specified track surface.
@@ -372,7 +366,8 @@ class Trainee {
         return trackSurfaceAptitudes[trackSurface] ?: Aptitude.G
     }
 
-    /** Returns the trainee's aptitude for a specified [TrackDistance].
+    /**
+     * Returns the trainee's aptitude for a specified [TrackDistance].
      *
      * @param trackDistance The track distance to check the aptitude for.
      * @return The aptitude value for the specified track distance.
@@ -381,7 +376,8 @@ class Trainee {
         return trackDistanceAptitudes[trackDistance] ?: Aptitude.G
     }
 
-    /** Returns the trainee's aptitude for a specified [RunningStyle].
+    /**
+     * Returns the trainee's aptitude for a specified [RunningStyle].
      *
      * @param runningStyle The running style to check the aptitude for.
      * @return The aptitude value for the specified running style.
@@ -390,21 +386,16 @@ class Trainee {
         return runningStyleAptitudes[runningStyle] ?: Aptitude.G
     }
 
-    /** Detects the trainee's aptitudes for a specific category by scanning the screen.
+    /**
+     * Detects the trainee's aptitudes for a specific category by scanning the screen.
      *
-     * This logic performs a template check across a horizontal row in the Details dialog.
-     * The row is identified using the provided [label] coordinate.
+     * This logic performs a template check across a horizontal row in the Details dialog. The row is identified using the provided [label] coordinate.
      *
      * @param imageUtils Reference to the image processing utility.
      * @param label The [ComponentInterface] representing the row label (e.g., [LabelStatDistance]).
-     *
-     * @return A map linking the enum type [T] to its detected [Aptitude], or null if 
-     * the label couldn't be found.
+     * @return A map linking the enum type [T] to its detected [Aptitude], or null if the label couldn't be found.
      */
-    inline fun <reified T : Enum<T>> findAptitudesInBitmap(
-        imageUtils: CustomImageUtils,
-        label: ComponentInterface,
-    ): Map<T, Aptitude>? {
+    inline fun <reified T : Enum<T>> findAptitudesInBitmap(imageUtils: CustomImageUtils, label: ComponentInterface): Map<T, Aptitude>? {
         val result = mutableMapOf<T, Aptitude>()
 
         val bitmap: Bitmap = imageUtils.getSourceBitmap()
@@ -417,16 +408,17 @@ class Trainee {
         enumEntries<T>().forEachIndexed { index, option ->
             // Calculate the horizontal offset for each potential choice in the row.
             // Choices are spaced 190 pixels apart relative to the starting point.
-            val croppedBitmap: Bitmap? = imageUtils.createSafeBitmap(
-                bitmap,
-                imageUtils.relX(point.x, 108 + (index * 190)),
-                imageUtils.relY(point.y, -25),
-                imageUtils.relWidth(176),
-                imageUtils.relHeight(52),
-                "findAptitudesInBitmap:: crop bitmap.",
-            )
+            val croppedBitmap: Bitmap? =
+                imageUtils.createSafeBitmap(
+                    bitmap,
+                    imageUtils.relX(point.x, 108 + (index * 190)),
+                    imageUtils.relY(point.y, -25),
+                    imageUtils.relWidth(176),
+                    imageUtils.relHeight(52),
+                    "findAptitudesInBitmap:: crop bitmap.",
+                )
             if (croppedBitmap == null) {
-                MessageLog.e(TAG, "[ERROR] findAptitudesInBitmap:: Failed to create cropped bitmap: ${option}.")
+                MessageLog.e(TAG, "[ERROR] findAptitudesInBitmap:: Failed to create cropped bitmap: $option.")
                 return@forEachIndexed
             }
             for ((aptitude, component) in aptitudeComponentMap.entries) {
@@ -440,15 +432,13 @@ class Trainee {
         return result.toMap()
     }
 
-    /** Updates the trainee's track surface aptitudes from the current screen.
+    /**
+     * Updates the trainee's track surface aptitudes from the current screen.
      *
      * @param imageUtils A reference to a [CustomImageUtils] instance.
      */
     private fun updateTrackSurfaceAptitudes(imageUtils: CustomImageUtils) {
-        val aptitudes = findAptitudesInBitmap<TrackSurface>(
-            imageUtils = imageUtils,
-            label = LabelStatTrackSurface,
-        )
+        val aptitudes = findAptitudesInBitmap<TrackSurface>(imageUtils = imageUtils, label = LabelStatTrackSurface)
 
         // Cache the location of the label for use with readName().
         if (statTrackLocation == null) {
@@ -464,15 +454,13 @@ class Trainee {
         }
     }
 
-    /** Updates the trainee's track distance aptitudes from the current screen.
+    /**
+     * Updates the trainee's track distance aptitudes from the current screen.
      *
      * @param imageUtils A reference to a [CustomImageUtils] instance.
      */
     private fun updateTrackDistanceAptitudes(imageUtils: CustomImageUtils) {
-        val aptitudes = findAptitudesInBitmap<TrackDistance>(
-            imageUtils = imageUtils,
-            label = LabelStatDistance,
-        )
+        val aptitudes = findAptitudesInBitmap<TrackDistance>(imageUtils = imageUtils, label = LabelStatDistance)
 
         if (aptitudes == null) {
             return
@@ -483,15 +471,13 @@ class Trainee {
         }
     }
 
-    /** Updates the trainee's running style aptitudes from the current screen.
+    /**
+     * Updates the trainee's running style aptitudes from the current screen.
      *
      * @param imageUtils A reference to a [CustomImageUtils] instance.
      */
     private fun updateRunningStyleAptitudes(imageUtils: CustomImageUtils) {
-        val aptitudes = findAptitudesInBitmap<RunningStyle>(
-            imageUtils = imageUtils,
-            label = LabelStatStyle,
-        )
+        val aptitudes = findAptitudesInBitmap<RunningStyle>(imageUtils = imageUtils, label = LabelStatStyle)
 
         if (aptitudes == null) {
             return
@@ -502,7 +488,8 @@ class Trainee {
         }
     }
 
-    /** Updates all aptitudes for trainee.
+    /**
+     * Updates all aptitudes for trainee.
      *
      * Requires the Umamusume Details dialog to be opened.
      *
@@ -517,14 +504,12 @@ class Trainee {
         bHasUpdatedAptitudes = true
     }
 
-    /** Reads the trainee's name from the Umamusume Details dialog using color-filtered OCR.
+    /**
+     * Reads the trainee's name from the Umamusume Details dialog using color-filtered OCR.
      *
-     * The name text uses a uniform color #794016 (Brown-ish). This method uses 
-     * [LabelStatTrackSurface] as a dynamic reference point to calculate the 
-     * name's position on the screen.
+     * The name text uses a uniform color #794016 (Brown-ish). This method uses [LabelStatTrackSurface] as a dynamic reference point to calculate the name's position on the screen.
      *
-     * If successful, it also updates the [MessageLog]'s file name prefix so 
-     * logs can be categorized by trainee.
+     * If successful, it also updates the [MessageLog]'s file name prefix so logs can be categorized by trainee.
      *
      * @param imageUtils Reference to a [CustomImageUtils] instance.
      */
@@ -552,17 +537,18 @@ class Trainee {
         val nameHeight = imageUtils.relHeight(50)
 
         // Use color-filtered OCR with the target text color #794016.
-        val detectedName = imageUtils.findTextByColor(
-            sourceBitmap = sourceBitmap,
-            x = nameX.toInt(),
-            y = nameY.toInt(),
-            width = nameWidth,
-            height = nameHeight,
-            targetR = 121,
-            targetG = 64,
-            targetB = 22,
-            debugName = "trainee_name"
-        )
+        val detectedName =
+            imageUtils.findTextByColor(
+                sourceBitmap = sourceBitmap,
+                x = nameX.toInt(),
+                y = nameY.toInt(),
+                width = nameWidth,
+                height = nameHeight,
+                targetR = 121,
+                targetG = 64,
+                targetB = 22,
+                debugName = "trainee_name",
+            )
 
         if (detectedName.isNotEmpty()) {
             name = detectedName
@@ -576,7 +562,8 @@ class Trainee {
         }
     }
 
-    /** Reads the trainee's current conditions (positive and negative) from the Umamusume Details dialog.
+    /**
+     * Reads the trainee's current conditions (positive and negative) from the Umamusume Details dialog.
      *
      * Conditions are categorized by their background color:
      * - Negative Condition: #519FFB (Blue-ish)
@@ -614,16 +601,24 @@ class Trainee {
             val isGood = (r in 240..255 && g in 140..165 && b in 50..80)
 
             if (isBad || isGood) {
-                val statusTitle = imageUtils.performOCROnRegion(
-                    sourceBitmap, cropX, cropY, cropWidth, cropHeight,
-                    useThreshold = false, useGrayscale = true, scale = 1.0, ocrEngine = "tesseract",
-                    debugName = "updateConditions_status_$i"
-                ).trim()
+                val statusTitle =
+                    imageUtils.performOCROnRegion(
+                        sourceBitmap,
+                        cropX,
+                        cropY,
+                        cropWidth,
+                        cropHeight,
+                        useThreshold = false,
+                        useGrayscale = true,
+                        scale = 1.0,
+                        ocrEngine = "tesseract",
+                        debugName = "updateConditions_status_$i",
+                    ).trim()
 
                 if (statusTitle.isNotEmpty()) {
                     val expectedList = if (isBad) negativeStatusList else positiveStatusList
                     val match = findClosestMatch(statusTitle, expectedList)
-                    
+
                     if (match != null) {
                         if (isBad) {
                             currentNegativeStatuses.add(match)
@@ -654,12 +649,12 @@ class Trainee {
         }
     }
 
-    /** Finds the closest match for a detected OCR string from a known list of statuses.
+    /**
+     * Finds the closest match for a detected OCR string from a known list of statuses.
      *
      * @param ocrText The raw text returned by the OCR engine.
      * @param expectedList List of valid status names to compare against.
      * @param threshold Similarity threshold (0.0 to 1.0).
-     *
      * @return The matched status string, or null if no match is confident enough.
      */
     private fun findClosestMatch(ocrText: String, expectedList: List<String>, threshold: Double = 0.8): String? {
@@ -680,7 +675,8 @@ class Trainee {
         return if (bestScore >= threshold) bestMatch else null
     }
 
-    /** Updates the trainee's skill points from the current screen.
+    /**
+     * Updates the trainee's skill points from the current screen.
      *
      * @param imageUtils A reference to a [CustomImageUtils] instance.
      * @param sourceBitmap Optional pre-captured bitmap to analyze.
@@ -695,16 +691,13 @@ class Trainee {
         bHasUpdatedSkillPoints = skillPoints != -1
     }
 
-    /** Updates the trainee's stats by performing OCR on the screen.
+    /**
+     * Updates the trainee's stats by performing OCR on the screen.
      *
-     * To prevent "jumping" to incorrect values due to OCR misreads, this method 
-     * implements a verification process:
-     * 1. If a new value differs from the old one by >150, it is flagged as a 
-     * potential error and rejected initially.
+     * To prevent "jumping" to incorrect values due to OCR misreads, this method implements a verification process:
+     * 1. If a new value differs from the old one by >150, it is flagged as a potential error and rejected initially.
      * 2. The bot tracks consecutive "mismatches" for that stat.
-     * 3. If the "mismatched" value remains consistent across multiple updates, 
-     * the bot recovers by trusting the new value (assuming the previous one was 
-     * the actual error).
+     * 3. If the "mismatched" value remains consistent across multiple updates, the bot recovers by trusting the new value (assuming the previous one was the actual error).
      *
      * @param imageUtils Reference to a [CustomImageUtils] instance.
      * @param sourceBitmap Optional bitmap to use (enables parallel processing).
@@ -712,13 +705,7 @@ class Trainee {
      * @param externalLatch Latch for thread synchronization.
      * @param isAptitudeDialog True if reading from the Umamusume Details dialog instead of the Training screen.
      */
-    fun updateStats(
-        imageUtils: CustomImageUtils,
-        sourceBitmap: Bitmap? = null,
-        skillPointsLocation: Point? = null,
-        externalLatch: CountDownLatch? = null,
-        isAptitudeDialog: Boolean = false
-    ) {
+    fun updateStats(imageUtils: CustomImageUtils, sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null, externalLatch: CountDownLatch? = null, isAptitudeDialog: Boolean = false) {
         // If sourceBitmap and skillPointsLocation are provided, use threading for parallel processing.
         if (sourceBitmap != null && skillPointsLocation != null) {
             val statLatch = externalLatch ?: CountDownLatch(5)
@@ -784,7 +771,10 @@ class Trainee {
                             mismatchCounts[statName] = 0
                             lastMismatchedValues[statName] = -1
                         } else {
-                            MessageLog.w(TAG, "[WARN] updateStats:: New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue). Consecutive mismatch count: $newCount")
+                            MessageLog.w(
+                                TAG,
+                                "[WARN] updateStats:: New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue). Consecutive mismatch count: $newCount",
+                            )
                         }
                     } else {
                         // The mismatch itself is inconsistent, so reset the counter.
@@ -818,25 +808,35 @@ class Trainee {
                         mismatchCounts[statName] = newCount
 
                         if (newCount >= 2) {
-                            MessageLog.d(TAG, "[DEBUG] updateStats:: New $statName stat value has been consistent for $newCount updates via sequential processing. Trusting the new value: $newValue (was $oldValue)")
+                            MessageLog.d(
+                                TAG,
+                                "[DEBUG] updateStats:: New $statName stat value has been consistent for $newCount updates via sequential processing. Trusting the new value: $newValue (was $oldValue)",
+                            )
                             stats.setStat(statName, newValue)
                             bHasUpdatedStats = true
                             mismatchCounts[statName] = 0
                             lastMismatchedValues[statName] = -1
                         } else {
-                            MessageLog.w(TAG, "[WARN] updateStats:: New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue) via sequential processing. Consecutive mismatch count: $newCount")
+                            MessageLog.w(
+                                TAG,
+                                "[WARN] updateStats:: New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue) via sequential processing. Consecutive mismatch count: $newCount",
+                            )
                         }
                     } else {
                         mismatchCounts[statName] = 1
                         lastMismatchedValues[statName] = newValue
-                        MessageLog.w(TAG, "[WARN] updateStats:: New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue) via sequential processing. Resetting mismatch count.")
+                        MessageLog.w(
+                            TAG,
+                            "[WARN] updateStats:: New $statName stat value has changed too much since last update (old=$oldValue, new=$newValue) via sequential processing. Resetting mismatch count.",
+                        )
                     }
                 }
             }
         }
     }
 
-    /** Detects the trainee's current mood from the screen.
+    /**
+     * Detects the trainee's current mood from the screen.
      *
      * @param imageUtils Reference to a [CustomImageUtils] instance.
      * @param sourceBitmap Optional pre-captured bitmap to analyze (enables thread-safety).
@@ -866,7 +866,8 @@ class Trainee {
         }
     }
 
-    /** Updates the trainee's [mood] state from the current screen.
+    /**
+     * Updates the trainee's [mood] state from the current screen.
      *
      * If no mood can be detected, the current state remains unchanged.
      *
@@ -878,7 +879,8 @@ class Trainee {
         mood = checkMood(imageUtils, sourceBitmap) ?: mood
     }
 
-    /** Updates the trainee's approximate [energy] level from the current screen.
+    /**
+     * Updates the trainee's approximate [energy] level from the current screen.
      *
      * @param imageUtils Reference to a [CustomImageUtils] instance.
      */
@@ -889,10 +891,10 @@ class Trainee {
         }
     }
 
-    /** Sets up stat targets for different race distances by reading values from SQLite settings.
+    /**
+     * Sets up stat targets for different race distances by reading values from SQLite settings.
      *
-     * These targets are used to determine training priorities based on the expected 
-     * race distance of the current campaign goal.
+     * These targets are used to determine training priorities based on the expected race distance of the current campaign goal.
      */
     fun setStatTargetsByDistances() {
         for (trackDistance in TrackDistance.entries) {
@@ -900,10 +902,7 @@ class Trainee {
             for (statName in StatName.entries) {
                 val statNameString = statName.name.lowercase()
                 val trackDistanceString = trackDistance.name.lowercase().replaceFirstChar { it.uppercase() }
-                val target: Int = SettingsHelper.getIntSetting(
-                    "trainingStatTarget",
-                    "training${trackDistanceString}StatTarget_${statNameString}StatTarget",
-                )
+                val target: Int = SettingsHelper.getIntSetting("trainingStatTarget", "training${trackDistanceString}StatTarget_${statNameString}StatTarget")
                 newStats.setStat(statName, target)
             }
             statTargetsByDistance[trackDistance] = newStats
@@ -919,8 +918,10 @@ class Trainee {
         MessageLog.i(TAG, "[TRAINEE] Energy: $energy%")
         MessageLog.i(TAG, "[TRAINEE] Fans: $fans")
         val trackString = "Turf=${trackSurfaceAptitudes[TrackSurface.TURF]}, Dirt=${trackSurfaceAptitudes[TrackSurface.DIRT]}"
-        val distanceString = "Sprint=${trackDistanceAptitudes[TrackDistance.SPRINT]}, Mile=${trackDistanceAptitudes[TrackDistance.MILE]}, Medium=${trackDistanceAptitudes[TrackDistance.MEDIUM]}, Long=${trackDistanceAptitudes[TrackDistance.LONG]}"
-        val styleString = "Front=${runningStyleAptitudes[RunningStyle.FRONT_RUNNER]}, Pace=${runningStyleAptitudes[RunningStyle.PACE_CHASER]}, Late=${runningStyleAptitudes[RunningStyle.LATE_SURGER]}, End=${runningStyleAptitudes[RunningStyle.END_CLOSER]}"
+        val distanceString =
+            "Sprint=${trackDistanceAptitudes[TrackDistance.SPRINT]}, Mile=${trackDistanceAptitudes[TrackDistance.MILE]}, Medium=${trackDistanceAptitudes[TrackDistance.MEDIUM]}, Long=${trackDistanceAptitudes[TrackDistance.LONG]}"
+        val styleString =
+            "Front=${runningStyleAptitudes[RunningStyle.FRONT_RUNNER]}, Pace=${runningStyleAptitudes[RunningStyle.PACE_CHASER]}, Late=${runningStyleAptitudes[RunningStyle.LATE_SURGER]}, End=${runningStyleAptitudes[RunningStyle.END_CLOSER]}"
         MessageLog.i(TAG, "[TRAINEE] Track: $trackString")
         MessageLog.i(TAG, "[TRAINEE] Distance: $distanceString")
         MessageLog.i(TAG, "[TRAINEE] Style: $styleString")

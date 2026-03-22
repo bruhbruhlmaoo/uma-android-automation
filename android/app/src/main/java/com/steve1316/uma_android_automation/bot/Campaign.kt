@@ -1,31 +1,76 @@
 package com.steve1316.uma_android_automation.bot
 
-import android.util.Log
 import android.graphics.Bitmap
-import org.opencv.core.Point
-import kotlinx.coroutines.*
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
+import android.util.Log
 import com.steve1316.automation_library.utils.BotService
 import com.steve1316.automation_library.utils.DiscordUtils
 import com.steve1316.automation_library.utils.ImageUtils.ScaleConfidenceResult
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.SettingsHelper
-import com.steve1316.uma_android_automation.utils.ScrollList
-import com.steve1316.uma_android_automation.utils.ScrollListEntry
-
-import com.steve1316.uma_android_automation.bot.DialogHandlerResult
-import com.steve1316.uma_android_automation.bot.Game
-import com.steve1316.uma_android_automation.bot.Racing
-import com.steve1316.uma_android_automation.bot.SkillPlan
-import com.steve1316.uma_android_automation.bot.Task
-import com.steve1316.uma_android_automation.bot.TaskResult
-import com.steve1316.uma_android_automation.bot.TaskResultCode
-import com.steve1316.uma_android_automation.bot.Training
-import com.steve1316.uma_android_automation.bot.TrainingEvent
-
-import com.steve1316.uma_android_automation.types.Aptitude
+import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ButtonBurger
+import com.steve1316.uma_android_automation.components.ButtonCancel
+import com.steve1316.uma_android_automation.components.ButtonCareerEndSkills
+import com.steve1316.uma_android_automation.components.ButtonChangeRunningStyle
+import com.steve1316.uma_android_automation.components.ButtonClose
+import com.steve1316.uma_android_automation.components.ButtonCompleteCareer
+import com.steve1316.uma_android_automation.components.ButtonCraneGame
+import com.steve1316.uma_android_automation.components.ButtonCraneGameOk
+import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
+import com.steve1316.uma_android_automation.components.ButtonHomeFullStats
+import com.steve1316.uma_android_automation.components.ButtonInfirmary
+import com.steve1316.uma_android_automation.components.ButtonInheritance
+import com.steve1316.uma_android_automation.components.ButtonLog
+import com.steve1316.uma_android_automation.components.ButtonNext
+import com.steve1316.uma_android_automation.components.ButtonNextRaceEnd
+import com.steve1316.uma_android_automation.components.ButtonOk
+import com.steve1316.uma_android_automation.components.ButtonRaceStrategyEnd
+import com.steve1316.uma_android_automation.components.ButtonRaceStrategyFront
+import com.steve1316.uma_android_automation.components.ButtonRaceStrategyLate
+import com.steve1316.uma_android_automation.components.ButtonRaceStrategyPace
+import com.steve1316.uma_android_automation.components.ButtonRaces
+import com.steve1316.uma_android_automation.components.ButtonRecreation
+import com.steve1316.uma_android_automation.components.ButtonRest
+import com.steve1316.uma_android_automation.components.ButtonRestAndRecreation
+import com.steve1316.uma_android_automation.components.ButtonSkills
+import com.steve1316.uma_android_automation.components.ButtonSkip
+import com.steve1316.uma_android_automation.components.ButtonTraining
+import com.steve1316.uma_android_automation.components.ButtonTrainingGuts
+import com.steve1316.uma_android_automation.components.ButtonTrainingPower
+import com.steve1316.uma_android_automation.components.ButtonTrainingSpeed
+import com.steve1316.uma_android_automation.components.ButtonTrainingStamina
+import com.steve1316.uma_android_automation.components.ButtonTrainingWit
+import com.steve1316.uma_android_automation.components.ButtonTryAgain
+import com.steve1316.uma_android_automation.components.ButtonUnityCupRace
+import com.steve1316.uma_android_automation.components.ComponentInterface
+import com.steve1316.uma_android_automation.components.DialogInterface
+import com.steve1316.uma_android_automation.components.IconGoalRibbon
+import com.steve1316.uma_android_automation.components.IconInfirmaryEventHeader
+import com.steve1316.uma_android_automation.components.IconMoodAwful
+import com.steve1316.uma_android_automation.components.IconMoodBad
+import com.steve1316.uma_android_automation.components.IconMoodGood
+import com.steve1316.uma_android_automation.components.IconMoodGreat
+import com.steve1316.uma_android_automation.components.IconMoodNormal
+import com.steve1316.uma_android_automation.components.IconOneFreePerDayTooltip
+import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
+import com.steve1316.uma_android_automation.components.IconRaceNotEnoughFans
+import com.steve1316.uma_android_automation.components.IconRecreationDate
+import com.steve1316.uma_android_automation.components.IconTazuna
+import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderGuts
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderPower
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderSpeed
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderStamina
+import com.steve1316.uma_android_automation.components.IconTrainingHeaderWit
+import com.steve1316.uma_android_automation.components.LabelEnergy
+import com.steve1316.uma_android_automation.components.LabelEventProgress
+import com.steve1316.uma_android_automation.components.LabelOrdinaryCuties
+import com.steve1316.uma_android_automation.components.LabelRecreationDateComplete
+import com.steve1316.uma_android_automation.components.LabelRecreationUmamusume
+import com.steve1316.uma_android_automation.components.LabelScheduledRace
+import com.steve1316.uma_android_automation.components.LabelStatTableHeaderSkillPoints
+import com.steve1316.uma_android_automation.components.LabelTrainingFailureChance
+import com.steve1316.uma_android_automation.components.LabelUmamusumeClassFans
 import com.steve1316.uma_android_automation.types.BoundingBox
 import com.steve1316.uma_android_automation.types.DateMonth
 import com.steve1316.uma_android_automation.types.DatePhase
@@ -35,8 +80,10 @@ import com.steve1316.uma_android_automation.types.GameDate
 import com.steve1316.uma_android_automation.types.Mood
 import com.steve1316.uma_android_automation.types.RunningStyle
 import com.steve1316.uma_android_automation.types.Trainee
-
-import com.steve1316.uma_android_automation.components.*
+import com.steve1316.uma_android_automation.utils.ScrollList
+import org.opencv.core.Point
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** Defines an exception for breaking from the main loop when conditions are met.
  *
@@ -47,16 +94,20 @@ class CampaignBreakpointException(message: String) : Exception(message)
 /** Defines an enum representing the various actions the bot can take when at the Main screen.
  */
 enum class MainScreenAction {
-	/** Indicates a racing action. */
-	RACE,
-	/** Indicates a training action. */
-	TRAIN,
-	/** Indicates a resting action. */
-	REST,
-	/** Indicates a mood recovery action. */
-	RECOVER_MOOD,
-	/** Indicates no action. */
-	NONE
+    /** Indicates a racing action. */
+    RACE,
+
+    /** Indicates a training action. */
+    TRAIN,
+
+    /** Indicates a resting action. */
+    REST,
+
+    /** Indicates a mood recovery action. */
+    RECOVER_MOOD,
+
+    /** Indicates no action. */
+    NONE,
 }
 
 /**
@@ -67,54 +118,70 @@ enum class MainScreenAction {
  * @property game The [Game] instance for interacting with the game state.
  */
 abstract class Campaign(game: Game) : Task(game) {
-	/** Required instance of the Racing class. */
-	protected val racing: Racing = Racing(game, this)
-	/** Required instance of the SkillPlan class. */
-	protected val skillPlan: SkillPlan = SkillPlan(game, this)
-	/** Required instance of the Trainee class. */
-	val trainee: Trainee = Trainee()
-	/** Required instance of the Training class. */
-	val training: Training = Training(game, this)
-	/** Required instance of the TrainingEvent class. */
-	protected val trainingEvent: TrainingEvent = TrainingEvent(game, this)
-	/** Required instance of the GameDate class. */
-	var date: GameDate = GameDate(day = 1)
+    /** Required instance of the Racing class. */
+    protected val racing: Racing = Racing(game, this)
 
-	/** Whether the bot should attempt the crane game. */
-	protected val enableCraneGameAttempt: Boolean = SettingsHelper.getBooleanSetting("general", "enableCraneGameAttempt")
-	/** Whether the bot should prioritize farming fans. */
-	val enableFarmingFans: Boolean = SettingsHelper.getBooleanSetting("racing", "enableFarmingFans")
-	/** Whether the bot should check for a skill point threshold. */
-	protected val enableSkillPointCheck: Boolean = SettingsHelper.getBooleanSetting("skills", "enableSkillPointCheck")
-	/** Whether the bot should stop at a specified date. */
-	protected val enableStopAtDate: Boolean = SettingsHelper.getBooleanSetting("general", "enableStopAtDate")
-	/** Whether the bot should stop before the final race. */
-	protected val enableStopBeforeFinals: Boolean = SettingsHelper.getBooleanSetting("general", "enableStopBeforeFinals")
-	/** Whether the bot must rest before the summer season. */
-	protected val mustRestBeforeSummer: Boolean = SettingsHelper.getBooleanSetting("training", "mustRestBeforeSummer")
-	/** The number of skill points required to trigger a check. */
-	protected val skillPointsRequired: Int = SettingsHelper.getIntSetting("skills", "skillPointCheck")
-	/** The specific date string at which the bot should stop. */
-	protected val stopAtDate: String = SettingsHelper.getStringSetting("general", "stopAtDate")
+    /** Required instance of the SkillPlan class. */
+    protected val skillPlan: SkillPlan = SkillPlan(game, this)
 
-	/** Whether the bot is currently in the final season. */
-	var isFinals: Boolean = false
-	/** Whether a recreation date event has been completed today. */
-	protected var recreationDateCompleted: Boolean = false
-	/** Whether the scenario check has been performed. */
-	protected var scenarioCheckPerformed: Boolean = false
-	/** The turn number when the stop-at-date check first started. */
-	protected var stopAtDateInitialTurnNumber: Int = -1
-	/** The turn number when the pre-finals stop check first started. */
-	protected var stopBeforeFinalsInitialTurnNumber: Int = -1
+    /** Required instance of the Trainee class. */
+    val trainee: Trainee = Trainee()
 
-	/** Flag indicating if the bot needs to check its fan count. */
-	protected var bNeedToCheckFans: Boolean = true
+    /** Required instance of the Training class. */
+    val training: Training = Training(game, this)
 
-	/** Flag indicating if the bot has already tried checking fans today. */
-	protected var bHasTriedCheckingFansToday: Boolean = false
+    /** Required instance of the TrainingEvent class. */
+    protected val trainingEvent: TrainingEvent = TrainingEvent(game, this)
 
-	/** Flag indicating if the skill point threshold has been handled.
+    /** Required instance of the GameDate class. */
+    var date: GameDate = GameDate(day = 1)
+
+    /** Whether the bot should attempt the crane game. */
+    protected val enableCraneGameAttempt: Boolean = SettingsHelper.getBooleanSetting("general", "enableCraneGameAttempt")
+
+    /** Whether the bot should prioritize farming fans. */
+    val enableFarmingFans: Boolean = SettingsHelper.getBooleanSetting("racing", "enableFarmingFans")
+
+    /** Whether the bot should check for a skill point threshold. */
+    protected val enableSkillPointCheck: Boolean = SettingsHelper.getBooleanSetting("skills", "enableSkillPointCheck")
+
+    /** Whether the bot should stop at a specified date. */
+    protected val enableStopAtDate: Boolean = SettingsHelper.getBooleanSetting("general", "enableStopAtDate")
+
+    /** Whether the bot should stop before the final race. */
+    protected val enableStopBeforeFinals: Boolean = SettingsHelper.getBooleanSetting("general", "enableStopBeforeFinals")
+
+    /** Whether the bot must rest before the summer season. */
+    protected val mustRestBeforeSummer: Boolean = SettingsHelper.getBooleanSetting("training", "mustRestBeforeSummer")
+
+    /** The number of skill points required to trigger a check. */
+    protected val skillPointsRequired: Int = SettingsHelper.getIntSetting("skills", "skillPointCheck")
+
+    /** The specific date string at which the bot should stop. */
+    protected val stopAtDate: String = SettingsHelper.getStringSetting("general", "stopAtDate")
+
+    /** Whether the bot is currently in the final season. */
+    var isFinals: Boolean = false
+
+    /** Whether a recreation date event has been completed today. */
+    protected var recreationDateCompleted: Boolean = false
+
+    /** Whether the scenario check has been performed. */
+    protected var scenarioCheckPerformed: Boolean = false
+
+    /** The turn number when the stop-at-date check first started. */
+    protected var stopAtDateInitialTurnNumber: Int = -1
+
+    /** The turn number when the pre-finals stop check first started. */
+    protected var stopBeforeFinalsInitialTurnNumber: Int = -1
+
+    /** Flag indicating if the bot needs to check its fan count. */
+    protected var bNeedToCheckFans: Boolean = true
+
+    /** Flag indicating if the bot has already tried checking fans today. */
+    protected var bHasTriedCheckingFansToday: Boolean = false
+
+    /** Flag indicating if the skill point threshold has been handled.
      * This is necessary since the user may have enabled the skill point check
      * skill spending plan. If their plan ends up not purchasing many skills,
      * then it is possible that we could get stuck in a loop of hitting the
@@ -122,19 +189,19 @@ abstract class Campaign(game: Game) : Task(game) {
      * To resolve this, we only allow the skill point check to be handled
      * once per run.
      */
-	protected var bHasHandledSkillPointCheck: Boolean = false
+    protected var bHasHandledSkillPointCheck: Boolean = false
 
-	/** Flag indicating if the pre-finals check has been handled. */
-	protected var bHasHandledPreFinalsCheck: Boolean = false
+    /** Flag indicating if the pre-finals check has been handled. */
+    protected var bHasHandledPreFinalsCheck: Boolean = false
 
-	/** Flag indicating if the bot has checked for a maiden race today. */
-	var bHasCheckedForMaidenRaceToday: Boolean = false
+    /** Flag indicating if the bot has checked for a maiden race today. */
+    var bHasCheckedForMaidenRaceToday: Boolean = false
 
-	/** Flag indicating if the date has been checked during the current turn.
+    /** Flag indicating if the date has been checked during the current turn.
      * This is necessary to prevent redundant date checks when no game-advancing action was taken.
      * Reset to false when training, resting, racing, or other game-advancing actions complete.
      */
-	protected var bHasCheckedDateThisTurn: Boolean = false
+    protected var bHasCheckedDateThisTurn: Boolean = false
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,19 +213,20 @@ abstract class Campaign(game: Game) : Task(game) {
      * @return True if any tests were run, false otherwise.
      */
     open override fun startTests(): Boolean {
-        val fnMap: Map<String, () -> Unit> = mapOf(
-            "debugMode_startTemplateMatchingTest" to ::startTemplateMatchingTest,
-            "debugMode_startSingleTrainingOCRTest" to training::startSingleTrainingOCRTest,
-            "debugMode_startComprehensiveTrainingOCRTest" to training::startComprehensiveTrainingOCRTest,
-            "debugMode_startDateOCRTest" to ::startDateOCRTest,
-            "debugMode_startRaceListDetectionTest" to racing::startRaceListDetectionTest,
-            "debugMode_startAptitudesDetectionTest" to ::startAptitudesDetectionTest,
-            "debugMode_startTraineeNameOCRTest" to ::startTraineeNameOCRTest,
-            "debugMode_startMainScreenOCRTest" to ::startMainScreenOCRTest,
-            "debugMode_startTrainingScreenOCRTest" to ::startTrainingScreenOCRTest,
-            "debugMode_startScrollBarDetectionTest" to ::startScrollBarDetectionTest,
-            "debugMode_startSkillListBuyTest" to skillPlan::startSkillListBuyTest,
-        )
+        val fnMap: Map<String, () -> Unit> =
+            mapOf(
+                "debugMode_startTemplateMatchingTest" to ::startTemplateMatchingTest,
+                "debugMode_startSingleTrainingOCRTest" to training::startSingleTrainingOCRTest,
+                "debugMode_startComprehensiveTrainingOCRTest" to training::startComprehensiveTrainingOCRTest,
+                "debugMode_startDateOCRTest" to ::startDateOCRTest,
+                "debugMode_startRaceListDetectionTest" to racing::startRaceListDetectionTest,
+                "debugMode_startAptitudesDetectionTest" to ::startAptitudesDetectionTest,
+                "debugMode_startTraineeNameOCRTest" to ::startTraineeNameOCRTest,
+                "debugMode_startMainScreenOCRTest" to ::startMainScreenOCRTest,
+                "debugMode_startTrainingScreenOCRTest" to ::startTrainingScreenOCRTest,
+                "debugMode_startScrollBarDetectionTest" to ::startScrollBarDetectionTest,
+                "debugMode_startSkillListBuyTest" to skillPlan::startSkillListBuyTest,
+            )
 
         var bDidAnyTestsRun: Boolean = false
         for ((settingName, fn) in fnMap) {
@@ -177,11 +245,12 @@ abstract class Campaign(game: Game) : Task(game) {
     open fun startTemplateMatchingTest() {
         MessageLog.i(TAG, "\n[TEST] Now beginning basic template match test on the Home screen.")
         MessageLog.i(TAG, "[TEST] Template match confidence setting will be overridden for the test.\n")
-        var results = mutableMapOf<String, MutableList<ScaleConfidenceResult>>(
-            LabelEnergy.template.path to mutableListOf(),
-            IconTazuna.template.path to mutableListOf(),
-            LabelStatTableHeaderSkillPoints.template.path to mutableListOf()
-        )
+        var results =
+            mutableMapOf<String, MutableList<ScaleConfidenceResult>>(
+                LabelEnergy.template.path to mutableListOf(),
+                IconTazuna.template.path to mutableListOf(),
+                LabelStatTableHeaderSkillPoints.template.path to mutableListOf(),
+            )
         results = game.imageUtils.startTemplateMatchingTest(results)
         MessageLog.i(TAG, "\n[TEST] Basic template match test complete.")
 
@@ -262,19 +331,20 @@ abstract class Campaign(game: Game) : Task(game) {
         var numFail = 0
 
         // Simple components to test.
-        val componentsToTest: List<ComponentInterface> = listOf(
-            LabelEnergy,
-            LabelStatTableHeaderSkillPoints,
-            LabelTrainingFailureChance,
-            ButtonTrainingSpeed,
-            ButtonTrainingStamina,
-            ButtonTrainingPower,
-            ButtonTrainingGuts,
-            ButtonTrainingWit,
-            ButtonBack,
-            ButtonLog,
-            ButtonBurger,
-        )
+        val componentsToTest: List<ComponentInterface> =
+            listOf(
+                LabelEnergy,
+                LabelStatTableHeaderSkillPoints,
+                LabelTrainingFailureChance,
+                ButtonTrainingSpeed,
+                ButtonTrainingStamina,
+                ButtonTrainingPower,
+                ButtonTrainingGuts,
+                ButtonTrainingWit,
+                ButtonBack,
+                ButtonLog,
+                ButtonBurger,
+            )
         for (componentToTest in componentsToTest) {
             if (componentToTest.check(game.imageUtils)) {
                 MessageLog.i(TAG, "[PASS] ${componentToTest.template.path}")
@@ -290,22 +360,27 @@ abstract class Campaign(game: Game) : Task(game) {
                 MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderSpeed.template.path}")
                 numPass++
             }
+
             IconTrainingHeaderStamina.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderStamina.template.path}")
                 numPass++
             }
+
             IconTrainingHeaderPower.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderPower.template.path}")
                 numPass++
             }
+
             IconTrainingHeaderGuts.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderGuts.template.path}")
                 numPass++
             }
+
             IconTrainingHeaderWit.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderWit.template.path}")
                 numPass++
             }
+
             else -> {
                 MessageLog.e(TAG, "[FAIL] Could not detect any training header icons.")
                 numFail++
@@ -325,20 +400,21 @@ abstract class Campaign(game: Game) : Task(game) {
         var numFail = 0
 
         // Simple components to test.
-        val componentsToTest: List<ComponentInterface> = listOf(
-            ButtonHomeFansInfo,
-            IconTazuna,
-            LabelEnergy,
-            LabelStatTableHeaderSkillPoints,
-            ButtonHomeFullStats,
-            ButtonRest,
-            ButtonTraining,
-            ButtonSkills,
-            ButtonInfirmary,
-            ButtonRecreation,
-            ButtonLog,
-            ButtonBurger,
-        )
+        val componentsToTest: List<ComponentInterface> =
+            listOf(
+                ButtonHomeFansInfo,
+                IconTazuna,
+                LabelEnergy,
+                LabelStatTableHeaderSkillPoints,
+                ButtonHomeFullStats,
+                ButtonRest,
+                ButtonTraining,
+                ButtonSkills,
+                ButtonInfirmary,
+                ButtonRecreation,
+                ButtonLog,
+                ButtonBurger,
+            )
         for (componentToTest in componentsToTest) {
             if (componentToTest.check(game.imageUtils)) {
                 MessageLog.i(TAG, "[PASS] ${componentToTest.template.path}")
@@ -356,10 +432,12 @@ abstract class Campaign(game: Game) : Task(game) {
                 MessageLog.i(TAG, "[PASS] ${ButtonRaces.template.path} (locked)")
                 numPass++
             }
+
             false -> {
                 MessageLog.i(TAG, "[PASS] ${ButtonRaces.template.path}")
                 numPass++
             }
+
             null -> {
                 MessageLog.e(TAG, "[FAIL] ${ButtonRaces.template.path}")
                 numFail++
@@ -372,22 +450,27 @@ abstract class Campaign(game: Game) : Task(game) {
                 MessageLog.i(TAG, "[PASS] ${IconMoodGreat.template.path}")
                 numPass++
             }
+
             IconMoodGood.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconMoodGood.template.path}")
                 numPass++
             }
+
             IconMoodNormal.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconMoodNormal.template.path}")
                 numPass++
             }
+
             IconMoodBad.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconMoodBad.template.path}")
                 numPass++
             }
+
             IconMoodAwful.check(game.imageUtils) -> {
                 MessageLog.i(TAG, "[PASS] ${IconMoodAwful.template.path}")
                 numPass++
             }
+
             else -> {
                 MessageLog.e(TAG, "[FAIL] Could not detect any mood icons.")
                 numFail++
@@ -470,18 +553,21 @@ abstract class Campaign(game: Game) : Task(game) {
                     result.dialog.close(game.imageUtils)
                 }
             }
+
             "goal_not_reached" -> {
                 // We are handling the logic for when to race on our own.
                 // Thus we just close this warning.
                 racing.encounteredRacingPopup = true
                 result.dialog.close(game.imageUtils)
             }
+
             "insufficient_fans" -> {
                 // We are handling the logic for when to race on our own.
                 // Thus we just close this warning.
                 racing.encounteredRacingPopup = true
                 result.dialog.close(game.imageUtils)
             }
+
             "scheduled_race_available" -> {
                 MessageLog.i(TAG, "[INFO] There is a scheduled race today. Racing it now...")
                 result.dialog.ok(game.imageUtils)
@@ -489,6 +575,7 @@ abstract class Campaign(game: Game) : Task(game) {
                     throw IllegalStateException("Stopping the bot due to failing to handle a scheduled race.")
                 }
             }
+
             "strategy" -> {
                 if (!trainee.bHasUpdatedAptitudes) {
                     trainee.bTemporaryRunningStyleAptitudesUpdated = racing.updateRaceScreenRunningStyleAptitudes()
@@ -499,12 +586,15 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
 
                 var runningStyle: RunningStyle? = null
-                val runningStyleString: String = when {
-                    // Special case for when the bot has not been able to check the date i.e. when the bot starts at the race screen.
-                    date.day == 1 -> racing.userSelectedOriginalStrategy
-                    date.year == DateYear.JUNIOR -> racing.juniorYearRaceStrategy
-                    else -> racing.userSelectedOriginalStrategy
-                }
+                val runningStyleString: String =
+                    when {
+                        // Special case for when the bot has not been able to check the date i.e. when the bot starts at the race screen.
+                        date.day == 1 -> racing.userSelectedOriginalStrategy
+
+                        date.year == DateYear.JUNIOR -> racing.juniorYearRaceStrategy
+
+                        else -> racing.userSelectedOriginalStrategy
+                    }
                 when (runningStyleString.uppercase()) {
                     // Do not select a strategy. Use what is already selected.
                     "DEFAULT" -> {
@@ -517,11 +607,13 @@ abstract class Campaign(game: Game) : Task(game) {
                         racing.bHasSetTemporaryRunningStyle = true
                         return DialogHandlerResult.Handled(result.dialog)
                     }
+
                     // Auto-select the optimal running style based on trainee aptitudes.
                     "AUTO" -> {
                         MessageLog.i(TAG, "[DIALOG] Auto-selecting the trainee's optimal running style.")
                         runningStyle = trainee.runningStyle
                     }
+
                     else -> {
                         MessageLog.i(TAG, "[DIALOG] Using user-specified running style: $runningStyleString")
                         runningStyle = RunningStyle.fromShortName(runningStyleString)
@@ -529,10 +621,22 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
 
                 when (runningStyle) {
-                    RunningStyle.FRONT_RUNNER -> ButtonRaceStrategyFront.click(game.imageUtils)
-                    RunningStyle.PACE_CHASER -> ButtonRaceStrategyPace.click(game.imageUtils)
-                    RunningStyle.LATE_SURGER -> ButtonRaceStrategyLate.click(game.imageUtils)
-                    RunningStyle.END_CLOSER -> ButtonRaceStrategyEnd.click(game.imageUtils)
+                    RunningStyle.FRONT_RUNNER -> {
+                        ButtonRaceStrategyFront.click(game.imageUtils)
+                    }
+
+                    RunningStyle.PACE_CHASER -> {
+                        ButtonRaceStrategyPace.click(game.imageUtils)
+                    }
+
+                    RunningStyle.LATE_SURGER -> {
+                        ButtonRaceStrategyLate.click(game.imageUtils)
+                    }
+
+                    RunningStyle.END_CLOSER -> {
+                        ButtonRaceStrategyEnd.click(game.imageUtils)
+                    }
+
                     null -> {
                         // This indicates programmer error.
                         MessageLog.e(TAG, "[ERROR] handleDialogs:: Invalid running style: $runningStyle")
@@ -551,6 +655,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 racing.bHasSetTemporaryRunningStyle = true
                 result.dialog.ok(game.imageUtils)
             }
+
             "try_again" -> {
                 // All branches need a slight delay to allow the dialog to close since the runRaceWithRetries() loop handles dialogs at the start of each iteration.
                 // Can cause problem where we handle one branch then immediately handle dialogs again and handle a second branch for the same dialog instance.
@@ -588,6 +693,7 @@ abstract class Campaign(game: Game) : Task(game) {
                     result.dialog.close(game.imageUtils)
                 }
             }
+
             "umamusume_class" -> {
                 val bitmap: Bitmap = game.imageUtils.getSourceBitmap()
                 val templateBitmap: Bitmap? = game.imageUtils.getBitmaps(LabelUmamusumeClassFans.template.path).second
@@ -604,21 +710,23 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
 
                 // Add a small 8px buffer to vertical component.
-                val bbox = BoundingBox(
-                    x = game.imageUtils.relX(0.0, (point.x + (templateBitmap.width / 2)).toInt()),
-                    y = game.imageUtils.relY(0.0, (point.y - (templateBitmap.height / 2) - 4).toInt()),
-                    w = game.imageUtils.relWidth(300),
-                    h = game.imageUtils.relHeight(templateBitmap.height + 4),
-                )
+                val bbox =
+                    BoundingBox(
+                        x = game.imageUtils.relX(0.0, (point.x + (templateBitmap.width / 2)).toInt()),
+                        y = game.imageUtils.relY(0.0, (point.y - (templateBitmap.height / 2) - 4).toInt()),
+                        w = game.imageUtils.relWidth(300),
+                        h = game.imageUtils.relHeight(templateBitmap.height + 4),
+                    )
 
-                val croppedBitmap = game.imageUtils.createSafeBitmap(
-                    bitmap,
-                    bbox.x,
-                    bbox.y,
-                    bbox.w,
-                    bbox.h,
-                    "dialog::umamusume_class: Cropped bitmap.",
-                )
+                val croppedBitmap =
+                    game.imageUtils.createSafeBitmap(
+                        bitmap,
+                        bbox.x,
+                        bbox.y,
+                        bbox.w,
+                        bbox.h,
+                        "dialog::umamusume_class: Cropped bitmap.",
+                    )
                 if (croppedBitmap == null) {
                     MessageLog.e(TAG, "[ERROR] handleDialogs:: Failed to crop bitmap.")
                     result.dialog.close(game.imageUtils)
@@ -638,6 +746,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 // Print the trainee info with the updated fan count.
                 trainee.logInfo()
             }
+
             "umamusume_details" -> {
                 val prevTrackSurface = trainee.trackSurface
                 val prevTrackDistance = trainee.trackDistance
@@ -657,6 +766,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
                 result.dialog.close(game.imageUtils)
             }
+
             else -> {
                 Log.w(TAG, "[WARN] handleDialogs:: Unknown dialog \"${result.dialog.name}\" detected so it will not be handled.")
                 return DialogHandlerResult.Unhandled(result.dialog)
@@ -740,9 +850,14 @@ abstract class Campaign(game: Game) : Task(game) {
     open fun shouldRecoverMood(sourceBitmap: Bitmap): Boolean {
         // Only recover mood if its below Good mood and its not Summer.
         return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
-            MessageLog.i(TAG, "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.")
+            MessageLog.i(
+                TAG,
+                "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.",
+            )
             false
-        } else (trainee.mood < Mood.GOOD)
+        } else {
+            (trainee.mood < Mood.GOOD)
+        }
     }
 
     /**
@@ -885,37 +1000,52 @@ abstract class Campaign(game: Game) : Task(game) {
             Log.d(TAG, "\n[DEBUG] checkStopAtDate:: Flag is false so skipping Stop at Date check.")
             return false
         }
-        
-        MessageLog.i(TAG, "\n[DATE] Checking if bot should stop at the specified date: $stopAtDate with current date ${date}.")
-        
+
+        MessageLog.i(TAG, "\n[DATE] Checking if bot should stop at the specified date: $stopAtDate with current date $date.")
+
         val parts = stopAtDate.split(" ")
         if (parts.size != 3) {
             MessageLog.e(TAG, "[ERROR] checkStopAtDate:: Invalid Stop at Date format. Expected 'YEAR MONTH PHASE'")
             return false
         }
-        
-        val targetYear = try { DateYear.valueOf(parts[0].uppercase()) } catch (e: IllegalArgumentException) { null }
-        val targetMonth = try { DateMonth.valueOf(parts[1].uppercase()) } catch (e: IllegalArgumentException) { null }
-        val targetPhase = try { DatePhase.valueOf(parts[2].uppercase()) } catch (e: IllegalArgumentException) { null }
-        
+
+        val targetYear =
+            try {
+                DateYear.valueOf(parts[0].uppercase())
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        val targetMonth =
+            try {
+                DateMonth.valueOf(parts[1].uppercase())
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        val targetPhase =
+            try {
+                DatePhase.valueOf(parts[2].uppercase())
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+
         if (targetYear == null || targetMonth == null || targetPhase == null) {
             MessageLog.e(TAG, "[ERROR] checkStopAtDate:: Invalid Stop at Date components.")
             return false
         }
-        
+
         val targetDay = GameDate.toDay(targetYear, targetMonth, targetPhase)
-        
+
         // Track initial turn number on first check to avoid stopping immediately if bot starts after the target date
         if (stopAtDateInitialTurnNumber == -1) {
             stopAtDateInitialTurnNumber = date.day
         }
-        
+
         if (date.day >= targetDay && stopAtDateInitialTurnNumber <= targetDay) {
             MessageLog.i(TAG, "\n[END] Reached target date: $stopAtDate (Turn $targetDay). Stopping bot.")
             game.notificationMessage = "Stopping bot at the specified date: $stopAtDate (Turn $targetDay)"
             return true
         }
-        
+
         return false
     }
 
@@ -926,7 +1056,7 @@ abstract class Campaign(game: Game) : Task(game) {
      * @return True if an injury was detected and healing was attempted, false otherwise.
      */
     open fun checkInjury(sourceBitmap: Bitmap? = null): Boolean {
-        MessageLog.i(TAG, "\n[INJURY] Checking if there is an injury that needs healing on ${date}.")
+        MessageLog.i(TAG, "\n[INJURY] Checking if there is an injury that needs healing on $date.")
         val sourceBitmap = sourceBitmap ?: game.imageUtils.getSourceBitmap()
 
         return when (ButtonInfirmary.checkDisabled(game.imageUtils, sourceBitmap)) {
@@ -934,6 +1064,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 MessageLog.i(TAG, "[INJURY] No injury detected.")
                 false
             }
+
             false -> {
                 MessageLog.i(TAG, "[INJURY] Injury detected. Attempting to heal...")
                 if (ButtonInfirmary.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
@@ -953,6 +1084,7 @@ abstract class Campaign(game: Game) : Task(game) {
                     false
                 }
             }
+
             null -> {
                 MessageLog.w(TAG, "[WARN] checkInjury:: Failed to detect the Infirmary button.")
                 false
@@ -987,7 +1119,7 @@ abstract class Campaign(game: Game) : Task(game) {
             Log.d(TAG, "[DEBUG] updateDate:: Date did not change.")
             return false
         } else {
-            MessageLog.i(TAG, "[DATE] New date: ${date}")
+            MessageLog.i(TAG, "[DATE] New date: $date")
             return true
         }
     }
@@ -1000,8 +1132,8 @@ abstract class Campaign(game: Game) : Task(game) {
     open fun handleInheritanceEvent(): Boolean {
         // Stop checking after Senior Year Early Apr.
         return if (date.day <= 56) {
-            if (ButtonInheritance.click(game.imageUtils)) { 
-                MessageLog.i(TAG, "\n[INFO] Claimed an inheritance on ${date}.")
+            if (ButtonInheritance.click(game.imageUtils)) {
+                MessageLog.i(TAG, "\n[INFO] Claimed an inheritance on $date.")
                 trainee.bHasUpdatedAptitudes = false
                 true
             } else {
@@ -1019,19 +1151,20 @@ abstract class Campaign(game: Game) : Task(game) {
      * @return True if energy was successfully recovered, false otherwise.
      */
     open fun recoverEnergy(sourceBitmap: Bitmap? = null): Boolean {
-        MessageLog.i(TAG, "\n[ENERGY] Now starting attempt to recover energy on ${date}.")
+        MessageLog.i(TAG, "\n[ENERGY] Now starting attempt to recover energy on $date.")
         val sourceBitmap: Bitmap = sourceBitmap ?: game.imageUtils.getSourceBitmap()
-        
+
         // First, try to handle recreation date which also recovers energy if a date is available.
         // Skip recreation date if it's already completed (will only be used for mood recovery).
         if (
             !recreationDateCompleted &&
             IconRecreationDate.check(game.imageUtils, sourceBitmap = sourceBitmap) &&
-            handleRecreationDate(recoverMoodIfCompleted = false)) {
+            handleRecreationDate(recoverMoodIfCompleted = false)
+        ) {
             MessageLog.i(TAG, "[ENERGY] Successfully recovered energy via recreation date.")
             return true
         }
-        
+
         // Otherwise, fall back to the regular energy recovery logic.
         return when {
             ButtonRest.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
@@ -1043,6 +1176,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 MessageLog.i(TAG, "[ENERGY] Successfully recovered energy.")
                 true
             }
+
             ButtonRestAndRecreation.click(game.imageUtils, sourceBitmap = sourceBitmap) -> {
                 ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
                 // Another OK tap for the possibility of a scheduled race warning popup.
@@ -1052,6 +1186,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 MessageLog.i(TAG, "[ENERGY] Successfully recovered energy for the Summer.")
                 true
             }
+
             else -> {
                 MessageLog.w(TAG, "[WARN] recoverEnergy:: Failed to recover energy. Moving on...")
                 false
@@ -1066,7 +1201,7 @@ abstract class Campaign(game: Game) : Task(game) {
      * @return True if mood was successfully recovered, false otherwise.
      */
     open fun recoverMood(sourceBitmap: Bitmap? = null): Boolean {
-        MessageLog.i(TAG, "\n[MOOD] Detecting current mood on ${date}.")
+        MessageLog.i(TAG, "\n[MOOD] Detecting current mood on $date.")
 
         val sourceBitmap = sourceBitmap ?: game.imageUtils.getSourceBitmap()
 
@@ -1077,9 +1212,19 @@ abstract class Campaign(game: Game) : Task(game) {
 
         // Only recover mood if its below Good mood and its not Summer.
         return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
-            MessageLog.i(TAG, "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.")
+            MessageLog.i(
+                TAG,
+                "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.",
+            )
             false
-        } else if ((trainee.mood < Mood.GOOD) && (ButtonRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap) || ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap))) {
+        } else if ((trainee.mood < Mood.GOOD) && (
+                ButtonRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap) ||
+                    ButtonRestAndRecreation.check(
+                        game.imageUtils,
+                        sourceBitmap = sourceBitmap,
+                    )
+            )
+        ) {
             MessageLog.i(TAG, "[MOOD] Current mood is not good (${trainee.mood}). Recovering mood now.")
 
             // Check if a date is available.
@@ -1201,7 +1346,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
 
                 if (!buttonReappeared) {
-                    MessageLog.w(TAG, "[WARN] handleCraneGame:: The Crane Game button did not reappear within ${maxWaitTime} seconds after attempt $attempt.")
+                    MessageLog.w(TAG, "[WARN] handleCraneGame:: The Crane Game button did not reappear within $maxWaitTime seconds after attempt $attempt.")
                 }
 
                 game.wait(1.0)
@@ -1275,27 +1420,29 @@ abstract class Campaign(game: Game) : Task(game) {
             return null
         }
 
-        val bbox = BoundingBox(
-            x = game.imageUtils.relX(0.0, (point.x - (templateBitmap.width / 2)).toInt() - 180),
-            // Add a small buffer to vertical component.
-            y = game.imageUtils.relY(0.0, (point.y - 16).toInt()),
-            w = game.imageUtils.relWidth(180),
-            // 32px minimum for Google ML Kit.
-            h = game.imageUtils.relHeight(32),
-        )
+        val bbox =
+            BoundingBox(
+                x = game.imageUtils.relX(0.0, (point.x - (templateBitmap.width / 2)).toInt() - 180),
+                // Add a small buffer to vertical component.
+                y = game.imageUtils.relY(0.0, (point.y - 16).toInt()),
+                w = game.imageUtils.relWidth(180),
+                // 32px minimum for Google ML Kit.
+                h = game.imageUtils.relHeight(32),
+            )
 
-        val text: String = game.imageUtils.performOCROnRegion(
-            bitmap,
-            bbox.x,
-            bbox.y,
-            bbox.w,
-            bbox.h,
-            useThreshold = false,
-            useGrayscale = true,
-            scale = 1.0,
-            ocrEngine = "tesseract",
-            debugName = "getFanCountClass",
-        )
+        val text: String =
+            game.imageUtils.performOCROnRegion(
+                bitmap,
+                bbox.x,
+                bbox.y,
+                bbox.w,
+                bbox.h,
+                useThreshold = false,
+                useGrayscale = true,
+                scale = 1.0,
+                ocrEngine = "tesseract",
+                debugName = "getFanCountClass",
+            )
         val fanCountClass: FanCountClass? = FanCountClass.fromName(text.replace(" ", "_"))
         if (fanCountClass == null) {
             MessageLog.w(TAG, "[WARN] getFanCountClass:: Failed to match text to a FanCountClass: $text")
@@ -1430,7 +1577,7 @@ abstract class Campaign(game: Game) : Task(game) {
 
                 // Perform parallel turn-start updates (stats, mood, energy, fans, etc.).
                 performTurnStartUpdates(sourceBitmap)
-                
+
                 // Scenario-specific post-update hook.
                 onAfterTurnStartUpdates()
             }
@@ -1494,50 +1641,70 @@ abstract class Campaign(game: Game) : Task(game) {
         if (!BotService.isRunning) {
             return
         }
-        
+
         // Use CountDownLatch to run the operations in parallel.
         // 1 racingRequirements (skipped during summer) + 5 stats + 1 skill points + 1 mood + 1 energy = 9 (or 8) threads.
         val latch = if (date.isSummer()) CountDownLatch(8) else CountDownLatch(9)
 
         MessageLog.disableOutput = true
-        
+
         // Threads 1-5: Update stats.
-		trainee.updateStats(game.imageUtils, sourceBitmap, skillPointsLocation, latch)
-		
-		// Thread 6: Update skill points.
-		Thread {
-			try { trainee.updateSkillPoints(game.imageUtils, sourceBitmap, skillPointsLocation) }
-			catch (e: Exception) { MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in updateSkillPoints thread: ${e.stackTraceToString()}") }
-			finally { latch.countDown() }
-		}.apply { isDaemon = true }.start()
-		
-		// Thread 7: Update mood.
-		Thread {
-			try { trainee.updateMood(game.imageUtils, sourceBitmap) }
-			catch (e: Exception) { MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in updateMood thread: ${e.stackTraceToString()}") }
-			finally { latch.countDown() }
-		}.apply { isDaemon = true }.start()
+        trainee.updateStats(game.imageUtils, sourceBitmap, skillPointsLocation, latch)
 
-		// Thread 8: Update racing requirements.
-		if (!date.isSummer()) {
-			Thread {
-				try { racing.checkRacingRequirements(sourceBitmap) }
-				catch (e: Exception) { MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in checkRacingRequirements thread: ${e.stackTraceToString()}") }
-				finally { latch.countDown() }
-			}.apply { isDaemon = true }.start()
-		}
+        // Thread 6: Update skill points.
+        Thread {
+            try {
+                trainee.updateSkillPoints(game.imageUtils, sourceBitmap, skillPointsLocation)
+            } catch (e: Exception) {
+                MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in updateSkillPoints thread: ${e.stackTraceToString()}")
+            } finally {
+                latch.countDown()
+            }
+        }.apply { isDaemon = true }.start()
 
-		// Thread 9: Update energy.
-		Thread {
-			try { trainee.updateEnergy(game.imageUtils) }
-			catch (e: Exception) { MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in updateEnergy thread: ${e.stackTraceToString()}") }
-			finally { latch.countDown() }
-		}.apply { isDaemon = true }.start()
-        
+        // Thread 7: Update mood.
+        Thread {
+            try {
+                trainee.updateMood(game.imageUtils, sourceBitmap)
+            } catch (e: Exception) {
+                MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in updateMood thread: ${e.stackTraceToString()}")
+            } finally {
+                latch.countDown()
+            }
+        }.apply { isDaemon = true }.start()
+
+        // Thread 8: Update racing requirements.
+        if (!date.isSummer()) {
+            Thread {
+                try {
+                    racing.checkRacingRequirements(sourceBitmap)
+                } catch (e: Exception) {
+                    MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in checkRacingRequirements thread: ${e.stackTraceToString()}")
+                } finally {
+                    latch.countDown()
+                }
+            }.apply { isDaemon = true }.start()
+        }
+
+        // Thread 9: Update energy.
+        Thread {
+            try {
+                trainee.updateEnergy(game.imageUtils)
+            } catch (e: Exception) {
+                MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Error in updateEnergy thread: ${e.stackTraceToString()}")
+            } finally {
+                latch.countDown()
+            }
+        }.apply { isDaemon = true }.start()
+
         // Wait for all threads to complete.
-        try { latch.await(10, TimeUnit.SECONDS) }
-        catch (_: InterruptedException) { MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Date change operations threads timed out.") }
-        finally { MessageLog.disableOutput = false }
+        try {
+            latch.await(10, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Date change operations threads timed out.")
+        } finally {
+            MessageLog.disableOutput = false
+        }
 
         trainee.logInfo()
     }
@@ -1624,7 +1791,7 @@ abstract class Campaign(game: Game) : Task(game) {
         }
 
         if (mustRestBeforeSummer && (date.year == DateYear.CLASSIC || date.year == DateYear.SENIOR) && date.month == DateMonth.JUNE && date.phase == DatePhase.LATE) {
-            MessageLog.i(TAG, "[INFO] Forcing rest during ${date} in preparation for Summer Training.")
+            MessageLog.i(TAG, "[INFO] Forcing rest during $date in preparation for Summer Training.")
             return MainScreenAction.REST
         }
 
@@ -1635,12 +1802,13 @@ abstract class Campaign(game: Game) : Task(game) {
         }
 
         val isFinals = checkFinals()
-        val hasInjury = if (isFinals) {
-            MessageLog.i(TAG, "[INFO] Skipping injury check due to it being the Finals.")
-            false
-        } else {
-            checkInjury(sourceBitmap)
-        }
+        val hasInjury =
+            if (isFinals) {
+                MessageLog.i(TAG, "[INFO] Skipping injury check due to it being the Finals.")
+                false
+            } else {
+                checkInjury(sourceBitmap)
+            }
 
         if (hasInjury) {
             // Injury handled internally in checkInjury, but returning NONE as turn is likely over or needs re-evaluation.
@@ -1677,20 +1845,24 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
                 bHasCheckedDateThisTurn = false
             }
+
             MainScreenAction.TRAIN -> {
                 MessageLog.i(TAG, "[INFO] Decision made to train.")
                 training.handleTraining()
                 bHasCheckedDateThisTurn = false
             }
+
             MainScreenAction.REST -> {
                 recoverEnergy(sourceBitmap)
                 bHasCheckedDateThisTurn = false
             }
+
             MainScreenAction.RECOVER_MOOD -> {
                 if (performMoodRecovery(sourceBitmap)) {
                     bHasCheckedDateThisTurn = false
                 }
             }
+
             MainScreenAction.NONE -> {
                 return false
             }

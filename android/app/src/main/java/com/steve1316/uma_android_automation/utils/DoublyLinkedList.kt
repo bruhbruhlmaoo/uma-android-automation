@@ -1,6 +1,7 @@
 package com.steve1316.uma_android_automation.utils
 
-/** Represents a single node in a [DoublyLinkedList].
+/**
+ * Represents a single node in a [DoublyLinkedList].
  *
  * @param T The type of value stored in the node.
  * @property list The list that this node belongs to.
@@ -8,22 +9,20 @@ package com.steve1316.uma_android_automation.utils
  * @property next The next node in the list.
  * @property prev The previous node in the list.
  */
-open class DoublyLinkedListNode<T>(
-    val list: DoublyLinkedList<T>,
-    var value: T,
-    var next: DoublyLinkedListNode<T>? = null,
-    var prev: DoublyLinkedListNode<T>? = null,
-)
+open class DoublyLinkedListNode<T>(val list: DoublyLinkedList<T>, var value: T, var next: DoublyLinkedListNode<T>? = null, var prev: DoublyLinkedListNode<T>? = null)
 
-/** A generic doubly linked list implementation.
+/**
+ * A generic doubly linked list implementation.
  *
  * @param T The type of values stored in the list.
  */
 open class DoublyLinkedList<T> {
     /** The head node of the list. */
     private var head: DoublyLinkedListNode<T>? = null
+
     /** The tail node of the list. */
     private var tail: DoublyLinkedListNode<T>? = null
+
     /** The number of nodes in the list. */
     var size: Int = 0
         private set
@@ -31,7 +30,8 @@ open class DoublyLinkedList<T> {
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /** Checks whether the list is empty.
+    /**
+     * Checks whether the list is empty.
      *
      * @return True if the list has no nodes.
      */
@@ -39,7 +39,8 @@ open class DoublyLinkedList<T> {
         return size == 0
     }
 
-    /** Pushes a new [value] to the head of the list.
+    /**
+     * Pushes a new [value] to the head of the list.
      *
      * @param value The value to push.
      * @return The newly created node.
@@ -58,7 +59,8 @@ open class DoublyLinkedList<T> {
         return newNode
     }
 
-    /** Pops the value from the head of the list.
+    /**
+     * Pops the value from the head of the list.
      *
      * @return The value at the head of the list, or null if the list is empty.
      */
@@ -76,7 +78,8 @@ open class DoublyLinkedList<T> {
         return result
     }
 
-    /** Appends a new [value] to the tail of the list.
+    /**
+     * Appends a new [value] to the tail of the list.
      *
      * @param value The value to append.
      * @return The newly created node.
@@ -95,7 +98,8 @@ open class DoublyLinkedList<T> {
         return newNode
     }
 
-    /** Finds the first node that contains the specified [value].
+    /**
+     * Finds the first node that contains the specified [value].
      *
      * @param value The value to find.
      * @return The node containing the value, or null if not found.
@@ -111,7 +115,8 @@ open class DoublyLinkedList<T> {
         return null
     }
 
-    /** Finds the index of the first node that contains the specified [value].
+    /**
+     * Finds the index of the first node that contains the specified [value].
      *
      * @param value The value to find.
      * @return The index of the value, or null if not found.
@@ -129,7 +134,8 @@ open class DoublyLinkedList<T> {
         return null
     }
 
-    /** Retrieves all the values in the list.
+    /**
+     * Retrieves all the values in the list.
      *
      * @return A list containing all values from the head to the tail.
      */

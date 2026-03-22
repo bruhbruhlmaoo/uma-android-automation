@@ -1,16 +1,15 @@
-/** Defines icon components.
+/**
+ * Defines icon components.
  *
- * These are images which are typically not clickable, however they DO
- * have click functionality; it just isn't their primary purpose. This is
- * why we classify them as Icons instead of Buttons.
+ * These are images which are typically not clickable, however they DO have click functionality; it just isn't their primary purpose. This is why we classify them as Icons instead of Buttons.
  */
 
 package com.steve1316.uma_android_automation.components
 
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.components.ComponentInterface
-import com.steve1316.uma_android_automation.components.Template
 import com.steve1316.uma_android_automation.components.Region
+import com.steve1316.uma_android_automation.components.Template
 
 object IconMoodGreat : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]IconMoodGreat"

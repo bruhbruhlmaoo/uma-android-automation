@@ -22,7 +22,8 @@ enum class FanCountClass {
     PLATINUM,
     STAR,
     TOP_STAR,
-    LEGEND;
+    LEGEND,
+    ;
 
     companion object {
         /** Mapping of fan count class names to their corresponding enum entries. */
@@ -37,7 +38,8 @@ enum class StatName {
     STAMINA,
     POWER,
     GUTS,
-    WIT;
+    WIT,
+    ;
 
     companion object {
         /** Mapping of stat names to their corresponding enum entries. */
@@ -55,7 +57,8 @@ enum class Aptitude {
     C,
     B,
     A,
-    S;
+    S,
+    ;
 
     companion object {
         /** Mapping of aptitude names to their corresponding enum entries. */
@@ -69,31 +72,38 @@ enum class RunningStyle(val shortName: String) {
     FRONT_RUNNER("FRONT"),
     PACE_CHASER("PACE"),
     LATE_SURGER("LATE"),
-    END_CLOSER("END");
+    END_CLOSER("END"),
+    ;
 
     companion object {
         /** Mapping of running style names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+
         /** Mapping of ordinals to their corresponding running style enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): RunningStyle? = nameMap[value.uppercase()]
+
         fun fromOrdinal(ordinal: Int): RunningStyle? = ordinalMap[ordinal]
+
         fun fromShortName(value: String): RunningStyle? = entries.find { value.uppercase() == it.shortName }
     }
 }
 
 enum class TrackSurface {
     TURF,
-    DIRT;
+    DIRT,
+    ;
 
     companion object {
         /** Mapping of track surface names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+
         /** Mapping of ordinals to their corresponding track surface enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): TrackSurface? = nameMap[value.uppercase()]
+
         fun fromOrdinal(ordinal: Int): TrackSurface? = ordinalMap[ordinal]
     }
 }
@@ -102,15 +112,18 @@ enum class TrackDistance {
     SPRINT,
     MILE,
     MEDIUM,
-    LONG;
+    LONG,
+    ;
 
     companion object {
         /** Mapping of track distance names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+
         /** Mapping of ordinals to their corresponding track distance enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): TrackDistance? = nameMap[value.uppercase()]
+
         fun fromOrdinal(ordinal: Int): TrackDistance? = ordinalMap[ordinal]
     }
 }
@@ -120,7 +133,8 @@ enum class Mood {
     BAD,
     NORMAL,
     GOOD,
-    GREAT;
+    GREAT,
+    ;
 
     /** Increments the mood level by one, capping at [GREAT].
      *
@@ -154,7 +168,8 @@ enum class RaceGrade {
     G3,
     G2,
     G1,
-    EX;
+    EX,
+    ;
 
     companion object {
         /** Mapping of race grade names to their corresponding enum entries. */
@@ -166,15 +181,18 @@ enum class RaceGrade {
 
 enum class DatePhase {
     EARLY,
-    LATE;
+    LATE,
+    ;
 
     companion object {
         /** Mapping of date phase names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+
         /** Mapping of ordinals to their corresponding date phase enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): DatePhase? = nameMap[value.uppercase()]
+
         fun fromOrdinal(ordinal: Int): DatePhase? = ordinalMap[ordinal]
     }
 }
@@ -191,16 +209,20 @@ enum class DateMonth(val shortName: String) {
     SEPTEMBER("SEP"),
     OCTOBER("OCT"),
     NOVEMBER("NOV"),
-    DECEMBER("DEC");
+    DECEMBER("DEC"),
+    ;
 
     companion object {
         /** Mapping of month names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+
         /** Mapping of ordinals to their corresponding month enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): DateMonth? = nameMap[value.uppercase()]
+
         fun fromOrdinal(ordinal: Int): DateMonth? = ordinalMap[ordinal]
+
         fun fromShortName(value: String): DateMonth? = entries.find { value.uppercase() == it.shortName }
     }
 }
@@ -208,15 +230,18 @@ enum class DateMonth(val shortName: String) {
 enum class DateYear(val longName: String) {
     JUNIOR("JUNIOR YEAR"),
     CLASSIC("CLASSIC YEAR"),
-    SENIOR("SENIOR YEAR");
+    SENIOR("SENIOR YEAR"),
+    ;
 
     companion object {
         /** Mapping of year names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+
         /** Mapping of ordinals to their corresponding year enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): DateYear? = nameMap[value.uppercase()]
+
         fun fromOrdinal(ordinal: Int): DateYear? = ordinalMap[ordinal]
     }
 }
@@ -234,7 +259,7 @@ data class BoundingBox(val x: Int, val y: Int, val w: Int, val h: Int) {
     /** The bounding region's center X-coordinate. */
     val cx: Int
         get() = (x + (w / 2))
-    
+
     /** The bounding region's center Y-coordinate. */
     val cy: Int
         get() = (y + (h / 2))
@@ -263,28 +288,37 @@ enum class SkillType {
     GREEN,
     BLUE,
     YELLOW,
-    RED;
+    RED,
+    ;
 
     companion object {
         /** Mapping of skill type names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
 
         fun fromName(value: String): SkillType? = nameMap[value.uppercase()]
+
         fun fromIconId(iconId: Int): SkillType? {
             val digits: String = iconId.toString()
             return when {
                 digits.take(1) == "1" -> GREEN
+
                 // BLUE and YELLOW types both start with "20" so we filter
                 // out the BLUE types first since there are way fewer of them.
                 digits.take(4) == "2002" -> BLUE
+
                 digits.take(4) == "2003" -> BLUE
+
                 digits.take(4) == "2011" -> BLUE
+
                 // The rest of the skills starting with "2" are yellow
                 digits.take(1) == "2" -> YELLOW
+
                 digits.take(1) == "3" -> RED
+
                 // At the moment the Runaway skill starts with "40". Unsure why
                 // since it is a green skill.
                 iconId == 40012 -> GREEN
+
                 else -> null
             }
         }
@@ -292,21 +326,24 @@ enum class SkillType {
 }
 
 enum class SkillCommunityTier {
-        SS,
-        S,
-        A,
-        B;
+    SS,
+    S,
+    A,
+    B,
+    ;
 
-        companion object {
-            /** Mapping of community tier names to their corresponding enum entries. */
-            private val nameMap = entries.associateBy { it.name }
-            /** Mapping of ordinals to their corresponding community tier enum entries. */
-            private val ordinalMap = entries.associateBy { it.ordinal }
+    companion object {
+        /** Mapping of community tier names to their corresponding enum entries. */
+        private val nameMap = entries.associateBy { it.name }
 
-            fun fromName(value: String): SkillCommunityTier? = nameMap[value]
-            fun fromOrdinal(ordinal: Int): SkillCommunityTier? = ordinalMap[ordinal]
-        }
+        /** Mapping of ordinals to their corresponding community tier enum entries. */
+        private val ordinalMap = entries.associateBy { it.ordinal }
+
+        fun fromName(value: String): SkillCommunityTier? = nameMap[value]
+
+        fun fromOrdinal(ordinal: Int): SkillCommunityTier? = ordinalMap[ordinal]
     }
+}
 
 /** Defines the metadata and properties of a skill in the game. */
 data class SkillData(
@@ -357,49 +394,54 @@ data class SkillData(
      */
     val bIsInPlace: Boolean =
         type == SkillType.GREEN ||
-        bIsNegative ||
-        name.dropLast(2).endsWith("straightaways", ignoreCase = true) ||
-        name.dropLast(2).endsWith("corners", ignoreCase = true)
+            bIsNegative ||
+            name.dropLast(2).endsWith("straightaways", ignoreCase = true) ||
+            name.dropLast(2).endsWith("corners", ignoreCase = true)
 
     /** Mapping of community tier identifiers to their corresponding names. */
-    private val communityTierNameMap: Map<Int, String> = mapOf(
-        0 to "SS",
-        1 to "S",
-        2 to "A",
-        3 to "B",
-    )
+    private val communityTierNameMap: Map<Int, String> =
+        mapOf(
+            0 to "SS",
+            1 to "S",
+            2 to "A",
+            3 to "B",
+        )
+
     /** The name of the community tier for this skill (SS, S, A, or B). */
     val communityTierName: String? = communityTierNameMap[communityTier]
 
-	/** The activation conditions for this skill.
+    /** The activation conditions for this skill.
      *
      * &=AND, @=OR. Split groupings of AND conditions into separate strings.
      * Then each one of those is converted to a mapping of the condition to the effect string.
      */
-	val conditions: Conditions = Conditions.fromString(
-		listOf(condition, precondition)
-			.filter { it.isNotEmpty() }
-			.joinToString("@")
-		)
+    val conditions: Conditions =
+        Conditions.fromString(
+            listOf(condition, precondition)
+                .filter { it.isNotEmpty() }
+                .joinToString("@"),
+        )
 
-	/** The Running Style required to activate this skill. Can be null.
+    /** The Running Style required to activate this skill. Can be null.
      *
      * Some skills are for specific running styles or track distances/surfaces.
      * We want to extract this from the scraped data.
      */
-	val runningStyle: RunningStyle? = conditions.runningStyle
-	/** The Track Distance required to activate this skill. Can be null. */
-	val trackDistance: TrackDistance? = conditions.trackDistance
-	/** The Track Surface required to activate this skill. Can be null. */
-	val trackSurface: TrackSurface? = conditions.trackSurface
+    val runningStyle: RunningStyle? = conditions.runningStyle
 
-	/** The list of Running Styles that best suit this skill. Can be empty.
+    /** The Track Distance required to activate this skill. Can be null. */
+    val trackDistance: TrackDistance? = conditions.trackDistance
+
+    /** The Track Surface required to activate this skill. Can be null. */
+    val trackSurface: TrackSurface? = conditions.trackSurface
+
+    /** The list of Running Styles that best suit this skill. Can be empty.
      *
      * These running styles are calculated based on a skill's activation conditions.
      * However since these might not actually be specific to a running style,
      * the skill will not give any rank bonus based on aptitudes.
      */
-	val inferredRunningStyles: List<RunningStyle> = calculateInferredRunningStyles()
+    val inferredRunningStyles: List<RunningStyle> = calculateInferredRunningStyles()
 
     constructor(
         id: Int,
@@ -447,13 +489,15 @@ data class SkillData(
         GT(">"),
         GE(">="),
         LT("<"),
-        LE("<=");
+        LE("<="),
+        ;
 
         companion object {
             /** Mapping of operator names to their corresponding enum entries. */
             private val nameMap = entries.associateBy { it.name }
 
             fun fromName(value: String): Operator? = nameMap[value]
+
             fun fromString(value: String): Operator? = entries.find { value == it.opString }
         }
     }
@@ -466,11 +510,7 @@ data class SkillData(
      * @param op The operator for the condition.
      * @param value The condition's value.
      */
-    data class Condition(
-        val name: String,
-        val op: Operator,
-        val value: Int,
-    ) {
+    data class Condition(val name: String, val op: Operator, val value: Int) {
         companion object {
             /** Parses a single condition string and splits it into its three parts.
              *
@@ -531,14 +571,19 @@ data class SkillData(
     class ConditionGroup(val conditions: List<Condition>) {
         /** Whether this group indicates a leading position (e.g., 1st place). */
         val bIsLeading: Boolean = isLeading()
+
         /** Whether this group indicates a well-positioned runner near the front. */
         val bIsWellPositioned: Boolean = isWellPositioned()
+
         /** Whether this group indicates a runner off the pace. */
         val bIsOffThePace: Boolean = isOffThePace()
+
         /** Whether this group indicates a mid-pack position. */
         val bIsMidPack: Boolean = isMidPack()
+
         /** Whether this group indicates a position toward the back of the field. */
         val bIsTowardTheBack: Boolean = isTowardTheBack()
+
         /** Whether this group indicates a position toward the front of the field. */
         val bIsTowardTheFront: Boolean = isTowardTheFront()
 
@@ -563,7 +608,7 @@ data class SkillData(
         private fun isWellPositioned(): Boolean {
             return (
                 checkInRange("order", 2, 5) ||
-                checkInRange("order_rate", 20, 60)
+                    checkInRange("order_rate", 20, 60)
             )
         }
 
@@ -574,7 +619,7 @@ data class SkillData(
         private fun isOffThePace(): Boolean {
             return (
                 check(Condition("order", Operator.GE, 3)) &&
-                checkInRange("order_rate", 0, 50)
+                    checkInRange("order_rate", 0, 50)
             )
         }
 
@@ -585,7 +630,7 @@ data class SkillData(
         private fun isMidPack(): Boolean {
             return (
                 (check(Condition("order", Operator.GE, 3)) && checkInRange("order_rate", 30, 80)) ||
-                checkInRange("order_rate", 30, 80)
+                    checkInRange("order_rate", 30, 80)
             )
         }
 
@@ -596,11 +641,10 @@ data class SkillData(
         private fun isTowardTheBack(): Boolean {
             return (
                 checkInRange("order", 5, 50) ||
-                checkInRange("order_rate", 50, 100) ||
-                check(Condition("order_rate_out50_continue", Operator.EQ, 1)) ||
-                check(Condition("order_rate_out70_continue", Operator.EQ, 1))
+                    checkInRange("order_rate", 50, 100) ||
+                    check(Condition("order_rate_out50_continue", Operator.EQ, 1)) ||
+                    check(Condition("order_rate_out70_continue", Operator.EQ, 1))
             )
-
         }
 
         /** Checks whether this group indicates a position toward the front of the field.
@@ -610,10 +654,10 @@ data class SkillData(
         private fun isTowardTheFront(): Boolean {
             return (
                 checkInRange("order", 0, 5) ||
-                checkInRange("order_rate", 0, 50) ||
-                check(Condition("order_rate_in20_continue", Operator.EQ, 1)) ||
-                check(Condition("order_rate_in40_continue", Operator.EQ, 1)) ||
-                check(Condition("order_rate_in50_continue", Operator.EQ, 1))
+                    checkInRange("order_rate", 0, 50) ||
+                    check(Condition("order_rate_in20_continue", Operator.EQ, 1)) ||
+                    check(Condition("order_rate_in40_continue", Operator.EQ, 1)) ||
+                    check(Condition("order_rate_in50_continue", Operator.EQ, 1))
             )
         }
 
@@ -625,8 +669,8 @@ data class SkillData(
         fun check(condition: Condition): Boolean {
             return conditions.any {
                 it.name == condition.name &&
-                it.op == condition.op &&
-                it.value == condition.value
+                    it.op == condition.op &&
+                    it.value == condition.value
             }
         }
 
@@ -701,21 +745,28 @@ data class SkillData(
     class Conditions(val groups: List<ConditionGroup>) {
         /** True if any condition group indicates a leading position. */
         val bIsLeading: Boolean = groups.any { it.bIsLeading }
+
         /** True if any condition group indicates a well-positioned placement. */
         val bIsWellPositioned: Boolean = groups.any { it.bIsWellPositioned }
+
         /** True if any condition group indicates being off the pace. */
         val bIsOffThePace: Boolean = groups.any { it.bIsOffThePace }
+
         /** True if any condition group indicates a mid-pack placement. */
         val bIsMidPack: Boolean = groups.any { it.bIsMidPack }
+
         /** True if any condition group indicates being toward the back. */
         val bIsTowardTheBack: Boolean = groups.any { it.bIsTowardTheBack }
+
         /** True if any condition group indicates being toward the front. */
         val bIsTowardTheFront: Boolean = groups.any { it.bIsTowardTheFront }
 
         /** The [RunningStyle] required to activate these conditions. Can be null. */
         val runningStyle: RunningStyle? = calculateRunningStyle()
+
         /** The [TrackDistance] required to activate these conditions. Can be null. */
         val trackDistance: TrackDistance? = calculateTrackDistance()
+
         /** The [TrackSurface] required to activate these conditions. Can be null. */
         val trackSurface: TrackSurface? = calculateTrackSurface()
 
@@ -786,7 +837,7 @@ data class SkillData(
                 result.add(RunningStyle.FRONT_RUNNER)
                 result.add(RunningStyle.PACE_CHASER)
             }
-            
+
             if (bIsWellPositioned) {
                 result.add(RunningStyle.PACE_CHASER)
             }

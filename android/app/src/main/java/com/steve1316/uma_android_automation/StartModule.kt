@@ -1,5 +1,6 @@
 package com.steve1316.uma_android_automation
 
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
@@ -7,8 +8,11 @@ import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.provider.Settings
 import android.util.Log
+import android.view.accessibility.AccessibilityManager
+import androidx.core.net.toUri
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
@@ -16,41 +20,37 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.steve1316.automation_library.events.ExceptionEvent
 import com.steve1316.automation_library.events.JSEvent
 import com.steve1316.automation_library.events.StartEvent
+import com.steve1316.automation_library.utils.BatteryOptimizationUtils
 import com.steve1316.automation_library.utils.MediaProjectionService
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.MyAccessibilityService
-import android.view.accessibility.AccessibilityManager
-import android.accessibilityservice.AccessibilityServiceInfo
-import com.steve1316.automation_library.utils.BatteryOptimizationUtils
+import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.uma_android_automation.utils.LogStreamServer
-import com.steve1316.automation_library.utils.SettingsHelper
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.SubscriberExceptionEvent
-import androidx.core.net.toUri
-import com.facebook.react.bridge.Promise
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import kotlinx.coroutines.runBlocking
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.SubscriberExceptionEvent
+import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.io.File
 
 /**
- * Takes care of setting up internal processes such as the Accessibility and MediaProjection services, receiving and sending messages over to the
- * Javascript frontend, and handle tests involving Discord and Twitter API integrations if needed.
- * <p>
+ * Takes care of setting up internal processes such as the Accessibility and MediaProjection services, receiving and sending messages over to the Javascript frontend, and handle tests involving
+ * Discord and Twitter API integrations if needed.
+ *
  * Loaded into the React PackageList via MainApplication's instantiation of the StartPackage.
  */
 class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), ActivityEventListener {
     private val TAG = "[${MainActivity.loggerTag}]StartModule"
-    
+
     companion object {
         private var reactContext: ReactApplicationContext? = null
         private var emitter: DeviceEventManagerModule.RCTDeviceEventEmitter? = null
     }
-    
+
     private val context: Context = reactContext.applicationContext
     private var messageId = 1
 
@@ -72,34 +72,31 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         if (requestCode == 100 && resultCode == Activity.RESULT_OK) {
             // Start up the MediaProjection service after the user accepts the onscreen prompt.
             reactContext?.startService(
-                MediaProjectionService.getStartIntent(reactContext!!, resultCode, data!!)
+                MediaProjectionService.getStartIntent(reactContext!!, resultCode, data!!),
             )
             sendEvent("MediaProjectionService", "Running")
             Log.d(TAG, "MediaProjectionService is now running.")
         }
     }
 
-    ////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////
     // Interaction with the Start / Stop button.
 
-    /**
-     * This is called when the Start button is pressed back at the Javascript frontend and starts up the MediaProjection service along with the
-     * BotService attached to it.
-     */
+    /** This is called when the Start button is pressed back at the Javascript frontend and starts up the MediaProjection service along with the BotService attached to it. */
     @ReactMethod
     fun start() {
         if (readyCheck()) {
             // Initialize SQLite settings.
             Log.d(TAG, "Starting SQLite settings initialization...")
-            
+
             // Check if the database file exists.
             val dbFile = File(context.filesDir, "SQLite/settings.db")
             Log.d(TAG, "Database file path: ${dbFile.absolutePath}")
             Log.d(TAG, "Database file exists: ${dbFile.exists()}")
             Log.d(TAG, "Database file can read: ${dbFile.canRead()}")
             Log.d(TAG, "Database file size: ${if (dbFile.exists()) dbFile.length() else "N/A"} bytes")
-            
+
             // List the contents of the files directory to see what's actually there.
             val filesDir = context.filesDir
             Log.d(TAG, "Files directory: ${filesDir.absolutePath}")
@@ -110,7 +107,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                     Log.d(TAG, "  - ${file.name} (${if (file.isDirectory) "dir" else "file"})")
                 }
             }
-            
+
             // Check if SQLite subdirectory exists.
             val sqliteDir = File(context.filesDir, "SQLite")
             Log.d(TAG, "SQLite directory exists: ${sqliteDir.exists()}")
@@ -142,9 +139,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         }
     }
 
-    /**
-     * Register this module with EventBus in order to allow listening to certain events and then begin starting up the MediaProjection service.
-     */
+    /** Register this module with EventBus in order to allow listening to certain events and then begin starting up the MediaProjection service. */
     private fun startProjection() {
         // This extra call to unregister is to account for the user stopping the service from the notification which bypasses the call to
         // unregister in stopProjection().
@@ -157,9 +152,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         reactContext?.startActivityForResult(screenCaptureIntent, 100, null)
     }
 
-    /**
-     * Unregister this module with EventBus and then stops the MediaProjection service.
-     */
+    /** Unregister this module with EventBus and then stops the MediaProjection service. */
     private fun stopProjection() {
         EventBus.getDefault().unregister(this)
         Log.d(TAG, "Event Bus unregistered for StartModule")
@@ -167,17 +160,13 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         sendEvent("MediaProjectionService", "Not Running")
     }
 
-    /**
-     * This is called when the Stop button is pressed and will begin stopping the MediaProjection service.
-     */
+    /** This is called when the Stop button is pressed and will begin stopping the MediaProjection service. */
     @ReactMethod
     fun stop() {
         stopProjection()
     }
 
-    /**
-     * Opens the system Accessibility settings page to allow the user to toggle the service off and on.
-     */
+    /** Opens the system Accessibility settings page to allow the user to toggle the service off and on. */
     @ReactMethod
     fun openAccessibilitySettings() {
         Log.d(TAG, "Opening Accessibility Settings...")
@@ -242,8 +231,8 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         }
     }
 
-    ////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////
     // Permissions
 
     /**
@@ -309,18 +298,19 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             setTitle(R.string.accessibility_disabled)
             setMessage(
                 """
-            To enable Accessibility Service:
-            
-            1. Tap "Go to App Info".
-            2. Tap the 3-dot menu in the top right. If not available, you can skip to step 4.
-            3. Tap "Allow restricted settings".
-            4. Return to Accessibility Settings and enable the service.
-            """.trimIndent()
+                To enable Accessibility Service:
+                
+                1. Tap "Go to App Info".
+                2. Tap the 3-dot menu in the top right. If not available, you can skip to step 4.
+                3. Tap "Allow restricted settings".
+                4. Return to Accessibility Settings and enable the service.
+                """.trimIndent(),
             )
             setPositiveButton("Go to App Info") { _, _ ->
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = "package:${reactContext?.packageName}".toUri()
-                }
+                val intent =
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = "package:${reactContext?.packageName}".toUri()
+                    }
                 this@StartModule.reactApplicationContext.currentActivity?.startActivity(intent)
             }
             setNeutralButton("Accessibility Settings") { _, _ ->
@@ -336,8 +326,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     /**
      * Checks if battery optimization is disabled for this app and guides the user to enable it if needed.
      *
-     * This ensures the app can run reliably in the background without being killed by Android's
-     * battery optimization features during long-running automation tasks.
+     * This ensures the app can run reliably in the background without being killed by Android's battery optimization features during long-running automation tasks.
      *
      * @return True if battery optimization is already disabled for this app.
      */
@@ -361,8 +350,8 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         return false
     }
 
-    ////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////
     // Event interaction
 
     /**
@@ -378,16 +367,17 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
 
             val entryPoint = Game(context)
 
-            val botThread = Thread {
-                try {
-                    entryPoint.start()
-                } catch (e: Exception) {
-                    EventBus.getDefault().postSticky(ExceptionEvent(e))
+            val botThread =
+                Thread {
+                    try {
+                        entryPoint.start()
+                    } catch (e: Exception) {
+                        EventBus.getDefault().postSticky(ExceptionEvent(e))
+                    }
                 }
-            }
-            
+
             botThread.start()
-            
+
             try {
                 botThread.join()
             } catch (e: InterruptedException) {
@@ -395,14 +385,14 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                 botThread.interrupt()
                 try {
                     botThread.join()
-                } catch (_: InterruptedException) {}
+                } catch (_: InterruptedException) {
+                }
             }
         }
     }
 
     /**
-     * Tests the Discord connection by creating a temporary Kord client,
-     * looking up the user, opening a DM channel, and sending a test message.
+     * Tests the Discord connection by creating a temporary Kord client, looking up the user, opening a DM channel, and sending a test message.
      *
      * @param token The Discord bot token.
      * @param userID The Discord user ID to send the test message to.
@@ -416,13 +406,14 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                 try {
                     val client = Kord(token)
 
-                    val user = try {
-                        client.getUser(Snowflake(userID.toLong()))
-                    } catch (e: Exception) {
-                        client.shutdown()
-                        promise.reject("DISCORD_USER_ERROR", "Failed to find user with the provided user ID.")
-                        return@runBlocking
-                    }
+                    val user =
+                        try {
+                            client.getUser(Snowflake(userID.toLong()))
+                        } catch (e: Exception) {
+                            client.shutdown()
+                            promise.reject("DISCORD_USER_ERROR", "Failed to find user with the provided user ID.")
+                            return@runBlocking
+                        }
 
                     if (user == null) {
                         client.shutdown()
@@ -430,13 +421,14 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                         return@runBlocking
                     }
 
-                    val dmChannel = try {
-                        user.getDmChannel()
-                    } catch (e: Exception) {
-                        client.shutdown()
-                        promise.reject("DISCORD_DM_ERROR", "Failed to open DM channel with user.")
-                        return@runBlocking
-                    }
+                    val dmChannel =
+                        try {
+                            user.getDmChannel()
+                        } catch (e: Exception) {
+                            client.shutdown()
+                            promise.reject("DISCORD_DM_ERROR", "Failed to open DM channel with user.")
+                            return@runBlocking
+                        }
 
                     // Prepend a timestamp to the test message.
                     val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
@@ -489,7 +481,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
      * Sends the message back to the Javascript frontend along with its event name to be listened on.
      *
      * @param eventName The name of the event to be picked up on as defined in the developer's JS frontend.
-     * @param message   The message string to pass on.
+     * @param message The message string to pass on.
      */
     fun sendEvent(eventName: String, message: String) {
         val params = Arguments.createMap()
@@ -528,7 +520,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         Log.e(TAG, "Received exception event to send: ${event.throwable}")
         MessageLog.e(MainActivity.loggerTag, event.throwable.toString())
         for (line in event.throwable.stackTrace) {
-            MessageLog.e(MainActivity.loggerTag, "\t${line}", skipPrintTime = true)
+            MessageLog.e(MainActivity.loggerTag, "\t$line", skipPrintTime = true)
         }
         MessageLog.d(MainActivity.loggerTag, "", skipPrintTime = true)
     }

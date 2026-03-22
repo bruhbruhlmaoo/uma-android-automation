@@ -4,8 +4,8 @@ package com.steve1316.uma_android_automation.components
 
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.components.ComponentInterface
-import com.steve1316.uma_android_automation.components.Template
 import com.steve1316.uma_android_automation.components.Region
+import com.steve1316.uma_android_automation.components.Template
 
 object Checkbox : ComponentInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]Checkbox"

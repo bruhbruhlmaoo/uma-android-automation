@@ -1,21 +1,19 @@
-/** Defines button components.
+/**
+ * Defines button components.
  *
- * Buttons are any element on screen that can be clicked to
- * perform an action.
+ * Buttons are any element on screen that can be clicked to perform an action.
  *
- * Do not add checkboxes or radio buttons to this file.
- * Those have their own files.
+ * Do not add checkboxes or radio buttons to this file. Those have their own files.
  *
- * Some buttons may have multiple different states. These should use
- * the MultiStateButtonInterface interface instead of ButtonInterface.
+ * Some buttons may have multiple different states. These should use the MultiStateButtonInterface interface instead of ButtonInterface.
  */
 
 package com.steve1316.uma_android_automation.components
 
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.components.ButtonInterface
-import com.steve1316.uma_android_automation.components.Template
 import com.steve1316.uma_android_automation.components.Region
+import com.steve1316.uma_android_automation.components.Template
 
 object ButtonAgenda : ButtonInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]ButtonAgenda"
@@ -72,7 +70,6 @@ object ButtonCollectAll : ButtonInterface {
     override val template = Template("components/button/collect_all", region = Region.bottomHalf)
 }
 
-
 object ButtonConfirm : ButtonInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]ButtonConfirm"
     override val template = Template("components/button/confirm", region = Region.bottomHalf)
@@ -82,7 +79,6 @@ object ButtonConfirmExclamation : ButtonInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]ButtonConfirmExclamation"
     override val template = Template("components/button/confirm_exclamation", region = Region.bottomHalf)
 }
-
 
 object ButtonDailyRaces : ButtonInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]ButtonDailyRaces"
@@ -433,10 +429,11 @@ object ButtonMenuBarHomeUnselected : ButtonInterface {
 
 object ButtonMenuBarHome : MultiStateButtonInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]ButtonMenuBarHome"
-    override val templates: List<Template> = listOf(
-        Template("components/button/menu_bar_home_unselected"),
-        Template("components/button/menu_bar_home_selected"),
-    )
+    override val templates: List<Template> =
+        listOf(
+            Template("components/button/menu_bar_home_unselected"),
+            Template("components/button/menu_bar_home_selected"),
+        )
 }
 
 object ButtonMenuBarRaceSelected : ButtonInterface {
@@ -451,10 +448,11 @@ object ButtonMenuBarRaceUnselected : ButtonInterface {
 
 object ButtonMenuBarRace : MultiStateButtonInterface {
     override val TAG: String = "[${MainActivity.loggerTag}]ButtonMenuBarRace"
-    override val templates: List<Template> = listOf(
-        Template("components/button/menu_bar_race_unselected"),
-        Template("components/button/menu_bar_race_selected"),
-    )
+    override val templates: List<Template> =
+        listOf(
+            Template("components/button/menu_bar_race_unselected"),
+            Template("components/button/menu_bar_race_selected"),
+        )
 }
 
 object ButtonCompleteCareer : ButtonInterface {
