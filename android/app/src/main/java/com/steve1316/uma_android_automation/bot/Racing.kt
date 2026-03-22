@@ -28,64 +28,150 @@ import com.steve1316.uma_android_automation.utils.ScrollListEntry
 
 import com.steve1316.uma_android_automation.components.*
 
+/**
+ * Manage and orchestrate the racing process, including mandatory, maiden, and extra races.
+ *
+ * @property game A reference to the bot's [Game] instance.
+ * @property campaign A reference to the current [Campaign] instance.
+ */
 class Racing (private val game: Game, private val campaign: Campaign) {
     private val TAG: String = "[${MainActivity.loggerTag}]Racing"
 
+    /** Whether to enable farming fans through extra races. */
     private val enableFarmingFans = SettingsHelper.getBooleanSetting("racing", "enableFarmingFans")
+
+    /** Whether to ignore the warning that appears when racing three times in a row. */
     val ignoreConsecutiveRaceWarning = SettingsHelper.getBooleanSetting("racing", "ignoreConsecutiveRaceWarning")
+
+    /** The number of days to wait between running extra races. */
     private val daysToRunExtraRaces: Int = SettingsHelper.getIntSetting("racing", "daysToRunExtraRaces")
+
+    /** Whether to disable race retries. */
     internal val disableRaceRetries: Boolean = SettingsHelper.getBooleanSetting("racing", "disableRaceRetries")
+
+    /** Whether to enable a free race retry if available. */
     internal val enableFreeRaceRetry: Boolean = SettingsHelper.getBooleanSetting("racing", "enableFreeRaceRetry")
+
+    /** Whether to automatically complete the career on a failure. */
     internal val enableCompleteCareerOnFailure: Boolean = SettingsHelper.getBooleanSetting("racing", "enableCompleteCareerOnFailure")
+
+    /** Whether to force the bot to race extra races regardless of other conditions. */
     val enableForceRacing = SettingsHelper.getBooleanSetting("racing", "enableForceRacing")
 
+    /** Whether to enable the custom racing plan. */
     private val enableRacingPlan = SettingsHelper.getBooleanSetting("racing", "enableRacingPlan")
+
+    /** The number of days to look ahead for better racing opportunities. */
     private val lookAheadDays = SettingsHelper.getIntSetting("racing", "lookAheadDays")
+
+    /** The frequency (in turns) to perform a smart racing evaluation. */
     private val smartRacingCheckInterval = SettingsHelper.getIntSetting("racing", "smartRacingCheckInterval")
+
+    /** The minimum fan count required for a race to be considered. */
     private val minFansThreshold = SettingsHelper.getIntSetting("racing", "minFansThreshold")
+    /** The user-preferred track surface for races. */
     private val preferredTrackSurfaceString = SettingsHelper.getStringSetting("racing", "preferredTerrain")
+
+    /** The user-preferred race grades. */
     private val preferredGradesString = SettingsHelper.getStringSetting("racing", "preferredGrades")
+
+    /** The user-preferred track distances. */
     private val preferredTrackDistanceString = SettingsHelper.getStringSetting("racing", "preferredDistances")
+
+    /** The JSON string representing the user's custom racing plan. */
     private val racingPlanJson = SettingsHelper.getStringSetting("racing", "racingPlan")
+
+    /** The minimum quality threshold for a race to be included in the plan. */
     private val minimumQualityThreshold = SettingsHelper.getDoubleSetting("racing", "minimumQualityThreshold")
+
+    /** The factor used to decay race scores over time. */
     private val timeDecayFactor = SettingsHelper.getDoubleSetting("racing", "timeDecayFactor")
+
+    /** The minimum improvement required to prioritize a later race. */
     private val improvementThreshold = SettingsHelper.getDoubleSetting("racing", "improvementThreshold")
+
+    /** Whether to strictly follow the racing plan and ignore non-planned races. */
     private val enableMandatoryRacingPlan = SettingsHelper.getBooleanSetting("racing", "enableMandatoryRacingPlan")
+
+    /** Whether to use the in-game race agenda feature. */
     private val enableUserInGameRaceAgenda = SettingsHelper.getBooleanSetting("racing", "enableUserInGameRaceAgenda")
+
+    /** The specific in-game race agenda selected by the user. */
     private val selectedUserAgenda = SettingsHelper.getStringSetting("racing", "selectedUserAgenda")
 
+    /** The current number of retries available for the run. */
     internal var raceRetries = 3
-    internal var raceRepeatWarningCheck = false
-    var encounteredRacingPopup = false
-    var firstTimeRacing = true
-    var hasFanRequirement = false  // Indicates that a fan requirement has been detected on the main screen.
-    var hasTrophyRequirement = false  // Indicates that a trophy requirement has been detected on the main screen.
-    var hasPreOpOrAboveRequirement = false  // Indicates that a Pre-OP or above requirement has been detected (any race can fulfill it).
-    var hasG3OrAboveRequirement = false  // Indicates that a G3 or above requirement has been detected (any race can fulfill it).
-    private var nextSmartRaceDay: Int? = null  // Tracks the specific day to race based on opportunity cost analysis.
-    private var hasLoadedUserRaceAgenda = false  // Tracks if the user's race agenda has been loaded this career.
-    var lastRaceGrade: RaceGrade? = null  // Tracks the grade of the last race selected.
-	var lastRaceIsRival: Boolean = false  // Tracks if the last race selected was a Rival Race.
-	var bRetriedCurrentRace: Boolean = false  // Tracks if the current race has already been retried.
 
+    /** Whether to check for the consecutive race warning. */
+    internal var raceRepeatWarningCheck = false
+
+    /** Whether a racing-related popup has been encountered. */
+    var encounteredRacingPopup = false
+
+    /** Whether this is the first time the bot is racing in the current career. */
+    var firstTimeRacing = true
+
+    /** Indicates that a fan requirement has been detected on the main screen. */
+    var hasFanRequirement = false
+
+    /** Indicates that a trophy requirement has been detected on the main screen. */
+    var hasTrophyRequirement = false
+
+    /** Indicates that a Pre-OP or above requirement has been detected. */
+    var hasPreOpOrAboveRequirement = false
+
+    /** Indicates that a G3 or above requirement has been detected. */
+    var hasG3OrAboveRequirement = false
+
+    /** Tracks the specific day to race based on opportunity cost analysis. */
+    private var nextSmartRaceDay: Int? = null
+
+    /** Tracks if the user's race agenda has been loaded during this career. */
+    private var hasLoadedUserRaceAgenda = false
+
+    /** Tracks the grade of the last race that was selected. */
+    var lastRaceGrade: RaceGrade? = null
+
+    /** Tracks if the last race selected was a Rival Race. */
+	var lastRaceIsRival: Boolean = false
+
+    /** Tracks if the current race has already been retried. */
+	var bRetriedCurrentRace: Boolean = false
+
+    /** Whether to stop the bot when a mandatory race is detected. */
     internal val enableStopOnMandatoryRace: Boolean = SettingsHelper.getBooleanSetting("racing", "enableStopOnMandatoryRaces")
+
+    /** Whether a mandatory race has been detected during the check. */
     internal var detectedMandatoryRaceCheck = false
 
-    // Race strategy override settings.
+    /** The race strategy override for the Junior Year. */
     internal val juniorYearRaceStrategy = SettingsHelper.getStringSetting("racing", "juniorYearRaceStrategy")
+
+    /** The user's originally selected race strategy. */
     internal val userSelectedOriginalStrategy = SettingsHelper.getStringSetting("racing", "originalRaceStrategy")
+
+    /** The strategy that was detected at the start of the career. */
     private var detectedOriginalStrategy: String? = null
+
+    /** Whether the Junior Year strategy override has been applied. */
     private var bHasSetStrategyJunior: Boolean = false
+
+    /** Whether the original strategy has been restored after Junior Year. */
     private var bHasSetStrategyOriginal: Boolean = false
-    // Control flag used between dialog handler and [selectRaceStrategy].
-    // Only set when strategy is selected in dialog handler.
-    // Unset at the beginning of [selectRaceStrategy]
+
+    /**
+     * A control flag used between the dialog handler and [selectRaceStrategy].
+     * Only set when a strategy is selected in the dialog handler and unset at the beginning of [selectRaceStrategy].
+     */
     var bHasSetTemporaryRunningStyle: Boolean = false
 
-    // Cached race plan data loaded once per class instance.
+    /** The complete race database loaded at initialization. */
     private val raceData: Map<String, RaceData> = loadRaceData()
+
+    /** The user's defined planned races loaded at initialization. */
     private val userPlannedRaces: List<PlannedRace> = loadUserPlannedRaces()
 
+    /** The maximum number of retries allowed per race. */
     private val maxRetriesPerRace = if (game.scenario == "Trackblazer") SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerMaxRetriesPerRace", 1) else 1
 
     init {
@@ -96,17 +182,46 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     }
 
     companion object {
+        /** The name of the races table in the database. */
         private const val TABLE_RACES = "races"
+
+        /** The name of the race name column. */
         private const val RACES_COLUMN_NAME = "name"
+
+        /** The name of the race grade column. */
         private const val RACES_COLUMN_GRADE = "grade"
+
+        /** The name of the fan count column. */
         private const val RACES_COLUMN_FANS = "fans"
+
+        /** The name of the turn number column. */
         private const val RACES_COLUMN_TURN_NUMBER = "turnNumber"
+
+        /** The name of the formatted race name column. */
         private const val RACES_COLUMN_NAME_FORMATTED = "nameFormatted"
+
+        /** The name of the track surface column. */
         private const val RACES_COLUMN_TRACK_SURFACE = "terrain"
+
+        /** The name of the track distance column. */
         private const val RACES_COLUMN_TRACK_DISTANCE = "distanceType"
+
+        /** The threshold for fuzzy string matching (0.0 to 1.0). */
         private const val SIMILARITY_THRESHOLD = 0.7
     }
 
+    /**
+     * Stores comprehensive information about a specific race.
+     *
+     * @property name The internal name of the race.
+     * @property grade The grade of the race (e.g., G1, G2, G3).
+     * @property fans The number of fans gained by winning the race.
+     * @property nameFormatted The user-friendly formatted name of the race.
+     * @property trackSurface The track surface (e.g., Turf, Dirt).
+     * @property trackDistance The distance category of the race (e.g., Sprint, Mile).
+     * @property turnNumber The specific turn number the race occurs on.
+     * @property isRival Indicates if the race is a Rival Race.
+     */
     data class RaceData(
         val name: String,
         val grade: RaceGrade,
@@ -115,8 +230,19 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         val trackSurface: TrackSurface,
         val trackDistance: TrackDistance,
         val turnNumber: Int,
-		var isRival: Boolean = false
+        var isRival: Boolean = false
     ) {
+        /**
+         * Secondary constructor for initializing [RaceData] from raw database strings.
+         *
+         * @param name The internal name of the race.
+         * @param grade The string representation of the race grade.
+         * @param fans The number of fans gained.
+         * @param nameFormatted The user-friendly formatted name.
+         * @param trackSurface The string representation of the track surface.
+         * @param trackDistance The string representation of the track distance.
+         * @param turnNumber The specific turn number.
+         */
         constructor(
             name: String,
             grade: String,
@@ -138,6 +264,15 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         )
     }
 
+    /**
+     * Represents a race that has been evaluated and assigned a score for smart racing.
+     *
+     * @property raceData The data for evaluated race.
+     * @property score The final calculated score for the race.
+     * @property fansScore The score component based on fan gains.
+     * @property gradeScore The score component based on race grade.
+     * @property aptitudeBonus The bonus applied based on the trainee's aptitudes.
+     */
     data class ScoredRace(
         val raceData: RaceData,
         val score: Double,
@@ -146,6 +281,14 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         val aptitudeBonus: Double
     )
 
+    /**
+     * Stores information about a race that the user has planned.
+     *
+     * @property raceName The name of the planned race.
+     * @property date The date string assigned to the planned race.
+     * @property priority The priority level of the planned race.
+     * @property turnNumber The turn number the planned race occurs on.
+     */
     data class PlannedRace(
         val raceName: String,
         val date: String,
@@ -154,7 +297,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     )
 
     /**
-     * Clears all racing requirement flags like fan and trophy requirements.
+     * Resets all racing requirement flags to their default state.
      */
     fun clearRacingRequirementFlags() {
         hasFanRequirement = false
@@ -198,7 +341,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             MessageLog.i(TAG, "[RACE] Successfully loaded ${plannedRaces.size} user-selected planned races from settings.")
             plannedRaces
         } catch (e: Exception) {
-            MessageLog.e(TAG, "Failed to parse user-selected racing plan JSON: ${e.message}. Returning empty list.")
+            MessageLog.e(TAG, "[ERROR] loadUserPlannedRaces:: Failed to parse user-selected racing plan JSON: ${e.message}. Returning empty list.")
             emptyList()
         }
     }
@@ -240,7 +383,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             MessageLog.i(TAG, "[RACE] Successfully loaded ${raceDataMap.size} race entries from racing plan data.")
             raceDataMap
         } catch (e: Exception) {
-            MessageLog.e(TAG, "Failed to parse racing plan data JSON: ${e.message}. Returning empty map.")
+            MessageLog.e(TAG, "[ERROR] loadRaceData:: Failed to parse racing plan data JSON: ${e.message}. Returning empty map.")
             emptyMap()
         }
     }
@@ -293,10 +436,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * The entry point for handling mandatory or extra races.
+     * Orchestrates the handling of various race events, including mandatory and extra races.
      *
-     * @param isScheduledRace True if there is a scheduled race pending. False otherwise.
-     * @return True if the mandatory/extra race was completed successfully. Otherwise false.
+     * @param isScheduledRace True if a race is currently scheduled, false otherwise.
+     * @return True if a race event was handled successfully, false otherwise.
      */
     fun handleRaceEvents(isScheduledRace: Boolean = false): Boolean {
         // If the bot is already at the Race List screen and a race has already been selected,
@@ -309,8 +452,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         MessageLog.i(TAG, "\n********************")
         MessageLog.i(TAG, "[RACE] Starting Racing process on ${campaign.date}.")
 
-        // If the races button exists AND is disabled, we can exit early since we
-        // know that we're at the home screen and the bot cannot race.
+        // If the races button exists AND is disabled, we can exit early since we know that we're at the home screen and the bot cannot race.
         if (ButtonRaces.checkDisabled(game.imageUtils) == true) {
             MessageLog.i(TAG, "[RACE] Races are locked. Canceling the racing process and doing something else.")
             clearRacingRequirementFlags()
@@ -425,9 +567,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Handles mandatory race processing.
-     * 
-     * @return True if the mandatory race was completed successfully, false otherwise.
+     * Handles the process for a mandatory race.
+     *
+     * @return True if the mandatory race process was completed successfully, false otherwise.
      */
     private fun handleMandatoryRace(): Boolean {
         MessageLog.i(TAG, "[RACE] Starting process for handling a mandatory race.")
@@ -461,28 +603,33 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         return true
     }
 
+    /**
+     * Searches for and selects a maiden race from the race list.
+     *
+     * @return True if a maiden race was successfully selected, false otherwise.
+     */
     private fun selectMaidenRace(): Boolean {
         // Get the bounding region of the race list.
         val raceListTopLeftBitmap: Bitmap? = IconScrollListTopLeft.template.getBitmap(game.imageUtils)
         if (raceListTopLeftBitmap == null) {
-            MessageLog.e(TAG, "[RACE] Failed to load IconScrollListTopLeft bitmap.")
+            MessageLog.e(TAG, "[ERROR] selectMaidenRace:: Failed to load IconScrollListTopLeft bitmap.")
             return false
         }
 
         val raceListBottomRightBitmap: Bitmap? = IconScrollListBottomRight.template.getBitmap(game.imageUtils)
         if (raceListBottomRightBitmap == null) {
-            MessageLog.e(TAG, "[RACE] Failed to load IconScrollListBottomRight bitmap.")
+            MessageLog.e(TAG, "[ERROR] selectMaidenRace:: Failed to load IconScrollListBottomRight bitmap.")
             return false
         }
 
         val raceListTopLeft: Point? = IconScrollListTopLeft.find(game.imageUtils).first
         if (raceListTopLeft == null) {
-            MessageLog.e(TAG, "[RACE] Failed to find top left corner of race list.")
+            MessageLog.e(TAG, "[ERROR] selectMaidenRace:: Failed to find top left corner of race list.")
             return false
         }
         val raceListBottomRight: Point? = IconScrollListBottomRight.find(game.imageUtils).first
         if (raceListBottomRight == null) {
-            MessageLog.e(TAG, "[RACE] Failed to find bottom right corner of race list.")
+            MessageLog.e(TAG, "[ERROR] selectMaidenRace:: Failed to find bottom right corner of race list.")
             return false
         }
         val x0 = (raceListTopLeft.x - (raceListTopLeftBitmap.width / 2)).toInt()
@@ -511,11 +658,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             h = bboxRaceList.h,
         )
 
-        // The selected race in the race list has green brackets that overlap the
-        // scroll bar a bit. Thus we are really only interested in a single column
-        // of pixels on the right side of the scroll bar when checking for changes.
+        // The selected race in the race list has green brackets that overlap the scroll bar a bit.
+        // Thus we are really only interested in a single column of pixels on the right side of the scroll bar when checking for changes.
         val bboxScrollBarSingleColumn = BoundingBox(
-            // give ourselves a few pixels of buffer
+            // Give ourselves a few pixels of buffer.
             x = bboxScrollBar.x + bboxScrollBar.w - 3,
             y = bboxScrollBar.y,
             w = 1,
@@ -527,7 +673,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             (bboxRaceList.x + (bboxRaceList.w / 2)).toFloat(),
             (bboxRaceList.y + (bboxRaceList.h / 2)).toFloat(),
             (bboxRaceList.x + (bboxRaceList.w / 2)).toFloat(),
-            // high value here ensures we go all the way to top of list
+            // High value here ensures we go all the way to top of list.
             (bboxRaceList.y + (bboxRaceList.h * 10)).toFloat(),
         )
         game.wait(0.1, skipWaitingForLoading = true)
@@ -558,14 +704,13 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 "race list scrollbar right half bitmap",
             )
             if (scrollBarBitmap == null) {
-                MessageLog.e(TAG, "[RACE] Failed to createSafeBitmap for scrollbar.")
+                MessageLog.e(TAG, "[ERROR] selectMaidenRace:: Failed to createSafeBitmap for scrollbar.")
                 return false
             }
 
-            // If after scrolling the scrollbar hasn't changed, that means
-            // we've reached the end of the list.
+            // If after scrolling the scrollbar hasn't changed, that means we've reached the end of the list.
             if (prevScrollBarBitmap != null && scrollBarBitmap.sameAs(prevScrollBarBitmap)) {
-                Log.d(TAG, "[RACE] Scrollbar has not changed, reached end of list.")
+                Log.d(TAG, "[DEBUG] selectMaidenRace:: Scrollbar has not changed, reached end of list.")
                 return false
             }
 
@@ -578,7 +723,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             )
 
             if (!locs.isEmpty()) {
-                Log.d(TAG, "[RACE] Found double predictions at (${locs.first().x}, ${locs.first().y}).")
+                Log.d(TAG, "[DEBUG] selectMaidenRace:: Found double predictions at (${locs.first().x}, ${locs.first().y}).")
                 game.tap(
                     locs.first().x,
                     locs.first().y,
@@ -588,13 +733,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 return true
             }
 
-            // Longer swipe duration prevents overscrolling.
-            // Swipe up approximately one entry in list.
+            // Longer swipe duration prevents overscrolling. Swipe up approximately one entry in list.
             // Each entry is roughly 200px tall and there is a 30px gap between entries.
-            // I find that a 500px swipe with 1500ms duration is a good balance.
-            // For some reason with shorter durations, it overscrolls too much. Also
-            // with longer durations, the amount scrolled is less than the pixel amount
-            // specified so we use 500px to counter this.
+            // For some reason with shorter durations, it overscrolls too much.
+            // Also with longer durations, the amount scrolled is less than the pixel amount specified so we use 500px to counter this.
             game.gestureUtils.swipe(
                 (bboxRaceList.x + (bboxRaceList.w / 2)).toFloat(),
                 (bboxRaceList.y + (bboxRaceList.h / 2)).toFloat(),
@@ -615,11 +757,16 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         return false
     }
 
+    /**
+     * Handles the process for a maiden race.
+     *
+     * @return True if the maiden race process was completed successfully, false otherwise.
+     */
     private fun handleMaidenRace(): Boolean {
         MessageLog.i(TAG, "[RACE] Starting process for handling a maiden race.")
 
         if (!ButtonRaceListFullStats.check(game.imageUtils, tries = 30)) {
-            MessageLog.e(TAG, "[RACE] Not at race list screen. Aborting racing...")
+            MessageLog.e(TAG, "[ERROR] handleMaidenRace:: Not at race list screen. Aborting racing...")
             // Clear requirement flags since we cannot proceed with racing.
             clearRacingRequirementFlags()
             return false
@@ -627,7 +774,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
         campaign.bHasCheckedForMaidenRaceToday = true
         if (IconRaceListMaidenPill.check(game.imageUtils)) {
-            MessageLog.d(TAG, "[RACE] Detected maiden races in race list.")
+            MessageLog.i(TAG, "[RACE] Detected maiden races in race list.")
             if (selectMaidenRace()) {
                 MessageLog.i(TAG, "[RACE] Found maiden race with good aptitudes. Racing...")
             } else {
@@ -648,7 +795,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         if (result !is DialogHandlerResult.Handled ||
             (result is DialogHandlerResult.Handled && result.dialog?.name != "race_details")
         ) {
-            Log.w(TAG, "[RACE] Failed to handle dialogs. Aborting racing...")
+            Log.w(TAG, "[WARN] handleMaidenRace:: Failed to handle dialogs. Aborting racing...")
             return false
         }
         game.wait(2.0)
@@ -666,10 +813,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     }
 
     /**
-     * Handles extra race processing.
-     * 
-     * @param isScheduledRace True if there is a scheduled race pending. False otherwise.
-     * @return True if the extra race was completed successfully, false otherwise.
+     * Handles the process for an extra race, including smart and standard racing logic.
+     *
+     * @param isScheduledRace True if an extra race is currently scheduled, false otherwise.
+     * @return True if the extra race process was completed successfully, false otherwise.
      */
     private fun handleExtraRace(isScheduledRace: Boolean = false): Boolean {
         MessageLog.i(TAG, "[RACE] Starting process for handling a extra race${if (isScheduledRace) " (scheduled)" else ""}.")
@@ -709,10 +856,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 return false
             }
 
-            // There is an extra race.
+            // Check for the existence of the extra race list button.
             val statusLocation = ButtonRaceListFullStats.find(game.imageUtils, tries = 30).first
             if (statusLocation == null) {
-                MessageLog.e(TAG, "[ERROR] Unable to determine existence of list of extra races. Canceling the racing process and doing something else.")
+                MessageLog.e(TAG, "[ERROR] handleExtraRace:: Unable to determine existence of list of extra races. Canceling the racing process and doing something else.")
                 // Clear requirement flags since we cannot proceed with racing.
                 clearRacingRequirementFlags()
                 MessageLog.i(TAG, "********************")
@@ -725,7 +872,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 if (hasFanRequirement || hasTrophyRequirement) {
                     MessageLog.i(TAG, "[RACE] Fan/trophy requirement detected but no extra races available. Clearing requirement flags and proceeding with training to advance the day.")
                 } else {
-                    MessageLog.e(TAG, "[ERROR] Was unable to find any extra races to select. Canceling the racing process and doing something else.")
+                    MessageLog.e(TAG, "[ERROR] handleExtraRace:: Was unable to find any extra races to select. Canceling the racing process and doing something else.")
                 }
                 // Always clear requirement flags when no races are available.
                 clearRacingRequirementFlags()
@@ -788,19 +935,14 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
             if (!success) {
                 // Clear requirement flags if race selection failed.
-                Log.w(TAG, "[RACE] Failed to select a race. Aborting racing...")
+                Log.w(TAG, "[WARN] handleExtraRace:: Failed to select a race. Aborting racing...")
                 clearRacingRequirementFlags()
                 return false
             }
         } else if (isScheduledRace) {
-            // Now that we're at the race list screen, we need to attempt to update
-            // the date if the day==1. This means we somehow got here without
-            // ever checking the date. This can happen if the bot is started
-            // at the race prep screen, then when it returns from the race it gets
-            // a scheduled race dialog and immediately enters the race list screen
-            // without ever detecting the home screen.
-            // For the next steps to be accurate, we should at least try to read the
-            // date before continuing.
+            // Attempt to update the date if the current day is 1. This handles cases where the bot starts at the race 
+            // prep screen and enters the race list directly via a scheduled race dialog, bypassing the home 
+            // screen's date detection.
             if (campaign.date.day == 1) {
                 campaign.updateDate(isOnMainScreen = false)
             }
@@ -831,19 +973,19 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     /**
      * Handles extra races using Smart Racing logic.
      *
-     * @param mandatoryExtraRaceData Race data for for the extra race that is mandatory to run. If provided, this race will be selected immediately if found on the screen.
-     * @return True if a race was successfully selected and ready to run; false if the process was canceled.
+     * @param mandatoryExtraRaceData Race data for the extra race that is mandatory to run. If provided, this race will be selected immediately if found on the screen.
+     * @return True if a race was successfully selected and ready to run, false if the process was canceled.
      */
     private fun processSmartRacing(mandatoryExtraRaceData: RaceData? = null): Boolean {
         MessageLog.i(TAG, "[RACE] Using Smart Racing Plan logic...")
 
-        // Updates the current date and aptitudes for accurate scoring.
+        // Update the current date and aptitudes for accurate scoring.
         campaign.updateDate()
 
         // Use cached user planned races and race plan data.
         MessageLog.i(TAG, "[RACE] Loaded ${userPlannedRaces.size} user-selected races and ${raceData.size} race entries.")
 
-        // Detects all double-star race predictions on screen.
+        // Detect all double-star race predictions on screen.
         val doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
         MessageLog.i(TAG, "[RACE] Found ${doublePredictionLocations.size} double-star prediction locations.")
         if (doublePredictionLocations.isEmpty()) {
@@ -851,7 +993,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             return false
         }
 
-        // Extracts race names from the screen and matches them with the in-game database.
+        // Extract race names from the screen and match them with the in-game database.
         MessageLog.i(TAG, "[RACE] Extracting race names and matching with database...")
         val currentRaces = doublePredictionLocations.flatMap { location ->
             val raceName = game.imageUtils.extractRaceName(location)
@@ -888,7 +1030,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 val mandatoryExtraRaceLocation = findRaceLocationByName(currentDoublePredictions, mandatoryExtraRaceData.name)
 
                 if (mandatoryExtraRaceLocation != null) {
-                    // If multiple fan variants exist in database, scroll to try to find the higher-fan version.
+                    // If multiple fan variants exist in the database, scroll to try to find the higher-fan version.
                     if (hasMultipleFanVariants && scrollAttempt == 0) {
                         MessageLog.i(TAG, "[RACE] Found a match but database shows multiple fan variants. Scrolling to check for higher-fan version...")
                         val firstFoundLocation = mandatoryExtraRaceLocation
@@ -1123,12 +1265,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     /**
      * Handles extra races using the standard or traditional racing logic.
      *
-     * @return True if a race was successfully selected; false if the process was canceled.
+     * @return True if a race was successfully selected, false if the process was canceled.
      */
     private fun processStandardRacing(): Boolean {
         MessageLog.i(TAG, "[RACE] Using traditional racing logic for extra races...")
 
-        // Detects double-star races on screen.
+        // Detect double-star races on screen.
         var doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
 
         // If no double predictions found and fans/Pre-OP/G3 requirement is active and is after Junior Year, scroll to find them.
@@ -1155,7 +1297,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
         val maxCount = doublePredictionLocations.size
         if (maxCount == 0) {
-            MessageLog.w(TAG, "No extra races with double predictions found on screen. Canceling racing process.")
+            MessageLog.w(TAG, "[WARN] processStandardRacing:: No extra races with double predictions found on screen. Canceling racing process.")
             return false
         }
 
@@ -1191,7 +1333,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             }
         }
 
-        // Otherwise, iterates through each extra race to determine fan gain and double prediction status.
+        // Otherwise, iterate through each extra race to determine fan gain and double prediction status.
         val sourceBitmap: Bitmap = game.imageUtils.getSourceBitmap()
         val listOfRaces = ArrayList<RaceDetails>()
         val extraRaceLocations = ArrayList<Point>()
@@ -1259,7 +1401,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         }
         MessageLog.i(TAG, "[RACE] Number of fans detected for each extra race are: ${filteredRaces.joinToString(", ") { it.fans.toString() }}")
 
-        // Evaluates which race to select based on Rival priority, maximum fans and double prediction priority.
+        // Evaluate which race to select based on Rival priority, maximum fans and double prediction priority.
         val index = if (filteredRaces.any { it.isRival }) {
             MessageLog.i(TAG, "[RACE] Rival Race(s) detected. Prioritizing Rival Races.")
             val rivalRaces = filteredRaces.filter { it.isRival }
@@ -1316,9 +1458,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
     /**
      * Loads the user's selected in-game race agenda.
-     * This function navigates through the agenda UI, finds the matching agenda,
-     * and loads it. If the agenda is not immediately visible, it will scroll
-     * the list to find it.
+     *
+     * This function navigates through the agenda UI, finds the matching agenda, and loads it.
+     * If the agenda is not immediately visible, it will scroll the list to find it.
      */
     fun loadUserRaceAgenda() {
         // Only load the agenda once per career.
@@ -1341,12 +1483,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 if (ButtonRaces.click(game.imageUtils)) {
                     MessageLog.i(TAG, "[RACE] Clicked the Races button. Proceeding to load the race agenda...")
                 } else {
-                    MessageLog.w(TAG, "[RACE] Detected the Races button but failed to click it. Skipping loading the race agenda.")
+                    MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Detected the Races button but failed to click it. Skipping loading the race agenda.")
                     return
                 }
             }
             null -> {
-                MessageLog.w(TAG, "[RACE] Failed to detect the Races button. Skipping loading the race agenda.")
+                MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Failed to detect the Races button. Skipping loading the race agenda.")
                 return
             }
         }
@@ -1361,18 +1503,18 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         MessageLog.i(TAG, "[RACE] Loading user's in-game race agenda: $selectedUserAgenda")
         
         // It is assumed that the user is already at the screen with the list of selectable races.
-        // Now tap on the Agenda button.
+        // Taps on the Agenda button.
         if (!ButtonAgenda.click(game.imageUtils)) {
-            MessageLog.w(TAG, "[RACE] Could not find the Agenda button. Backing out and skipping agenda loading.")
+            MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Could not find the Agenda button. Backing out and skipping agenda loading.")
             ButtonBack.click(game.imageUtils)
             game.waitForLoading()
             return
         }
         game.wait(game.dialogWaitDelay)
 
-        // Now tap on the My Agenda button.
+        // Taps on the My Agenda button.
         if (!ButtonMyAgendas.click(game.imageUtils)) {
-            MessageLog.w(TAG, "[RACE] Could not find the My Agenda button. Closing and backing out.")
+            MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Could not find the My Agenda button. Closing and backing out.")
             ButtonClose.click(game.imageUtils)
             game.wait(0.5)
             ButtonBack.click(game.imageUtils)
@@ -1381,7 +1523,8 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         }
         game.wait(game.dialogWaitDelay)
         
-        // Check if an agenda is already loaded. If so, then the user must have loaded this earlier in the career so no need to select it again.
+        // Check if an agenda is already loaded.
+        // If so, then the user must have loaded this earlier in the career so no need to select it again.
         if (!IconRaceAgendaEmpty.check(game.imageUtils)) {
             MessageLog.i(TAG, "[RACE] A race agenda is already loaded. Skipping agenda selection.")
 
@@ -1408,7 +1551,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             // Find all the Load List buttons on the current screen.
             val loadListButtonLocations: ArrayList<Point> = ButtonRaceAgendaLoadList.findAll(game.imageUtils, sourceBitmap = sourceBitmap)
             if (loadListButtonLocations.isEmpty()) {
-                MessageLog.w(TAG, "[RACE] No Load List buttons found on screen.")
+                MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: No Load List buttons found on screen.")
                 break
             }
             
@@ -1424,12 +1567,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             for ((buttonLocation, agendaText) in agendaMappings) {
                 if (agendaText == selectedUserAgenda) {
                     MessageLog.i(TAG, "[RACE] ✓ Found $selectedUserAgenda. Tapping the Load List button...")
+                    
                     // Clicking this button triggers connection to server.
                     // Or it could result in three other states:
-                    // 1)   The overwrite dialog appears.
-                    // 2)   The scheduled_race dialog appears.
-                    // 3)   The my_agendas dialog closes automatically and
-                    //      the scheduled_races dialog remains on screen.
+                    // 1. The overwrite dialog appears.
+                    // 2. The scheduled_race dialog appears.
+                    // 3. The my_agendas dialog closes automatically and the scheduled_races dialog remains on screen.
                     game.gestureUtils.tap(buttonLocation.x, buttonLocation.y, ButtonRaceAgendaLoadList.template.path)
 
                     // Timeout after 5 seconds. Shouldn't ever take near that long.
@@ -1450,24 +1593,17 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
                         when (result.dialog?.name) {
                             "overwrite" -> result.dialog.ok(game.imageUtils)
-                            // Pops up when we try to load agenda with races that
-                            // are in the past.
+                            // Pops up when we try to load agenda with races that are in the past.
                             "scheduled_race" -> result.dialog.close(game.imageUtils)
-                            // We've closed all the extra dialogs after loading agenda.
-                            // Break from loop.
+                            // We've closed all the extra dialogs after loading agenda so break from the loop.
                             "scheduled_races" -> break
-                            // We might detect the dialog too quick and find this
-                            // one as it is in the process of closing.
-                            // Ignore this and continue loop
+                            // We might detect the dialog too quick and find this one as it is in the process of closing. Ignore this and continue the loop.
                             "my_agendas" -> {}
-                            // No dialog detected. This can happen if a dialog is closing.
-                            // Not a problem, just continue with loop and timeout when
-                            // the time comes.
+                            // No dialog detected. This can happen if a dialog is closing. Not a problem, just continue with loop and timeout when the time comes.
                             null -> {}
-                            // Fall back to the base dialog handler if we get a dialog
-                            // that we weren't expecting.
+                            // Fall back to the base dialog handler if we get a dialog that we weren't expecting.
                             else -> {
-                                MessageLog.e(TAG, "[RACE] Unknown dialog detected: ${result.dialog.name}. Falling back to base dialog handler.")
+                                MessageLog.e(TAG, "[ERROR] loadUserRaceAgenda:: Unknown dialog detected: ${result.dialog.name}. Falling back to base dialog handler.")
                                 campaign.handleDialogs()
                             }
                         }
@@ -1479,7 +1615,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 
                 // Check if we've reached "Agenda 8" (end of list).
                 if (agendaText == "Agenda 8") {
-                    MessageLog.w(TAG, "[RACE] Reached Agenda 8 but target $selectedUserAgenda not found.")
+                    MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Reached Agenda 8 but target $selectedUserAgenda not found.")
                     break
                 }
             }
@@ -1511,7 +1647,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         }
         
         if (!foundAgenda) {
-            MessageLog.w(TAG, "[RACE] Could not find $selectedUserAgenda after $swipeCount swipe(s). Closing agenda selection.")
+            MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Could not find $selectedUserAgenda after $swipeCount swipe(s). Closing agenda selection.")
         }
         
         // Mark as loaded so we don't try again this run and close the popup.
@@ -1597,7 +1733,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
      */
     private fun findMandatoryExtraRaceForCurrentTurn(): Pair<PlannedRace?, RaceData?> {
         if (!enableRacingPlan || !enableMandatoryRacingPlan) {
-            Log.d(TAG, "[RACE] Mandatory racing plan is not enabled so skipping the search for a mandatory extra race.")
+            Log.d(TAG, "[DEBUG] findMandatoryExtraRaceForCurrentTurn:: Mandatory racing plan is not enabled so skipping the search for a mandatory extra race.")
             return Pair(null, null)
         }
 
@@ -1606,14 +1742,14 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         // Find planned race matching current turn number.
         val matchingPlannedRace = userPlannedRaces.find { it.turnNumber == currentTurnNumber }
         if (matchingPlannedRace == null) {
-            Log.d(TAG, "[RACE] No mandatory extra race found for current turn number $currentTurnNumber.")
+            Log.d(TAG, "[DEBUG] findMandatoryExtraRaceForCurrentTurn:: No mandatory extra race found for current turn number $currentTurnNumber.")
             return Pair(null, null)
         }
 
         // Look up race data from raceData map.
         val raceData = this.raceData[matchingPlannedRace.raceName]
         if (raceData == null) {
-            MessageLog.e(TAG, "[ERROR] Planned race \"${matchingPlannedRace.raceName}\" not found in race data.")
+            MessageLog.e(TAG, "[ERROR] findMandatoryExtraRaceForCurrentTurn:: Planned race \"${matchingPlannedRace.raceName}\" not found in race data.")
             return Pair(null, null)
         }
 
@@ -1621,7 +1757,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     }
 
     /**
-     * Check if there are fan or trophy requirements that need to be satisfied.
+     * Checks if there are fan or trophy requirements that need to be satisfied.
+     *
+     * @param sourceBitmap Optional source bitmap to use for detection.
      */
     fun checkRacingRequirements(sourceBitmap: Bitmap? = null) {
         // Skip racing requirements checks during Summer.
@@ -1634,8 +1772,8 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         }
 
         // Check for fan requirement on the main screen.
-        val sourceBitmap = sourceBitmap ?: game.imageUtils.getSourceBitmap()
-        val needsFanRequirement = LabelRaceCriteriaFans.check(game.imageUtils, sourceBitmap = sourceBitmap, confidence = 0.9)
+        val sourceBitmapToUse = sourceBitmap ?: game.imageUtils.getSourceBitmap()
+        val needsFanRequirement = LabelRaceCriteriaFans.check(game.imageUtils, sourceBitmap = sourceBitmapToUse, confidence = 0.9)
         if (needsFanRequirement) {
             hasFanRequirement = true
             MessageLog.i(TAG, "[RACE] Fan requirement criteria detected on main screen. Forcing racing to fulfill requirement.")
@@ -1647,12 +1785,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             }
             
             // Check for trophy requirement on the main screen.
-            val needsTrophyRequirement = LabelRaceCriteriaTrophies.check(game.imageUtils, sourceBitmap = sourceBitmap, confidence = 0.9)
+            val needsTrophyRequirement = LabelRaceCriteriaTrophies.check(game.imageUtils, sourceBitmap = sourceBitmapToUse, confidence = 0.9)
             if (needsTrophyRequirement) {
                 hasTrophyRequirement = true
                 
                 // Check for Pre-OP or above criteria.
-                val needsPreOpOrAbove = LabelRaceCriteriaPreOpOrAbove.check(game.imageUtils, sourceBitmap = sourceBitmap, confidence = 0.9)
+                val needsPreOpOrAbove = LabelRaceCriteriaPreOpOrAbove.check(game.imageUtils, sourceBitmap = sourceBitmapToUse, confidence = 0.9)
                 if (needsPreOpOrAbove) {
                     hasPreOpOrAboveRequirement = true
                     MessageLog.i(TAG, "[RACE] Trophy requirement with Pre-OP or above criteria detected. Any race can be run to fulfill the requirement.")
@@ -1661,7 +1799,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 }
 
                 // Check for G3 or above criteria.
-                val needsG3OrAbove = LabelRaceCriteriaG3OrAbove.check(game.imageUtils, sourceBitmap = sourceBitmap, confidence = 0.9)
+                val needsG3OrAbove = LabelRaceCriteriaG3OrAbove.check(game.imageUtils, sourceBitmap = sourceBitmapToUse, confidence = 0.9)
                 if (needsG3OrAbove) {
                     hasG3OrAboveRequirement = true
                     MessageLog.i(TAG, "[RACE] Trophy requirement with G3 or above criteria detected. Any race can be run to fulfill the requirement.")
@@ -1697,7 +1835,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
         // If the setting to force racing extra races is enabled, always return true.
         if (enableForceRacing) {
-            Log.d(TAG, "[RACE] Force racing is enabled so eligibility to start extra races will be true.")
+            Log.d(TAG, "[DEBUG] checkEligibilityToStartExtraRacingProcess:: Force racing is enabled so eligibility to start extra races will be true.")
             return true
         }
 
@@ -1777,7 +1915,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 val eligiblePlannedRaces = userPlannedRaces.filter { plannedRace ->
                     val raceDetails = raceData[plannedRace.raceName]
                     if (raceDetails == null) {
-                        MessageLog.e(TAG, "[ERROR] Planned race \"${plannedRace.raceName}\" not found in race data.")
+                        MessageLog.e(TAG, "[ERROR] checkEligibilityToStartExtraRacingProcess::: Planned race \"${plannedRace.raceName}\" not found in race data.")
                         false
                     } else {
                         val turnDistance = raceDetails.turnNumber - currentTurnNumber
@@ -1786,9 +1924,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                         if (turnDistance < 0 || turnDistance > lookAheadDays) {
                             if (turnDistance > lookAheadDays) {
                                 if (game.debugMode) {
-                                    MessageLog.d(TAG, "[DEBUG] Planned race \"${plannedRace.raceName}\" is too far ahead of the look-ahead window (distance $turnDistance > lookAheadDays $lookAheadDays).")
+                                    MessageLog.d(TAG, "[DEBUG] checkEligibilityToStartExtraRacingProcess:: Planned race \"${plannedRace.raceName}\" is too far ahead of the look-ahead window (distance $turnDistance > lookAheadDays $lookAheadDays).")
                                 } else {
-                                    Log.d(TAG, "[DEBUG] Planned race \"${plannedRace.raceName}\" is too far ahead of the look-ahead window (distance $turnDistance > lookAheadDays $lookAheadDays).")
+                                    Log.d(TAG, "[DEBUG] checkEligibilityToStartExtraRacingProcess:: Planned race \"${plannedRace.raceName}\" is too far ahead of the look-ahead window (distance $turnDistance > lookAheadDays $lookAheadDays).")
                                 }
                             }
                             false
@@ -1882,6 +2020,11 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         return enableFarmingFans && !enableRacingPlan && (turnsRemaining % daysToRunExtraRaces == 0) && !raceRepeatWarningCheck
     }
 
+    /**
+     * Updates the running style aptitudes from the race screen.
+     *
+     * @return True if aptitudes were successfully updated; false otherwise.
+     */
     internal fun updateRaceScreenRunningStyleAptitudes(): Boolean {
         val bitmap = game.imageUtils.getSourceBitmap()
         val bbox = BoundingBox(
@@ -1896,37 +2039,37 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             bbox.y,
             bbox.w,
             bbox.h,
-            useThreshold=false,
-            useGrayscale=false,
-            debugName="updateRaceScreenRunningStyleAptitudes",
+            useThreshold = false,
+            useGrayscale = false,
+            debugName = "updateRaceScreenRunningStyleAptitudes",
         )
         if (text == "") {
-            MessageLog.w(TAG, "performOCROnRegion did not detect any text.")
+            MessageLog.w(TAG, "[WARN] updateRaceScreenRunningStyleAptitudes:: performOCROnRegion did not detect any text.")
             return false
         }
         text = text.replace("[^A-Za-z]".toRegex(), "").lowercase()
         val substrings = listOf("end", "late", "pace", "front")
         val parts = text.split(*substrings.toTypedArray()).filter { it.isNotBlank() }
         if (parts.size != 4) {
-            MessageLog.w(TAG, "performOCROnRegion returned a malformed string: $text")
+            MessageLog.w(TAG, "[WARN] updateRaceScreenRunningStyleAptitudes:: performOCROnRegion returned a malformed string: $text")
             return false
         }
         val styleMap: Map<String, String> = substrings.zip(parts).toMap()
         for ((styleString, aptitudeString) in styleMap) {
             val style: RunningStyle? = RunningStyle.fromShortName(styleString)
             if (style == null) {
-                MessageLog.w(TAG, "performOCROnRegion returned invalid running style: $styleString")
+                MessageLog.w(TAG, "[WARN] updateRaceScreenRunningStyleAptitudes:: performOCROnRegion returned invalid running style: $styleString")
                 return false
             }
             val aptitude: Aptitude? = Aptitude.fromName(aptitudeString)
             if (aptitude == null) {
-                MessageLog.w(TAG, "performOCROnRegion returned invalid aptitude for running style: $style -> $aptitudeString")
+                MessageLog.w(TAG, "[WARN] updateRaceScreenRunningStyleAptitudes:: performOCROnRegion returned invalid aptitude for running style: $style -> $aptitudeString")
                 return false
             }
             campaign.trainee.setRunningStyleAptitude(style, aptitude)
         }
 
-        MessageLog.d(TAG, "Set temporary running style aptitudes: ${campaign.trainee.runningStyleAptitudes}")
+        MessageLog.i(TAG, "[RACE] Updated running style aptitudes: ${campaign.trainee.runningStyleAptitudes}")
         return true
     }
 
@@ -1953,12 +2096,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
      * Otherwise, returns whether a running style was successfully selected.
 	 */
 	fun selectRaceStrategy(timeoutMs: Int = 30000): Boolean {
-        // Unset this flag so that we can validate that the dialog handler completed
-        // the operation successfully. If this isn't set by the end of this function,
-        // then we know we failed to set the strategy.
-        // We can't use [campaign.trainee.bHasSetRunningStyle] since that flag isn't
-        // set when day==1 and we need to be able to handle cases where we don't
-        // know the date in this function.
+        // Unset this flag so that we can validate that the dialog handler completed the operation successfully.
+        // If this isn't set by the end of this function, then we know we failed to set the strategy.
+        // We can't use `campaign.trainee.bHasSetRunningStyle` since that flag isn't set when day is 1 and
+        // we need to be able to handle cases where we don't know the date in this function.
         bHasSetTemporaryRunningStyle = false
 
 		val isJuniorYear = campaign.date.day != 1 && campaign.date.year == DateYear.JUNIOR
@@ -1978,7 +2119,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         var numTries: Int = 0
         val startTime: Long = System.currentTimeMillis()
         while (System.currentTimeMillis() - startTime < timeoutMs) {
-            MessageLog.d(TAG, "[RACE] Changing race strategy. Attempt #${numTries + 1}")
+            MessageLog.d(TAG, "[DEBUG] selectRaceStrategy:: Changing race strategy. Attempt #${numTries + 1}")
             if (ButtonChangeRunningStyle.click(game.imageUtils)) {
                 game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
             }
@@ -1994,7 +2135,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
         when {
             !bHasSetTemporaryRunningStyle -> {
-                MessageLog.w(TAG, "[RACE] Timed out setting the race strategy after ${numTries} tries.")
+                MessageLog.w(TAG, "[WARN] selectRaceStrategy:: Timed out setting the race strategy after ${numTries} tries.")
             }
             bShouldSetStrategyJunior -> {
                 MessageLog.i(TAG, "[RACE] Successfully set Junior Year race strategy.")
@@ -2015,13 +2156,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     /**
      * Executes the race with retry logic.
      *
-     * @return True if the bot completed the race with retry attempts remaining. Otherwise false.
+     * @return True if the bot completed the race; otherwise false.
      */
     fun runRaceWithRetries(): Boolean {
         MessageLog.i(TAG, "[RACE] Proceeding to handle the race...")
 
-        // Flag used to prevent us from attempting to select a running style after
-        // we've already successfully selected a running style once.
+        // Flag used to prevent us from attempting to select a running style after we've already successfully selected a running style once.
         var bDidSelectRaceStrategy: Boolean = false
         var retriesThisRace = 0
         var lastRaceRetries = raceRetries
@@ -2033,7 +2173,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         do {
             loopCount++
             if (loopCount > maxLoopCount) {
-                MessageLog.w(TAG, "[RACE] runRaceWithRetries: Safety loop limit reached. Exiting race retry loop...")
+                MessageLog.w(TAG, "[WARN] runRaceWithRetries:: Safety loop limit reached. Exiting race retry loop...")
                 return false
             }
 
@@ -2051,8 +2191,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 ButtonViewResults.check(game.imageUtils, sourceBitmap = bitmap) -> {
                     MessageLog.i(TAG, "[RACE] Detected ButtonChangeRunningStyle. Handling race prep screen...")
 
-                    // Always handle race strategy at this screen in case it hasn't
-                    // been handled yet.
+                    // Always handle race strategy at this screen in case it hasn't been handled yet.
                     // Latch the result so we don't continuously try to handle strategy.
                     if (!bDidSelectRaceStrategy) {
                         bDidSelectRaceStrategy = selectRaceStrategy()
@@ -2065,7 +2204,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                                 // Clicking this button triggers connection to server.
                                 game.waitForLoading()
                             } else {
-                                MessageLog.w(TAG, "[RACE] Skip is locked. Failed to click manual race button.")
+                                MessageLog.w(TAG, "[WARN] runRaceWithRetries:: Skip is locked. Failed to click manual race button.")
                             }
                         }
                         false -> {
@@ -2074,10 +2213,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                                 // Clicking this button triggers connection to server.
                                 game.waitForLoading()
                             } else {
-                                MessageLog.w(TAG, "[RACE] Failed to click ViewResults button to skip race.")
+                                MessageLog.w(TAG, "[WARN] runRaceWithRetries:: Failed to click ViewResults button to skip race.")
                             }
                         }
-                        null -> MessageLog.w(TAG, "[RACE] At Race prep screen but failed to detect ViewResults button.")
+                        null -> MessageLog.w(TAG, "[WARN] runRaceWithRetries:: At Race prep screen but failed to detect ViewResults button.")
                     }
                 }
                 ButtonRace.click(game.imageUtils, sourceBitmap = bitmap) -> {
@@ -2091,13 +2230,13 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 }
                 // Handle post-race Rival popups.
                 game.scenario == "Trackblazer" && ButtonClose.click(game.imageUtils, sourceBitmap = bitmap) -> {
-                    MessageLog.i(TAG, "[RACE] [TRACKBLAZER] Closed post-race Rival popup.")
+                    MessageLog.i(TAG, "[TRACKBLAZER] Closed post-race Rival popup.")
                     campaign.onRaceWin()
                     game.wait(1.0)
 
                     // After closing the popup, check if we can retry a G1 race.
                     if (lastRaceGrade == RaceGrade.G1 && raceRetries > 0 && retriesThisRace < maxRetriesPerRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils) == false) {
-                        MessageLog.i(TAG, "[RACE] [TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
+                        MessageLog.i(TAG, "[TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
                         if (ButtonTryAgainAlt.click(game.imageUtils)) {
                             game.wait(3.0)
                             retriesThisRace++
@@ -2106,7 +2245,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                         }
                     } else if (lastRaceIsRival && !bRetriedCurrentRace && raceRetries > 0 && retriesThisRace < maxRetriesPerRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils) == false) {
                         // Trackblazer Rival Race retry logic: retry once then stop.
-                        MessageLog.i(TAG, "[RACE] [TRACKBLAZER] Rival Race retry button is available. Retrying once...")
+                        MessageLog.i(TAG, "[TRACKBLAZER] Rival Race retry button is available. Retrying once...")
                         bRetriedCurrentRace = true
                         if (ButtonTryAgainAlt.click(game.imageUtils)) {
                             game.wait(3.0)
@@ -2115,12 +2254,12 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                             lastRaceRetries = raceRetries
                         }
                     } else {
-                        MessageLog.d(TAG, "[RACE] [TRACKBLAZER] No retries remaining or G1/Rival race conditions not met.")
+                        MessageLog.i(TAG, "[TRACKBLAZER] No retries remaining or G1/Rival race conditions not met.")
                     }
                 }
                 game.scenario == "Trackblazer" && lastRaceGrade == RaceGrade.G1 && raceRetries > 0 && retriesThisRace < maxRetriesPerRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils, sourceBitmap = bitmap) == false -> {
                     // Check if we can retry a G1 race even if no popup appeared.
-                    MessageLog.i(TAG, "[RACE] [TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
+                    MessageLog.i(TAG, "[TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
                     if (ButtonTryAgainAlt.click(game.imageUtils, sourceBitmap = bitmap)) {
                         game.wait(3.0)
                         retriesThisRace++
@@ -2130,7 +2269,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 }
                 game.scenario == "Trackblazer" && lastRaceIsRival && !bRetriedCurrentRace && raceRetries > 0 && retriesThisRace < maxRetriesPerRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils, sourceBitmap = bitmap) == false -> {
                     // Trackblazer Rival Race retry logic even if no popup appeared.
-                    MessageLog.i(TAG, "[RACE] [TRACKBLAZER] Rival Race retry button is available. Retrying once...")
+                    MessageLog.i(TAG, "[TRACKBLAZER] Rival Race retry button is available. Retrying once...")
                     bRetriedCurrentRace = true
                     if (ButtonTryAgainAlt.click(game.imageUtils, sourceBitmap = bitmap)) {
                         game.wait(3.0)
@@ -2145,7 +2284,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 }
                 // Otherwise click to progress through screens.
                 else -> {
-                    MessageLog.d(TAG, "[RACE] runRaceWithRetries: No components detected. Tapping to progress...")
+                    Log.d(TAG, "[DEBUG] runRaceWithRetries:: No components detected. Tapping to progress...")
                     game.tap(350.0, 450.0, taps = 3)
                 }
             }
@@ -2156,6 +2295,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
      * Finishes up and confirms the results of the race and its success.
      *
      * @param isExtra Flag to determine the following actions to finish up this mandatory or extra race.
+     * @return True if race results were successfully finalized; false otherwise.
      */
     fun finalizeRaceResults(isExtra: Boolean = false): Boolean {
         MessageLog.i(TAG, "[RACE] Now performing cleanup and finishing the race.")
@@ -2166,7 +2306,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
         // Bot should be at the screen where it shows the final positions of all participants.
         if (!ButtonNext.check(game.imageUtils, tries = 30)) {
-            MessageLog.e(TAG, "Cannot start the cleanup process for finishing the race. Moving on...")
+            MessageLog.e(TAG, "[ERROR] finalizeRaceResults:: Cannot start the cleanup process for finishing the race. Moving on...")
             return false
         }
         
@@ -2176,8 +2316,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         val maxTimeMs: Long = 30000
         while (System.currentTimeMillis() - startTime < maxTimeMs) {
             if (campaign.tryHandleAllDialogs()) {
-                // Don't want to start next iteration too quick since dialogs
-                // may still be in process of closing.
+                // Don't want to start next iteration too quick since dialogs may still be in process of closing.
                 game.wait(0.5, skipWaitingForLoading = true)
                 continue
             }
@@ -2214,7 +2353,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     private fun lookupRaceInDatabase(turnNumber: Int, detectedName: String): ArrayList<RaceData> {
         val settingsManager = SQLiteSettingsManager(game.myContext)
         if (!settingsManager.isAvailable()) {
-            MessageLog.e(TAG, "[ERROR] Database not available for race lookup.")
+            MessageLog.e(TAG, "[ERROR] lookupRaceInDatabase:: Database not available for race lookup.")
             settingsManager.close()
             return arrayListOf()
         }
@@ -2224,7 +2363,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
             val database = settingsManager.readableDatabase
             if (database == null) {
-                MessageLog.e(TAG, "[RACE] Database not available for race lookup.")
+                MessageLog.e(TAG, "[ERROR] lookupRaceInDatabase:: Database not available for race lookup.")
                 return arrayListOf()
             }
 
@@ -2319,8 +2458,8 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                     )
                     fuzzyMatches.add(Pair(race, similarity))
                     if (similarity > bestScore) bestScore = similarity
-                    if (game.debugMode) MessageLog.d(TAG, "[DEBUG] Fuzzy match candidate: \"${race.name}\" AKA \"$nameFormatted\" with similarity ${game.decimalFormat.format(similarity)} (Fans: ${race.fans}).")
-                    else Log.d(TAG, "[DEBUG] Fuzzy match candidate: \"${race.name}\" AKA \"$nameFormatted\" with similarity ${game.decimalFormat.format(similarity)} (Fans: ${race.fans}).")
+                    if (game.debugMode) MessageLog.d(TAG, "[DEBUG] lookupRaceInDatabase:: Fuzzy match candidate: \"${race.name}\" AKA \"$nameFormatted\" with similarity ${game.decimalFormat.format(similarity)} (Fans: ${race.fans}).")
+                    else Log.d(TAG, "[DEBUG] lookupRaceInDatabase:: Fuzzy match candidate: \"${race.name}\" AKA \"$nameFormatted\" with similarity ${game.decimalFormat.format(similarity)} (Fans: ${race.fans}).")
                 }
             } while (fuzzyCursor.moveToNext())
 
@@ -2344,7 +2483,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             MessageLog.i(TAG, "[RACE] No match found for turn $turnNumber with name \"$detectedName\".")
             arrayListOf()
         } catch (e: Exception) {
-            MessageLog.e(TAG, "[ERROR] Error looking up race: ${e.message}.")
+            MessageLog.e(TAG, "[ERROR] lookupRaceInDatabase:: Error looking up race: ${e.message}.")
             arrayListOf()
         } finally {
             settingsManager.close()
@@ -2422,7 +2561,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     private fun queryRacesFromDatabase(currentTurn: Int, lookAheadDays: Int): List<RaceData> {
         val settingsManager = SQLiteSettingsManager(game.myContext)
         if (!settingsManager.isAvailable()) {
-            MessageLog.e(TAG, "[ERROR] Database not available for race lookup.")
+            MessageLog.e(TAG, "[ERROR] queryRacesFromDatabase:: Database not available for race lookup.")
             settingsManager.close()
             return emptyList()
         }
@@ -2430,7 +2569,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         return try {
             val database = settingsManager.readableDatabase
             if (database == null) {
-                MessageLog.e(TAG, "[ERROR] Database is null for race lookup.")
+                MessageLog.e(TAG, "[ERROR] queryRacesFromDatabase:: Database is null for race lookup.")
                 return emptyList()
             }
 
@@ -2471,7 +2610,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             MessageLog.i(TAG, "[RACE] Found ${races.size} races in look-ahead window (turns $currentTurn to $endTurn).")
             races
         } catch (e: Exception) {
-            MessageLog.e(TAG, "[ERROR] Error getting races from database: ${e.message}")
+            MessageLog.e(TAG, "[ERROR] queryRacesFromDatabase:: Error getting races from database: ${e.message}")
             emptyList()
         } finally {
             settingsManager.close()
@@ -2487,7 +2626,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
     private fun hasG1RacesAtTurn(turnNumber: Int): Boolean {
         val settingsManager = SQLiteSettingsManager(game.myContext)
         if (!settingsManager.isAvailable()) {
-            MessageLog.e(TAG, "[ERROR] Database not available for G1 race check.")
+            MessageLog.e(TAG, "[ERROR] hasG1RacesAtTurn:: Database not available for G1 race check.")
             settingsManager.close()
             return false
         }
@@ -2495,7 +2634,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
         return try {
             val database = settingsManager.readableDatabase
             if (database == null) {
-                MessageLog.e(TAG, "[ERROR] Database is null for G1 race check.")
+                MessageLog.e(TAG, "[ERROR] hasG1RacesAtTurn:: Database is null for G1 race check.")
                 return false
             }
 
@@ -2512,7 +2651,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             
             hasG1
         } catch (e: Exception) {
-            MessageLog.e(TAG, "[ERROR] Error checking for G1 races: ${e.message}")
+            MessageLog.e(TAG, "[ERROR] hasG1RacesAtTurn:: Error checking for G1 races: ${e.message}")
             false
         } finally {
             settingsManager.close()
@@ -2535,9 +2674,9 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             MessageLog.i(TAG, "[RACE] Parsed preferred grades as JSON array: $parsed.")
             parsed
         } catch (e: Exception) {
-            MessageLog.i(TAG, "[RACE] Error parsing preferred grades: ${e.message}, using fallback.")
+            MessageLog.w(TAG, "[WARN] filterRacesByCriteria:: Error parsing preferred grades: ${e.message}, using fallback.")
             val parsed = preferredGradesString.split(",").map { it.trim().uppercase() }
-            MessageLog.i(TAG, "[RACE] Fallback parsing result: $parsed")
+            MessageLog.w(TAG, "[WARN] filterRacesByCriteria:: Fallback parsing result: $parsed")
             parsed
         }
 
@@ -2549,14 +2688,14 @@ class Racing (private val game: Game, private val campaign: Campaign) {
             MessageLog.i(TAG, "[RACE] Parsed preferred distances as JSON array: $parsed.")
             parsed
         } catch (e: Exception) {
-            MessageLog.i(TAG, "[RACE] Error parsing preferred distances: ${e.message}, using fallback.")
+            MessageLog.w(TAG, "[WARN] filterRacesByCriteria:: Error parsing preferred distances: ${e.message}, using fallback.")
             val parsed = preferredTrackDistanceString.split(",").map { it.trim().uppercase() }
-            MessageLog.i(TAG, "[RACE] Fallback parsing result: $parsed")
+            MessageLog.w(TAG, "[WARN] filterRacesByCriteria:: Fallback parsing result: $parsed")
             parsed
         }
 
-        if (game.debugMode) MessageLog.d(TAG, "[DEBUG] Filter criteria: Min fans: $minFansThreshold, trackSurface: $preferredTrackSurfaceString, grades: $preferredGrades, distances: $preferredDistances")
-        else Log.d(TAG, "[DEBUG] Filter criteria: Min fans: $minFansThreshold, trackSurface: $preferredTrackSurfaceString, grades: $preferredGrades, distances: $preferredDistances")
+        if (game.debugMode) MessageLog.d(TAG, "[DEBUG] filterRacesByCriteria:: Filter criteria: Min fans: $minFansThreshold, trackSurface: $preferredTrackSurfaceString, grades: $preferredGrades, distances: $preferredDistances")
+        else Log.d(TAG, "[DEBUG] filterRacesByCriteria:: Filter criteria: Min fans: $minFansThreshold, trackSurface: $preferredTrackSurfaceString, grades: $preferredGrades, distances: $preferredDistances")
 
         val filteredRaces = races.filter { race ->
             val isRequirementActive = hasFanRequirement || hasTrophyRequirement
@@ -2574,11 +2713,11 @@ class Racing (private val game: Game, private val campaign: Campaign) {
                 if (!meetsTrackSurfacePreference) reasons.add("trackSurface ${race.trackSurface} != $preferredTrackSurfaceString")
                 if (!meetsGradePreference) reasons.add("grade ${race.grade} not in $preferredGrades")
                 if (!meetsTrackDistancePreference) reasons.add("distance ${race.trackDistance} not in $preferredDistances")
-                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] ✗ Filtered out ${race.name}: ${reasons.joinToString(", ")}")
-                else Log.d(TAG, "[DEBUG] ✗ Filtered out ${race.name}: ${reasons.joinToString(", ")}")
+                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] filterRacesByCriteria:: ✗ Filtered out ${race.name}: ${reasons.joinToString(", ")}")
+                else Log.d(TAG, "[DEBUG] filterRacesByCriteria:: ✗ Filtered out ${race.name}: ${reasons.joinToString(", ")}")
             } else {
-                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] ✓ Passed filter: ${race.name} (fans: ${race.fans}, trackSurface: ${race.trackSurface}, grade: ${race.grade}, distance: ${race.trackDistance})")
-                else Log.d(TAG, "[DEBUG] ✓ Passed filter: ${race.name} (fans: ${race.fans}, trackSurface: ${race.trackSurface}, grade: ${race.grade}, distance: ${race.trackDistance})")
+                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] filterRacesByCriteria:: ✓ Passed filter: ${race.name} (fans: ${race.fans}, trackSurface: ${race.trackSurface}, grade: ${race.grade}, distance: ${race.trackDistance})")
+                else Log.d(TAG, "[DEBUG] filterRacesByCriteria:: ✓ Passed filter: ${race.name} (fans: ${race.fans}, trackSurface: ${race.trackSurface}, grade: ${race.grade}, distance: ${race.trackDistance})")
             }
             
             passes
@@ -2685,14 +2824,14 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
     /**
      * Searches the race list for a race that meets Trackblazer criteria.
-     * 
+     *
      * Junior Year: G1/G2/G3 with double predictions.
-     * Classic/Senior: Priority racing, but if consecutive race count >= 3, only G1/G2.
+     * Classic/Senior: Priority racing, but if consecutive race count >= 3, only G1/G2/G3.
      *
      * @param consecutiveRaceCount Current number of consecutive races performed.
-     * @return Pair of the best suitable race's location and RaceData, or null if none found.
+     * @return Pair of the best suitable race's location and [RaceData], or null if none found.
      */
-	fun findSuitableTrackblazerRace(consecutiveRaceCount: Int): Pair<Point, RaceData>? {
+    fun findSuitableTrackblazerRace(consecutiveRaceCount: Int): Pair<Point, RaceData>? {
 		val sb = StringBuilder()
 		sb.appendLine("\n========== Trackblazer Race Analysis ==========")
 		sb.appendLine("Current Date: ${campaign.date}")
@@ -2781,7 +2920,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 				false // Continue scanning all pages.
 			}
 		} else {
-			MessageLog.e(TAG, "[RACE] Failed to create ScrollList. Falling back to single-page detection.")
+			MessageLog.w(TAG, "[WARN] findSuitableTrackblazerRace:: Failed to create ScrollList. Falling back to single-page detection.")
 			val doubleStarPredictions = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
 			val sourceBitmap = game.imageUtils.getSourceBitmap()
 			for (location in doubleStarPredictions) {
@@ -2842,7 +2981,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 		if (allSuitableRaces.isEmpty()) {
 			sb.appendLine("\nSummary: No suitable races found after analysis.")
 			sb.appendLine("================================================")
-			MessageLog.i(TAG, sb.toString())
+			MessageLog.v(TAG, sb.toString())
 			return null
 		}
 
@@ -2860,7 +2999,7 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 
 		sb.appendLine("\nSelected Race: ${winner.race.name} (${winner.race.grade}) Rival: ${winner.isRival}")
 		sb.appendLine("================================================")
-		MessageLog.i(TAG, sb.toString())
+		MessageLog.v(TAG, sb.toString())
 
 		// Second pass to scroll to and return the winner's current clickable point.
 		return if (scrollList != null) {
@@ -2875,10 +3014,10 @@ class Racing (private val game: Game, private val campaign: Campaign) {
 					
 					if (matches.any { it.name == winner.race.name }) {
 						if (game.debugMode) {
-							MessageLog.i(TAG, "[RACE] Found winner \"${winner.race.name}\" (Detected: \"$name\", Target: \"${winner.detectedName}\")")
+							MessageLog.d(TAG, "[DEBUG] Found winner \"${winner.race.name}\" (Detected: \"$name\", Target: \"${winner.detectedName}\")")
 						}
 						finalWinnerPoint = screenPoint
-						return@process true // Stop!
+						return@process true
 					}
 				}
 				false

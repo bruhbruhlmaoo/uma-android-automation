@@ -12,11 +12,17 @@ import com.steve1316.uma_android_automation.utils.ScrollListEntry
 import org.opencv.core.Point
 import com.steve1316.uma_android_automation.types.StatName
 
-/** Stores a single scanned item's entry, name, and disabled state. */
+/**
+ * Store a single scanned item's entry, name, and disabled state.
+ *
+ * @property entry The [ScrollListEntry] of the item.
+ * @property itemName The name of the item.
+ * @property isDisabled Whether the item is disabled in the UI.
+ */
 data class ScannedItem(val entry: ScrollListEntry, val itemName: String, val isDisabled: Boolean)
 
 /**
- * Stores information about a single item in the Trackblazer scenario.
+ * Store information about a single item in the Trackblazer scenario.
  *
  * @property price The cost of the item in the Shop.
  * @property effect A brief description of the item's effect.
@@ -31,17 +37,20 @@ data class TrackblazerItemInfo(
 )
 
 /**
- * Handles interaction with the item shop list in the Trackblazer scenario.
+ * Handle interaction with the item shop list in the Trackblazer scenario.
  *
- * @param game Reference to the bot's Game instance.
+ * @property game Reference to the bot's [Game] instance.
  */
 class TrackblazerShopList(private val game: Game) {
 	private val TAG: String = "[${MainActivity.loggerTag}]TrackblazerShopList"
 
+	/** List of names for items that grant stats. */
     val statItemNames get() = shopItems.filter { it.value.category == "Stats" }.keys.toList()
 
+	/** List of names for items that restore energy. */
     val energyItemNames get() = listOf("Vita 65", "Vita 40", "Vita 20")
     
+	/** List of names for items that heal bad status conditions. */
     val badConditionHealItemNames get() = shopItems.filter { it.value.category == "Heal Bad Conditions" }.keys.toList()
 
 	/** Mapping of shop items to their price, effect, and whether they are allowed for quick usage. */
@@ -117,11 +126,14 @@ class TrackblazerShopList(private val game: Game) {
 		"Glow Sticks" to TrackblazerItemInfo(15, "Race fan gain +50% (One turn)", false, "Races")
 	)
 
+	/** Whether the shop currently has a sale active. */
 	private var isShopOnSale: Boolean = false
+
+	/** Whether the "Do not show again" checkbox has been clicked during the purchase flow. */
 	private var hasClickedDoNotShowAgain: Boolean = false
 
 	/**
-	 * Scrolls through the Shop list.
+	 * Scroll through the Shop list to identify available items.
 	 *
 	 * @return True if the scrolling process finished normally, false otherwise.
 	 */
@@ -129,26 +141,29 @@ class TrackblazerShopList(private val game: Game) {
 		val itemNameMap = mutableMapOf<Int, String>()
 		return processItemsWithFallback(
 			keyExtractor = { entry -> 
+				// Detect the item name for each entry.
 				val name = getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
 				if (name != null) itemNameMap[entry.index] = name
 				name
 			}
 		) { entry ->
+			// Check if the item is buyable or disabled.
 			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
 			val itemName = itemNameMap[entry.index] ?: getShopItemName(entry, isDisabled)
 			if (itemName != null) {
 				val itemPrice = getShopItemPrice(itemName, entry.bitmap)
-				MessageLog.v(TAG, "Detected Shop Item: \"$itemName\" with price $itemPrice at index ${entry.index}.")
+				MessageLog.i(TAG, "[INFO] Detected Shop Item: \"$itemName\" with price $itemPrice at index ${entry.index}.")
 			}
 			false
 		}
 	}
 
 	/**
-	 * Extracts the item name from a cropped Shop entry bitmap.
+	 * Extract the item name from a cropped Shop list entry bitmap.
 	 *
-	 * @param bitmap A bitmap of a single cropped Shop entry.
-	 * @return The item name if detected, NULL otherwise.
+	 * @param entry The [ScrollListEntry] of the item.
+	 * @param isDisabled Whether the item's checkbox or plus button is disabled.
+	 * @return The detected item name if found, or null otherwise.
 	 */
 	fun getShopItemName(entry: ScrollListEntry, isDisabled: Boolean = false): String? {
         val bitmap = entry.bitmap
@@ -157,22 +172,24 @@ class TrackblazerShopList(private val game: Game) {
 		
 		if (refPoint == null) {
             if (entry.refX != null && entry.refY != null) {
+                // Use preserved reference point if checkbox isn't found.
                 refPoint = Point(entry.refX.toDouble(), entry.refY.toDouble())
-                if (game.debugMode) MessageLog.d(TAG, "Using preserved reference point for item name detection: $refPoint")
+                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] getShopItemName:: Using preserved reference point for item name detection: $refPoint")
             } else {
                 // Fallback: Try to find the plus button if the checkbox isn't there (e.g., in the inventory dialog).
                 refPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmap)
                 if (refPoint != null && game.debugMode) {
-                    MessageLog.d(TAG, "Using plus button as reference for item name detection.")
+                    MessageLog.d(TAG, "[DEBUG] getShopItemName:: Using plus button as reference for item name detection.")
                 }
             }
 		}
 
 		if (refPoint == null) {
-			if (game.debugMode) MessageLog.d(TAG, "Failed to find any reference point (checkbox or plus button) for this Item.")
+			if (game.debugMode) MessageLog.e(TAG, "[ERROR] getShopItemName:: Failed to find any reference point (checkbox or plus button) for this Item.")
 			return null
 		}
 
+		// Calculate the bounding box for the item's name based on the reference point.
 		val nameBBox = BoundingBox(
 			x = game.imageUtils.relX(refPoint.x, -850).coerceAtLeast(0),
 			y = game.imageUtils.relY(refPoint.y, -75).coerceAtLeast(0),
@@ -180,15 +197,17 @@ class TrackblazerShopList(private val game: Game) {
 			h = game.imageUtils.relHeight(60)
 		)
 
+		// Create a cropped bitmap of the name region.
 		val croppedName = game.imageUtils.createSafeBitmap(bitmap, nameBBox, "ShopItemName")
         if (croppedName == null) {
-            if (game.debugMode) MessageLog.d(TAG, "Failed to crop name region for reference point at $refPoint.")
+            if (game.debugMode) MessageLog.e(TAG, "[ERROR] getShopItemName:: Failed to crop name region for reference point at $refPoint.")
             return null
         }
 
 		var detectedText = ""
         
         if (!isDisabled) {
+			// Perform OCR with thresholding first for enabled items.
             detectedText = game.imageUtils.performOCROnRegion(
                 croppedName,
                 0,
@@ -204,7 +223,8 @@ class TrackblazerShopList(private val game: Game) {
         }
 
         if (detectedText.isEmpty()) {
-            if (game.debugMode && !isDisabled) MessageLog.d(TAG, "Threshold OCR failed for $refPoint, trying without thresholding...")
+            if (game.debugMode && !isDisabled) MessageLog.d(TAG, "[DEBUG] getShopItemName:: Threshold OCR failed for $refPoint, trying without thresholding...")
+			// Fallback to OCR without thresholding.
             detectedText = game.imageUtils.performOCROnRegion(
                 croppedName,
                 0,
@@ -220,22 +240,22 @@ class TrackblazerShopList(private val game: Game) {
         }
 
 		if (detectedText.isEmpty()) {
-			if (game.debugMode) MessageLog.w(TAG, "Parsed empty string for Shop Item Name at $refPoint after both OCR passes.")
+			if (game.debugMode) MessageLog.w(TAG, "[WARN] getShopItemName:: Parsed empty string for Shop Item Name at $refPoint after both OCR passes.")
 			return null
 		}
 
 		// Perform fuzzy matching against known shop item names.
 		val matchedName = TextUtils.matchStringInList(detectedText, shopItems.keys.toList(), threshold = 0.8)
         if (matchedName == null) {
-            if (game.debugMode) MessageLog.d(TAG, "Failed to match text \"$detectedText\" to any known item.")
+            if (game.debugMode) MessageLog.w(TAG, "[WARN] getShopItemName:: Failed to match text \"$detectedText\" to any known item.")
         }
         return matchedName ?: detectedText
 	}
 
     /**
-     * Extracts the item amount from a cropped Shop entry bitmap.
+     * Extract the item amount from a cropped Shop list entry bitmap.
      *
-     * @param entry The ScrollListEntry of the item.
+     * @param entry The [ScrollListEntry] of the item.
      * @param isDisabled Whether the item's plus button is disabled.
      * @return The detected amount of the item on-hand.
      */
@@ -244,6 +264,7 @@ class TrackblazerShopList(private val game: Game) {
         // Use the plus button as a reference point for the amount detection.
         val refPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmap) ?: return 1
         
+		// Perform OCR on the amount region relative to the plus button.
         val amountText = game.imageUtils.performOCROnRegion(
             bitmap,
             game.imageUtils.relX(refPoint.x, -585),
@@ -258,6 +279,7 @@ class TrackblazerShopList(private val game: Game) {
         )
         
         return try {
+			// Extract numeric value and clamp to valid range.
             val cleanedText = amountText.replace(Regex("[^0-9]"), "")
             if (cleanedText.isEmpty()) {
                 1
@@ -270,11 +292,10 @@ class TrackblazerShopList(private val game: Game) {
     }
 
 	/**
-	 * Extracts the item price from a cropped Shop entry bitmap, either from the original price from the
-	 * mapping or the discounted price via OCR if there is a sale.
+	 * Extract the item price from a cropped Shop list entry bitmap.
 	 *
 	 * @param itemName The name of the item.
-	 * @param bitmap A bitmap of a single cropped Shop entry.
+	 * @param bitmap A bitmap of a single cropped Shop list entry.
 	 * @return The item price if detected, or original price otherwise.
 	 */
 	fun getShopItemPrice(itemName: String, bitmap: Bitmap): Int {
@@ -288,6 +309,7 @@ class TrackblazerShopList(private val game: Game) {
 		// Find the item's checkbox to use as a reference point.
 		val checkboxPoint = CheckboxShopItem.findImageWithBitmap(game.imageUtils, bitmap) ?: return originalPrice
 
+		// Calculate the price bounding box relative to the checkbox.
 		val priceBBox = BoundingBox(
 			x = game.imageUtils.relX(checkboxPoint.x, -405),
 			y = game.imageUtils.relY(checkboxPoint.y, -15),
@@ -295,8 +317,10 @@ class TrackblazerShopList(private val game: Game) {
 			h = game.imageUtils.relHeight(60)
 		)
 
+		// Create a cropped bitmap of the price region.
 		val croppedPrice = game.imageUtils.createSafeBitmap(bitmap, priceBBox, "ShopItemPrice") ?: return originalPrice
 
+		// Extract the price using OCR.
 		val detectedText = game.imageUtils.performOCROnRegion(
 			croppedPrice,
 			0,
@@ -311,7 +335,7 @@ class TrackblazerShopList(private val game: Game) {
 		)
 
 		if (detectedText.isEmpty()) {
-			MessageLog.w(TAG, "Parsed empty string for Shop Item Price.")
+			MessageLog.w(TAG, "[WARN] getShopItemPrice:: Parsed empty string for Shop Item Price.")
 			return originalPrice
 		}
 
@@ -321,7 +345,7 @@ class TrackblazerShopList(private val game: Game) {
 	}
 
 	/**
-	 * Buys items from the Shop based on a priority list and currency amount.
+	 * Buy items from the Shop list based on a priority list and currency amount.
 	 *
 	 * @param priorityList An ordered list of item names to buy.
 	 * @param currentCoins The current amount of Shop Coins available.
@@ -331,13 +355,13 @@ class TrackblazerShopList(private val game: Game) {
 	 */
 	fun buyItems(priorityList: List<String>, currentCoins: Int, inventoryLimits: Map<String, Int>, bDryRun: Boolean = false): List<String> {
 		if (priorityList.isEmpty()) {
-			MessageLog.i(TAG, "Priority list is empty. No items to buy.")
+			MessageLog.i(TAG, "[INFO] Priority shopping list is empty. No items to buy.")
 			return emptyList()
 		}
 
 		// Step 1: Pre-scan Phase.
 		// Scan the entire shop to log each item and its price, and to identify what is available.
-		MessageLog.d(TAG, "[SHOP] Beginning process of scanning shop items...")
+		MessageLog.i(TAG, "[INFO] Beginning process of scanning shop items...")
 		val availableInShop = mutableListOf<Triple<String, Int, ScrollListEntry>>()
 		val itemNameMap = mutableMapOf<Int, String>()
 		processItemsWithFallback(
@@ -347,17 +371,18 @@ class TrackblazerShopList(private val game: Game) {
 				name
 			}
 		) { entry ->
+			// Check if the item's plus button is disabled.
 			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
 			val itemName = itemNameMap[entry.index] ?: getShopItemName(entry, isDisabled)
 			if (itemName != null) {
 				val price = getShopItemPrice(itemName, entry.bitmap)
-				MessageLog.d(TAG, "\t$itemName: $price coins at index ${entry.index}")
+				MessageLog.i(TAG, "\t$itemName: $price coins at index ${entry.index}")
 				availableInShop.add(Triple(itemName, price, entry))
 			}
 			false
 		}
 
-		// Step 2: Calculation & Summary.
+		// Step 2: Calculation & Summary Phase.
 		// Determine which items from the priority list are available and affordable.
 		val itemsToBuy = mutableListOf<Triple<String, Int, ScrollListEntry>>()
 		val skippedItemsReasons = mutableMapOf<String, String>()
@@ -372,12 +397,13 @@ class TrackblazerShopList(private val game: Game) {
 			while (boughtCount < limit) {
 				val availableIndex = tempAvailable.indexOfFirst { it.first == item }
 				if (availableIndex != -1) {
+					// Check if we can afford the item.
 					val foundItem = tempAvailable[availableIndex]
 					val price = foundItem.second
 					if (remainingCoinsAfterProposed >= price) {
 						itemsToBuy.add(foundItem)
 						remainingCoinsAfterProposed -= price
-						// Remove from temp list so we don't buy the same SLOT twice for one priority entry.
+						// Remove from temp list so we don't buy the same slot twice for one priority entry.
 						tempAvailable.removeAt(availableIndex)
 						boughtCount++
 					} else {
@@ -392,38 +418,39 @@ class TrackblazerShopList(private val game: Game) {
 		}
 		
 		// Log the summary of proposed purchases.
-        MessageLog.i(TAG, "============== Shop Evaluation Summary ==============")
+        MessageLog.v(TAG, "============== Shop Evaluation Summary ==============")
 		if (availableInShop.isEmpty()) {
-			MessageLog.i(TAG, "[SHOP] No items were successfully identified in the shop scan. Check OCR and bounding boxes.")
+			MessageLog.v(TAG, "No items were successfully identified in the shop scan. Check OCR and bounding boxes.")
 		} else {
-			MessageLog.i(TAG, "[SHOP] Identified ${availableInShop.size} items in shop.")
+			MessageLog.v(TAG, "Identified ${availableInShop.size} items in shop.")
 		}
 
         if (itemsToBuy.isEmpty()) {
-            MessageLog.i(TAG, "[SHOP] No items from the priority list will be bought. Current coins: $currentCoins.")
+            MessageLog.v(TAG, "No items from the priority list will be bought. Current coins: $currentCoins.")
 			if (skippedItemsReasons.isNotEmpty()) {
-				MessageLog.i(TAG, "[SHOP] Evaluation reasons for first 10 priority items:")
+				MessageLog.v(TAG, "Evaluation reasons for first 10 priority items:")
 				priorityList.take(10).forEach { item ->
 					val reason = skippedItemsReasons[item] ?: "Eligible but somehow skipped"
-					MessageLog.i(TAG, "\t- $item: $reason")
+					MessageLog.v(TAG, "\t- $item: $reason")
 				}
 			}
             // Exit early if not a dry run.
             if (!bDryRun) {
-                MessageLog.i(TAG, "==========================================")
+                MessageLog.v(TAG, "==========================================")
                 return emptyList()
             }
         }
 
+		// Log each item planned to be bought.
         for (boughtItem in itemsToBuy) {
-            MessageLog.i(TAG, "\t${boughtItem.first}: ${boughtItem.second} coins")
+            MessageLog.v(TAG, "\t${boughtItem.first}: ${boughtItem.second} coins")
         }
         val totalCost = currentCoins - remainingCoinsAfterProposed
-        MessageLog.i(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
-        MessageLog.i(TAG, "==========================================")
+        MessageLog.v(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
+        MessageLog.v(TAG, "==========================================")
 
 		if (bDryRun) {
-            // Return early for the test.
+            // Return early for the dry run test.
 			return itemsToBuy.map { it.first }
 		}
 
@@ -447,7 +474,8 @@ class TrackblazerShopList(private val game: Game) {
 				val targetIndex = itemsRemainingToClick.indexOfFirst { it.first == itemName }
 				if (targetIndex != -1) {
 					val targetItem = itemsRemainingToClick[targetIndex]
-					MessageLog.i(TAG, "Selecting \"$itemName\" for ${targetItem.second} coins at index ${entry.index}.")
+					MessageLog.i(TAG, "[INFO] Selecting \"$itemName\" for ${targetItem.second} coins at index ${entry.index}.")
+					// Tap the item's entry to select it.
 					game.tap(entry.bbox.cx.toDouble(), entry.bbox.cy.toDouble())
 					itemsBought.add(itemName)
 					itemsRemainingToClick.removeAt(targetIndex)
@@ -458,20 +486,21 @@ class TrackblazerShopList(private val game: Game) {
 		}
 
 		if (itemsBought.isNotEmpty()) {
-			MessageLog.i(TAG, "Confirming purchase of ${itemsBought.size} items.")
+			// Click the confirm button to finalize the selection.
+			MessageLog.i(TAG, "[INFO] Confirming purchase of ${itemsBought.size} items.")
 			ButtonConfirm.click(game.imageUtils)
 			game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
 
 			// Handle "Do not show again" checkbox if found.
 			if (!hasClickedDoNotShowAgain) {
 				if (CheckboxDoNotShowAgain.click(game.imageUtils)) {
-					MessageLog.i(TAG, "Successfully clicked \"Do not show again\" checkbox.")
+					MessageLog.i(TAG, "[INFO] Successfully clicked \"Do not show again\" checkbox.")
 					hasClickedDoNotShowAgain = true
 					game.wait(0.5, skipWaitingForLoading = true)
 				}
 			}
 
-			// Final exchange confirmation.
+			// Final exchange confirmation click.
 			ButtonExchange.click(game.imageUtils)
 			game.wait(game.dialogWaitDelay)
 			return itemsBought.toList()
@@ -481,11 +510,10 @@ class TrackblazerShopList(private val game: Game) {
 	}
 
 	/**
-	 * Iterates through the bought items in the inventory and uses them immediately if they belong to
-	 * targeted categories and are eligible for use.
+	 * Use bought items in the inventory immediately if they belong to targeted categories.
 	 */
 	fun quickUseItems() {
-		MessageLog.i(TAG, "Determining if any items can be used right away.")
+		MessageLog.i(TAG, "[INFO] Determining if any items can be used right away.")
 		var anyUsed = false
 
 		val itemNameMapInQuickUse = mutableMapOf<Int, String>()
@@ -496,14 +524,16 @@ class TrackblazerShopList(private val game: Game) {
 				name
 			}
 		) { entry ->
+			// Check if the item is eligible for quick usage.
 			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
 			val itemName = itemNameMapInQuickUse[entry.index] ?: getShopItemName(entry, isDisabled)
 			if (itemName != null && shopItems[itemName]?.isQuickUsage == true) {
-				// Check if the item's "+" button is disabled.
+				// Check if the item's plus button is enabled for usage.
 				if (!isDisabled) {
 					val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
 					if (plusButtonPoint != null) {
-						MessageLog.i(TAG, "Using item: \"$itemName\".")
+						MessageLog.i(TAG, "[INFO] Using item: \"$itemName\".")
+						// Tap the plus button to use the item.
 						game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
 						anyUsed = true
 					}
@@ -513,44 +543,48 @@ class TrackblazerShopList(private val game: Game) {
 		}
 
 		if (anyUsed) {
+			// Confirm the usage if any items were clicked.
 			ButtonConfirmUse.click(game.imageUtils)
 		} else {
+			// Close the dialog if no items were used.
 			ButtonClose.click(game.imageUtils)
 		}
 	}
 
     /**
-     * Uses specific items by their names and returns the list of names for items that were successfully used.
+     * Use specific items by their names and return the list of items that were successfully used.
      *
      * @param itemNames The names of the items to use.
-     * @param bUseAll If true, attempts to use all items in the list. If false, stops after the first successful usage.
+     * @param bUseAll If true, attempt to use all items in the list. If false, stop after the first successful usage.
      * @param scannedItems Optional list of pre-scanned items to use instead of performing a new scan.
-     * @return A list of names of the items used.
+     * @return A list of names for the items that were used.
      */
     fun useSpecificItems(itemNames: List<String>, bUseAll: Boolean = false, scannedItems: List<ScannedItem>? = null): List<String> {
         val successfullyUsedNames = mutableListOf<String>()
         if (itemNames.isEmpty()) return successfullyUsedNames
 
         if (scannedItems != null) {
-            MessageLog.d(TAG, "[TRACKBLAZER] Using pre-scanned items for specific item usage.")
+            MessageLog.i(TAG, "[INFO] Using pre-scanned items for specific item usage.")
             val tempScanned = scannedItems.toMutableList()
             for (name in itemNames) {
-                // If we already used this name and aren't using all, skip.
+                // If we already used this name and aren't using all, skip to the next name.
                 if (!bUseAll && successfullyUsedNames.contains(name)) continue
                 
-                // If using all, find all available instances of this name.
+                // If using all, find all available instances of this name in the pre-scanned list.
                 while (true) {
                     val itemIndex = tempScanned.indexOfFirst { it.itemName == name && !it.isDisabled }
                     if (itemIndex != -1) {
                         val info = tempScanned[itemIndex]
                         val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, info.entry.bitmap)
                         if (plusButtonPoint != null) {
-                            MessageLog.i(TAG, "Queuing specific item for use: \"$name\" (from pre-scanned).")
+                            MessageLog.i(TAG, "[INFO] Queuing specific item for use: \"$name\" (from pre-scanned).")
+                            // Tap the plus button based on the entry's position.
                             game.tap(info.entry.bbox.x + plusButtonPoint.x, info.entry.bbox.y + plusButtonPoint.y)
                             successfullyUsedNames.add(name)
-                            // Remove from temp list so we don't try to use the SAME instance twice.
+                            // Remove from temp list so we don't try to use the same instance twice.
                             tempScanned.removeAt(itemIndex)
                             
+                            // Exit early if we only wanted to use one item.
                             if (!bUseAll) return successfullyUsedNames
                         } else {
                             break
@@ -574,18 +608,19 @@ class TrackblazerShopList(private val game: Game) {
             val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
             val name = itemNameMapInUseSpecific[entry.index] ?: getShopItemName(entry, isDisabled)
             
-            // If bUseAll is true, we allow using multiple items with the same name.
+            // Check if this item is in our target list and if we should use it.
             val alreadyUsedMatch = successfullyUsedNames.contains(name)
             if (name != null && itemNames.contains(name) && (!alreadyUsedMatch || bUseAll)) {
-                // Check if the item's "+" button is disabled.
+                // Only use the item if its plus button is enabled.
                 if (!isDisabled) {
                     val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
                     if (plusButtonPoint != null) {
-                        MessageLog.i(TAG, "Queuing specific item for use: \"$name\".")
+                        MessageLog.i(TAG, "[INFO] Queuing specific item for use: \"$name\".")
+                        // Tap the plus button to use the item.
                         game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
                         successfullyUsedNames.add(name)
                         
-                        // If we only wanted to use one item, we are done.
+                        // Stop processing if we only wanted to use one item.
                         if (!bUseAll) return@processItemsWithFallback true
                     }
                 }
@@ -597,25 +632,27 @@ class TrackblazerShopList(private val game: Game) {
     }
 
     /**
-     * Finds and uses the highest value Megaphone available in the inventory.
+     * Find and use the highest value Megaphone available in the inventory.
      *
      * @param scannedItems Optional list of pre-scanned items.
-     * @return The item name of the megaphone used, or NULL if none were used.
+     * @return The item name of the megaphone used, or null if none were used.
      */
     fun useBestMegaphone(scannedItems: List<ScannedItem>? = null): String? {
+        // Define the Megaphone priority from strongest to weakest.
         val megaphonePriority = listOf("Empowering Megaphone", "Motivating Megaphone", "Coaching Megaphone")
         val used = useSpecificItems(megaphonePriority, bUseAll = false, scannedItems = scannedItems)
         return used.firstOrNull()
     }
 
     /**
-     * Uses the Ankle Weights corresponding to the specified stat.
+     * Use the Ankle Weights corresponding to the specified stat.
      *
      * @param stat The stat to use ankle weights for.
      * @param scannedItems Optional list of pre-scanned items.
      * @return True if ankle weights were queued.
      */
     fun useAnkleWeights(stat: StatName, scannedItems: List<ScannedItem>? = null): Boolean {
+        // Map the stat to the corresponding Ankle Weight item name.
         val itemName = when (stat) {
             StatName.SPEED -> "Speed Ankle Weights"
             StatName.STAMINA -> "Stamina Ankle Weights"
@@ -627,30 +664,35 @@ class TrackblazerShopList(private val game: Game) {
     }
 
     /**
-     * Opens the Training Items dialog from the current screen.
+     * Open the Training Items dialog from the current screen.
+     *
+     * @return True if the dialog was opened successfully.
      */
     fun openTrainingItemsDialog(): Boolean {
         if (ButtonTrainingItems.click(game.imageUtils)) {
+            // Wait for the dialog to appear.
             game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
             return true
         }
-        MessageLog.e(TAG, "Failed to open Training Items dialog.")
+        MessageLog.e(TAG, "[ERROR] openTrainingItemsDialog:: Failed to open Training Items dialog.")
         return false
     }
 
     /**
-     * Extracts item entries from a non-scrollable list using template matching for plus buttons.
+     * Extract item entries from a non-scrollable list using template matching for plus buttons.
      *
      * @param sourceBitmap The source bitmap to scan.
      * @return A list of pseudo-ScrollListEntry objects.
      */
     private fun getEntriesNonScrollable(sourceBitmap: Bitmap): List<ScrollListEntry> {
-        MessageLog.d(TAG, "[TRACKBLAZER] Scanning full screen for plus buttons...")
+        MessageLog.d(TAG, "[DEBUG] getEntriesNonScrollable:: Scanning full screen for plus buttons...")
+        // Find all plus buttons on the screen to identify items.
         val plusButtons = ButtonSkillUp.findAll(game.imageUtils, sourceBitmap = sourceBitmap)
-        MessageLog.d(TAG, "[TRACKBLAZER] Found ${plusButtons.size} plus buttons.")
+        MessageLog.d(TAG, "[DEBUG] getEntriesNonScrollable:: Found ${plusButtons.size} plus buttons.")
         plusButtons.sortBy { it.y }
 
         return plusButtons.mapIndexed { index, point ->
+            // Determine the entry height and coordinates based on the plus button position.
             val entryHeight = game.imageUtils.relHeight(220)
             val entryY = (point.y - (entryHeight / 2)).toInt().coerceIn(0, sourceBitmap.height - entryHeight)
             val entryBBox = BoundingBox(x = 0, y = entryY, w = sourceBitmap.width, h = entryHeight)
@@ -667,7 +709,7 @@ class TrackblazerShopList(private val game: Game) {
     }
 
     /**
-     * Uses the Good-Luck Charm if available.
+     * Use the Good-Luck Charm if available in the inventory.
      *
      * @param scannedItems Optional list of pre-scanned items.
      * @return True if the charm was queued.
@@ -677,7 +719,7 @@ class TrackblazerShopList(private val game: Game) {
     }
 
     /**
-     * Processes items in a dialog, handling both scrollable and non-scrollable cases.
+     * Process items in a dialog, handling both scrollable and non-scrollable cases.
      *
      * @param keyExtractor Optional callback to extract a unique key for each entry.
      * @param callback The callback to execute for each entry. Return true to stop.
@@ -687,10 +729,10 @@ class TrackblazerShopList(private val game: Game) {
         val sourceBitmap = game.imageUtils.getSourceBitmap()
 
         // Step 1: Attempt ScrollList detection first.
-        MessageLog.d(TAG, "[TRACKBLAZER] Attempting ScrollList detection...")
+        MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: Attempting ScrollList detection...")
 
         val list = if (ButtonConfirmUse.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
-            // Training Items dialog detected.
+            // Training Items dialog detected, use specific scroll regions.
             ScrollList.create(
                 game,
                 bitmap = sourceBitmap,
@@ -698,6 +740,7 @@ class TrackblazerShopList(private val game: Game) {
                 listBottomRightComponent = IconDialogScrollListBottomRight
             )
         } else {
+            // Default Shop list detection.
             ScrollList.create(game, bitmap = sourceBitmap)
         }
 
@@ -714,10 +757,10 @@ class TrackblazerShopList(private val game: Game) {
         // Step 2: Fallback to non-scrollable case if ScrollList failed or found nothing.
         // This is a safety measure for small dialogs where ScrollList corner detection might fail
         // but plus buttons are clearly visible.
-        MessageLog.d(TAG, "[TRACKBLAZER] ScrollList detection failed or empty. Falling back to non-scrollable entry detection...")
+        MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: ScrollList detection failed or empty. Falling back to non-scrollable entry detection...")
         val nonScrollableEntries = getEntriesNonScrollable(sourceBitmap)
         if (nonScrollableEntries.isNotEmpty()) {
-            MessageLog.d(TAG, "[TRACKBLAZER] Using non-scrollable entry detection.")
+            MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: Using non-scrollable entry detection.")
             // Maintain localized processedKeys for the non-scrollable fallback if needed.
             val processedKeys = mutableSetOf<String>()
 
@@ -725,6 +768,7 @@ class TrackblazerShopList(private val game: Game) {
                 if (keyExtractor != null) {
                     val key = keyExtractor(entry)
                     if (key != null) {
+                        // Skip if we already processed this item.
                         if (processedKeys.contains(key)) {
                             continue
                         }
@@ -732,16 +776,17 @@ class TrackblazerShopList(private val game: Game) {
                     }
                 }
 
+                // Execute the callback for this entry.
                 val found = callback(entry)
                 if (!found && game.debugMode) {
-                    MessageLog.d(TAG, "[TRACKBLAZER] No item detected in non-scrollable entry at index ${entry.index}.")
+                    MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: No item detected in non-scrollable entry at index ${entry.index}.")
                 }
                 if (found) break
             }
             return true
         }
 
-        MessageLog.e(TAG, "[TRACKBLAZER] Failed to detect shop list or any items.")
+        MessageLog.e(TAG, "[ERROR] processItemsWithFallback:: Failed to detect shop list or any items.")
         return false
     }
 }

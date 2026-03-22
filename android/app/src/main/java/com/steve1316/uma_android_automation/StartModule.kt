@@ -35,6 +35,7 @@ import dev.kord.core.Kord
 import kotlinx.coroutines.runBlocking
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.io.File
 
 /**
  * Takes care of setting up internal processes such as the Accessibility and MediaProjection services, receiving and sending messages over to the
@@ -93,7 +94,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             Log.d(TAG, "Starting SQLite settings initialization...")
             
             // Check if the database file exists.
-            val dbFile = java.io.File(context.filesDir, "SQLite/settings.db")
+            val dbFile = File(context.filesDir, "SQLite/settings.db")
             Log.d(TAG, "Database file path: ${dbFile.absolutePath}")
             Log.d(TAG, "Database file exists: ${dbFile.exists()}")
             Log.d(TAG, "Database file can read: ${dbFile.canRead()}")
@@ -111,7 +112,7 @@ class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             }
             
             // Check if SQLite subdirectory exists.
-            val sqliteDir = java.io.File(context.filesDir, "SQLite")
+            val sqliteDir = File(context.filesDir, "SQLite")
             Log.d(TAG, "SQLite directory exists: ${sqliteDir.exists()}")
             if (sqliteDir.exists()) {
                 val sqliteFiles = sqliteDir.listFiles()

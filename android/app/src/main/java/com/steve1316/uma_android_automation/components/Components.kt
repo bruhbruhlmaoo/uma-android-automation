@@ -53,7 +53,7 @@ data class Template(val path: String, val region: IntArray = intArrayOf(0, 0, 0,
     /** Returns this template's bitmap.
      *
      * @param imageUtils A reference to a CustomImageUtils instance.
-     * @return The bitmap for this template, or NULL if it could not be loaded.
+     * @return The bitmap for this template, or null if it could not be loaded.
      */
     fun getBitmap(imageUtils: CustomImageUtils): Bitmap? {
         return imageUtils.getTemplateBitmap(path.substringAfterLast('/'), "images/" + path.substringBeforeLast('/'))
@@ -124,8 +124,8 @@ interface BaseComponentInterface {
      * @param sourceBitmap The source bitmap to search within.
      *
      * @return Whether this component is currently disabled.
-     * If the component is not found on screen at all, then NULL is returned.
-     * All errors in this function will cause the function to return NULL.
+     * If the component is not found on screen at all, then null is returned.
+     * All errors in this function will cause the function to return null.
      * This way, we don't think we're clicking a valid button when there is an error.
      */
     fun checkDisabled(imageUtils: CustomImageUtils, sourceBitmap: Bitmap? = null): Boolean? {
@@ -142,7 +142,7 @@ interface BaseComponentInterface {
      * @param confidence The threshold (0.0, 1.0] to use when performing OCR.
      *
      * @return If the component was detected, then the Point and the screenshot bitmap are returned.
-     * Otherwise, NULL and the screenshot bitmap are returned.
+     * Otherwise, null and the screenshot bitmap are returned.
      */
     fun find(
         imageUtils: CustomImageUtils,
@@ -160,7 +160,7 @@ interface BaseComponentInterface {
      * @param tries The number of attempts when searching for this image.
      * @param confidence The threshold (0.0, 1.0] to use when performing OCR.
      *
-     * @return If the component was detected, returns the Point. Else returns NULL.
+     * @return If the component was detected, returns the Point. Else returns null.
      */
     fun findImageWithBitmap(
         imageUtils: CustomImageUtils,
@@ -393,11 +393,11 @@ interface ButtonInterface : ComponentInterface {
      * @param tries The number of attempts when searching for this image.
      * @param confidence The threshold (0.0, 1.0] to use when performing OCR.
      * @param handleDialogs An optional reference to the [DialogHandler.handleDialogs]
-     * function. Defaults to NULL. If specified, then the handleDialogs function will
+     * function. Defaults to null. If specified, then the handleDialogs function will
      * be called after the click action takes place.
      * @param bTriggersLoading Whether clicking this button triggers a connection to
      * the game server. This argument is passed to the [handleDialogs] call.
-     * This argument is ignored if [handleDialogs] is NULL.
+     * This argument is ignored if [handleDialogs] is null.
      *
      * @return True if the component was detected and clicked.
      */

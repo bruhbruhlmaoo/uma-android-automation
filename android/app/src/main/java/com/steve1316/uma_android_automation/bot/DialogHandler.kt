@@ -12,20 +12,28 @@ import com.steve1316.uma_android_automation.types.DateYear
 import com.steve1316.uma_android_automation.types.RunningStyle
 import org.opencv.core.Point
 
+/**
+ * Represents the result of a dialog handling operation.
+ */
 sealed class DialogHandlerResult {
+    /** Indicates that the dialog was successfully detected and handled. */
     data class Handled(val dialog: DialogInterface) : DialogHandlerResult()
+
+    /** Indicates that a dialog was detected but no handling logic was found for it. */
     data class Unhandled(val dialog: DialogInterface) : DialogHandlerResult()
+
+    /** Indicates that a dialog was detected but handling was deferred to the calling function. */
     data class Deferred(val dialog: DialogInterface) : DialogHandlerResult()
+
+    /** Indicates that no dialog popups were detected on the screen. */
     data object NoDialogDetected : DialogHandlerResult()
 }
 
 /**
- * Base class for handling various dialogs in the Umamusume game.
+ * Base class for handling various dialogs in the game.
  *
  * This class centralizes all dialog handling logic from different bot modules
  * to provide a single, maintainable source of truth for dialog interactions.
- *
- * @param game Reference to the bot's [Game] instance for state access and utilities.
  *
  * Example usage:
  *
@@ -37,6 +45,8 @@ sealed class DialogHandlerResult {
  * val args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true)
  * game.task.handleDialogs(args = args)
  * ```
+ *
+ * @property game Reference to the bot's [Game] instance for state access and utilities.
  */
 open class DialogHandler(val game: Game) {
 	private val TAG: String = "[${MainActivity.loggerTag}]${this::class.simpleName}"
@@ -44,77 +54,54 @@ open class DialogHandler(val game: Game) {
 	/**
 	 * Detects and handles any dialog popups.
 	 *
-	 * This is the centralized implementation that handles generic, campaign,
-	 * racing, and skill-related dialogs.
+	 * This is the centralized implementation that handles generic, campaign, racing, and skill-related dialogs.
+	 * To prevent the bot from moving too fast, a 500ms delay is added whenever a dialog is closed. This gives the
+	 * dialog animation time to finish.
 	 *
-	 * To prevent the bot moving too fast, we add a 500ms delay to the
-	 * exit of this function whenever we close the dialog.
-	 * This gives the dialog time to close since there is a very short
-	 * animation that plays when a dialog closes.
-     *
-     * List of valid arguments passed to the [args] parameter:
-     *  - bShouldWait
-     *      Whether we should add a delay before handling the dialog.
-     *      This is useful for when we click a button that we know opens a dialog.
-     *      So we just call [handleDialogs] immediately with this argument.
-     *  - bShouldWaitForLoading
-     *      Whether we need to wait for the game to load or connect to the server
-     *      prior to checking for dialogs.
-     *      This is useful for when we click a button that we know opens a dialog.
-     *      So we just call [handleDialogs] immediately with this argument.
-     *  - dialogNameToDefer
-     *      A single dialog name that, if detected, should not be handled here
-     *      and instead just sent back to the calling function for them to handle.
-     *  - dialogNamesToDefer
-     *      A list of dialog names that, if detected, should not be handled here
-     *      and instead just sent back to the calling function for them to handle.
-     *  - bShouldDefer
-     *      Whether we should not handle ANY dialogs that are detected and instead
-     *      just send them back to the calling function for them to handle.
+	 * List of valid arguments passed to the [args] parameter:
+	 * - `bShouldWait`: Whether to add a delay before handling the dialog.
+	 * - `bShouldWaitForLoading`: Whether to wait for the game to load or connect to the server prior to checking.
+	 * - `dialogNameToDefer`: A single dialog name to not handle here and instead return to the caller.
+	 * - `dialogNamesToDefer`: A list of dialog names to not handle here and instead return to the caller.
+	 * - `bShouldDefer`: Whether to not handle ANY dialogs and instead return them to the caller.
 	 *
-	 * @param dialog An optional dialog to evaluate. This allows chaining
-	 * dialog handler calls for improved performance.
-	 * @param args Optional arguments mapping for dialog handling.
-	 *
+	 * @param dialog An optional dialog to evaluate. This allows chaining dialog handler calls for improved performance.
+	 * @param args Optional arguments mapping for dialog handling behavior.
 	 * @return The [DialogHandlerResult] for this operation.
-     *  - [DialogHandlerResult.Handled] if the dialog was successfully handled.
-     *  - [DialogHandlerResult.Unhandled] if the dialog wasn't handled.
-     *  - [DialogHandlerResult.Deferred] if the detected dialog isn't handled and
-     *      instead the dialog is just sent back to the calling function.
-     *  - [DialogHandlerResult.NoDialogDetected] if no dialogs were detected.
 	 */
 	open fun handleDialogs(dialog: DialogInterface? = null, args: Map<String, Any> = mapOf()): DialogHandlerResult {
         val bShouldWait = args["bShouldWait"] as? Boolean ?: false
         val bShouldWaitForLoading = args["bShouldWaitForLoading"] as? Boolean ?: false
         if (bShouldWait || bShouldWaitForLoading) {
-            MessageLog.d(TAG, "[DIALOG] Waiting before handling dialog due to passed args: dialogWaitDelay=${game.dialogWaitDelay}, bShouldWait=$bShouldWait, bShouldWaitForLoading=$bShouldWaitForLoading")
+            Log.d(TAG, "[DEBUG] handleDialogs:: Waiting before handling dialog due to passed args: dialogWaitDelay=${game.dialogWaitDelay}, bShouldWait=$bShouldWait, bShouldWaitForLoading=$bShouldWaitForLoading")
             game.wait(game.dialogWaitDelay, skipWaitingForLoading = !bShouldWaitForLoading)
         }
 
 		val dialog: DialogInterface? = dialog ?: DialogUtils.getDialog(game.imageUtils)
 		if (dialog == null) {
-			Log.d(TAG, "[DIALOG] No dialog found.")
+			Log.d(TAG, "[DEBUG] handleDialogs:: No dialog found.")
 			return DialogHandlerResult.NoDialogDetected
 		}
 
-		MessageLog.d(TAG, "[DIALOG] Handle dialog: ${dialog.name}")
+		Log.d(TAG, "[DEBUG] handleDialogs:: Handle dialog: ${dialog.name}")
 
         val dialogNameToDefer: String? = args["dialogNameToDefer"] as? String ?: null
-        var dialogNamesToDefer: List<String> = args["dialogNamesToDefer"] as? List<String> ?: listOf<String>()
+        var dialogNamesToDefer: List<String> = args["dialogNamesToDefer"] as? List<String> ?: listOf()
         var bShouldDefer = args["bShouldDefer"] as? Boolean ?: false
         if (dialogNamesToDefer.contains(dialog.name) || dialogNameToDefer == dialog.name) {
             bShouldDefer = true
         }
 
         if (bShouldDefer) {
-            MessageLog.d(TAG, "[DIALOG] Dialog handling deferred to calling function.")
+            Log.d(TAG, "[DEBUG] handleDialogs:: Dialog handling deferred to calling function.")
             return DialogHandlerResult.Deferred(dialog)
         }
 
 		when (dialog.name) {
-			// Generic Dialogs (from Game.kt)
+			// Generic Dialogs.
 			"connection_error" -> {
 				val currTime: Long = System.currentTimeMillis()
+
 				// If the cooldown period has lapsed, reset our count.
 				if (currTime - game.lastConnectionErrorRetryTimeMs > game.connectionErrorRetryCooldownTimeMs) {
 					game.connectionErrorRetryAttempts = 0
@@ -137,11 +124,13 @@ open class DialogHandler(val game: Game) {
 			"session_error" -> {
 				throw InterruptedException("Session error. Stopping bot...")
 			}
-			// Racing Dialogs (from Racing.kt)
+
+			// Racing Dialogs.
             "overwrite" -> dialog.ok(game.imageUtils)
 			"race_playback" -> {
 				// Select portrait mode to prevent game from switching to landscape.
 				RadioPortrait.click(game.imageUtils)
+
 				// Click the checkbox to prevent this popup in the future.
 				Checkbox.click(game.imageUtils)
 				dialog.ok(game.imageUtils)
@@ -149,7 +138,6 @@ open class DialogHandler(val game: Game) {
 			"runners" -> dialog.close(game.imageUtils)
             "schedule_cancellation" -> dialog.close(game.imageUtils)
             "schedule_race" -> dialog.close(game.imageUtils)
-			
 			"trophy_won" -> dialog.close(game.imageUtils)
 			"unlock_requirements" -> dialog.close(game.imageUtils)
 			"agenda_details" -> dialog.close(game.imageUtils)
@@ -195,12 +183,13 @@ open class DialogHandler(val game: Game) {
 					region = bbox.toIntArray(),
 					confidence = 0.0,
 				)
+
 				if (optionLocations.size == 4) {
-					MessageLog.d(TAG, "[DIALOG] quick_mode_settings: Using findAll method.")
+					Log.d(TAG, "[DEBUG] handleDialogs:: quick_mode_settings: Using findAll method.")
 					val loc: Point = optionLocations[1]
 					game.tap(loc.x, loc.y, IconHorseshoe.template.path)
 				} else {
-					MessageLog.d(TAG, "[DIALOG] quick_mode_settings: Using image OCR method.")
+					Log.d(TAG, "[DEBUG] handleDialogs:: quick_mode_settings: Using image OCR method.")
 					// Fallback to image detection.
 					RadioCareerQuickShortenAllEvents.click(game.imageUtils)
 				}
@@ -224,7 +213,7 @@ open class DialogHandler(val game: Game) {
 				dialog.ok(game.imageUtils)
 			}
 			"rest_and_recreation" -> {
-				// Does not have a checkbox unlike the other rest/rec/etc.
+				// Does not have a checkbox unlike the other rest patterns.
 				dialog.ok(game.imageUtils)
 			}
 			"scheduled_races" -> dialog.close(game.imageUtils)
@@ -236,17 +225,18 @@ open class DialogHandler(val game: Game) {
 			"team_info" -> dialog.close(game.imageUtils)
 			"unity_cup_available" -> dialog.close(game.imageUtils)
 			"unmet_requirements" -> dialog.close(game.imageUtils)
-			// Skill List Dialogs (from SkillList.kt)
+
+			// Skill List Dialogs.
 			"skill_list_confirmation" -> {
 				dialog.ok(game.imageUtils)
-				// This dialog takes longer to close than others.
-				// Add an extra delay to make sure we don't skip anything.
+
+				// This dialog takes longer to close than others. Add an extra delay to make sure we don't skip anything.
 				game.wait(1.0)
 			}
 			"skill_list_confirm_exit" -> dialog.ok(game.imageUtils)
 			"skills_learned" -> dialog.close(game.imageUtils)
 			else -> {
-				Log.w(TAG, "[DIALOG] Unknown dialog \"${dialog.name}\" detected so it will not be handled.")
+				Log.w(TAG, "[WARN] handleDialogs:: Unknown dialog \"${dialog.name}\" detected so it will not be handled.")
 				return DialogHandlerResult.Unhandled(dialog)
 			}
 		}

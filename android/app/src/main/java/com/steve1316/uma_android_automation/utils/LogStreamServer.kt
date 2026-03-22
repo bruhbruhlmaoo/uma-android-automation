@@ -1,5 +1,6 @@
 package com.steve1316.uma_android_automation.utils
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.util.Log
@@ -27,6 +28,11 @@ import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import java.net.NetworkInterface
+import java.text.SimpleDateFormat
+import java.util.Collections
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.regex.Pattern
 
@@ -40,49 +46,71 @@ import java.util.regex.Pattern
  */
 object LogStreamServer {
 	private const val TAG: String = "${SharedData.loggerTag}LogStreamServer"
-
+	
+	/** The Ktor embedded server instance. */
 	private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
 
-	// Coroutine scope for the server and background tasks.
+	/** Coroutine scope for managing server and background tasks. */
 	private var serverScope: CoroutineScope? = null
 
-	// Application context for accessing file system.
+	/** Application context for accessing assets and system services. */
 	private var applicationContext: Context? = null
 
+	/** Whether the log streaming server is currently running. */
 	@Volatile
 	var isRunning = false
 		private set
 
-	// Mute flag to stop broadcasting logs after a run concludes.
+	/** Mute flag to stop broadcasting logs after a run concludes. */
 	@Volatile
 	private var isMuted = false
 
-	// Thread-safe set of currently active WebSocket client sessions.
+	/** Thread-safe set of currently active WebSocket client sessions. */
 	private val clients = CopyOnWriteArraySet<DefaultWebSocketServerSession>()
 
-	// Circular buffer for storing the most recent log messages.
+	/** Circular buffer for storing the most recent log messages. */
 	private val messageBuffer = ArrayList<String>()
 
-	// Synchronization lock for thread-safe access to the message buffer.
-	private val bufferLock = Object()
+	/** Synchronization lock for thread-safe access to the message buffer. */
+	private val bufferLock = Any()
 
-	// Maximum number of messages to retain in the history buffer.
-	private val maxBufferSize = 15000
+	/** Maximum number of messages to retain in the history buffer. */
+	private const val MAX_BUFFER_SIZE = 15000
 
-	// Pattern for matching logs: "00:12:34.567 [DEBUG] message content".
-	private val logPattern = Pattern.compile("^(\\n?)([\\d]{2}:[\\d]{2}:[\\d]{2}\\.[\\d]{3})\\s*\\[(VERBOSE|DEBUG|INFO|WARN|ERROR)\\]\\s*(.*)", Pattern.DOTALL)
+	/** Pattern for matching logs: "00:12:34.567 [DEBUG] message content". */
+	private val logPattern = Pattern.compile("^(\\n?)(\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\s*\\[(VERBOSE|DEBUG|INFO|WARN|ERROR)]\\s*(.*)", Pattern.DOTALL)
+	
+	/** Whether the bot is currently in the pre-debut phase. */
 	private var isPreDebut: Boolean = false
 
-	// Regex patterns for structured detail extraction.
-	private val actionTrainingPattern = Pattern.compile("\\[TRAINING\\] Now starting process to execute training")
-	private val actionRacePattern = Pattern.compile("\\[RACE\\] Racing process for .*? Race is completed", Pattern.CASE_INSENSITIVE)
+	/** Regex pattern to detect the start of a training session. */
+	private val actionTrainingPattern = Pattern.compile("\\[TRAINING] Now starting process to execute training")
+	
+	/** Regex pattern to detect the completion of a race. */
+	private val actionRacePattern = Pattern.compile("\\[RACE] Racing process for .*? Race is completed", Pattern.CASE_INSENSITIVE)
+	
+	/** Regex pattern to detect mood recovery. */
 	private val actionMoodPattern = Pattern.compile("Recovering mood now", Pattern.CASE_INSENSITIVE)
-	private val actionEnergyPattern = Pattern.compile("\\[ENERGY\\] Successfully recovered energy")
-	private val actionInjuryPattern = Pattern.compile("\\[INJURY\\] Injury detected and attempted to heal")
-	private val traineePattern = Pattern.compile("\\[TRAINEE\\] ([^:]+): (.*)")
-	private val dateNewPattern = Pattern.compile("\\[DATE\\] New date: (.*?) \\(Turn (\\d+)\\)", Pattern.CASE_INSENSITIVE)
+	
+	/** Regex pattern to detect successful energy recovery. */
+	private val actionEnergyPattern = Pattern.compile("\\[ENERGY] Successfully recovered energy")
+	
+	/** Regex pattern to detect injury detection and healing attempts. */
+	private val actionInjuryPattern = Pattern.compile("\\[INJURY] Injury detected and attempted to heal")
+	
+	/** Regex pattern to extract trainee details. */
+	private val traineePattern = Pattern.compile("\\[TRAINEE] ([^:]+): (.*)")
+	
+	/** Regex pattern to extract new date and turn info from bot logs. */
+	private val dateNewPattern = Pattern.compile("\\[DATE] New date: (.*?) \\(Turn (\\d+)\\)", Pattern.CASE_INSENSITIVE)
+	
+	/** Regex pattern to extract detected date from OCR logs. */
 	private val dateDetectedPattern = Pattern.compile("Detected date: (.*)", Pattern.CASE_INSENSITIVE)
+	
+	/** Regex pattern to extract turns remaining during extra racing. */
 	private val turnsRemainingPattern = Pattern.compile("Detected day for extra racing: (\\d+)", Pattern.CASE_INSENSITIVE)
+	
+	/** Regex pattern to detect race day during extra racing. */
 	private val turnsRemainingRaceDayPattern = Pattern.compile("Detected Race Day for extra racing:", Pattern.CASE_INSENSITIVE)
 
 	/**
@@ -121,28 +149,36 @@ object LogStreamServer {
 		}
 	}
 
-	// Sealed class representing different log actions to ensure sequential processing.
+	/** Sealed class representing different log actions to ensure sequential processing. */
 	private sealed class LogAction {
+		/** Registers a new client session for log streaming.
+		 * 
+		 * @property session The active WebSocket server session.
+		 */
 		data class NewClient(val session: DefaultWebSocketServerSession) : LogAction()
+		
+		/** Broadcasts a log message to all connected clients.
+		 * 
+		 * @property message The raw log message to broadcast.
+		 */
 		data class Broadcast(val message: String) : LogAction()
+		
+		/** Clears the history buffer and resets the mute flag. */
 		object Clear : LogAction()
 	}
 
-	// Channel for serializing log actions.
+	/** Channel for serializing log actions to be processed by the background worker. */
 	private var actionChannel: Channel<LogAction>? = null
 
-	/**
-	 * Resets the mute flag and clears the buffer to allow log broadcasting for a new run.
-	 */
+	/** Resets the mute flag and clears the buffer to allow log broadcasting for a new run. */
 	fun resetMute() {
-		Log.i(TAG, "Log stream mute reset requested.")
+		Log.i(TAG, "[LogStreamServer] Log stream mute reset requested.")
 		serverScope?.launch {
 			actionChannel?.send(LogAction.Clear)
 		}
 	}
 
-	/**
-	 * Starts the log streaming server on the specified port and registers with EventBus.
+	/** Starts the log streaming server on the specified port and registers with EventBus.
 	 *
 	 * @param context The application context used for accessing assets and system services.
 	 * @param port The network port number to listen on.
@@ -150,7 +186,7 @@ object LogStreamServer {
 	fun start(context: Context, port: Int) {
 		// Prevent starting multiple instances of the server.
 		if (isRunning) {
-			Log.w(TAG, "Server is already running.")
+			Log.i(TAG, "[LogStreamServer] Server is already running.")
 			return
 		}
 
@@ -203,10 +239,10 @@ object LogStreamServer {
 							val fullLogs = MessageLog.getMessageLogCopy().joinToString("\n")
 
 							// Set headers to trigger a file download in the browser.
-							val datePart = java.text.SimpleDateFormat(
+							val datePart = SimpleDateFormat(
 								"yyyy-MM-dd-HH-mm-ss",
-								java.util.Locale.getDefault()
-							).format(java.util.Date())
+								Locale.getDefault()
+							).format(Date())
 
 							call.response.header(
 								HttpHeaders.ContentDisposition,
@@ -214,7 +250,7 @@ object LogStreamServer {
 							)
 							call.respondText(fullLogs, ContentType.Text.Plain)
 						} catch (e: Exception) {
-							Log.e(TAG, "Failed to generate log download: ${e.message}")
+							Log.e(TAG, "[ERROR] /logs/download:: Failed to generate log download: ${e.message}")
 							call.respondText(
 								"Failed to generate log download.",
 								ContentType.Text.Plain,
@@ -241,17 +277,16 @@ object LogStreamServer {
 
 			// Determine and log the device IP address for easy access.
 			val ip = getDeviceIpAddress(context)
-			Log.i(TAG, "Log stream server started on http://$ip:$port")
+			Log.i(TAG, "[LogStreamServer] Log stream server started on http://$ip:$port")
 
 			// Populate the initial buffer from existing logs so late-joining clients see the history.
 			populateBuffer(MessageLog.getMessageLogCopy())
 
-			Log.d(TAG, "LogStreamServer registered with EventBus: ${EventBus.getDefault().isRegistered(this)}")
-			MessageLog.i(TAG, "Remote Log Viewer started at http://$ip:$port")
+			Log.d(TAG, "[DEBUG] start:: LogStreamServer registered with EventBus: ${EventBus.getDefault().isRegistered(this)}")
+			MessageLog.i(TAG, "[INFO] Remote Log Viewer started at http://$ip:$port")
 		} catch (e: Exception) {
 			// Handle cases where the server fails to start.
-			Log.e(TAG, "Failed to start log stream server: ${e.message}")
-			MessageLog.e(TAG, "Failed to start Remote Log Viewer: ${e.message}")
+			MessageLog.e(TAG, "[ERROR] start:: Failed to start Remote Log Viewer: ${e.message}")
 			isRunning = false
 			serverScope?.cancel()
 			serverScope = null
@@ -260,9 +295,7 @@ object LogStreamServer {
 		}
 	}
 
-	/**
-	 * Stops the log streaming server, clears the buffer, and unregisters from EventBus.
-	 */
+	/** Stops the log streaming server, clears the buffer, and unregisters from EventBus. */
 	fun stop() {
 		if (!isRunning) return
 
@@ -293,15 +326,14 @@ object LogStreamServer {
 		clients.clear()
 
 		isRunning = false
-		Log.i(TAG, "Log stream server stopped.")
+		Log.i(TAG, "[LogStreamServer] Log stream server stopped.")
 	}
 
-	/**
-	 * Subscriber for MessageLog events via EventBus.
+	/** Subscriber for MessageLog events via EventBus.
 	 *
 	 * Broadcasts each received log message to all currently connected WebSocket clients.
 	 *
-	 * @param event The JSEvent object containing the log message metadata and content.
+	 * @param event The [JSEvent] object containing the log message metadata and content.
 	 */
 	@Subscribe(threadMode = ThreadMode.BACKGROUND)
 	fun onMessageLogEvent(event: JSEvent) {
@@ -311,8 +343,7 @@ object LogStreamServer {
 		}
 	}
 
-	/**
-	 * Subscriber for MediaProjectionService events via EventBus.
+	/** Subscriber for MediaProjectionService events via EventBus.
 	 *
 	 * Stops the log server if the projection service is stopped via notification or UI.
 	 *
@@ -321,45 +352,44 @@ object LogStreamServer {
 	@Subscribe(threadMode = ThreadMode.BACKGROUND)
 	fun onMediaProjectionEvent(event: JSEvent) {
 		if (event.eventName == "MediaProjectionService" && event.message == "Not Running") {
-			Log.i(TAG, "MediaProjectionService stopped. Initiating LogStreamServer shutdown.")
+			Log.i(TAG, "[LogStreamServer] MediaProjectionService stopped. Initiating LogStreamServer shutdown.")
 			stop()
 		}
 	}
 
-	/**
-	 * Retrieves the device's local IP address as a human-readable string.
+	/** Retrieves the device's local IP address as a human-readable string.
 	 *
 	 * Prioritizes actual network interfaces over the WifiManager, which can be unreliable
 	 * or restricted on newer Android versions.
 	 *
 	 * @param context The application context.
-	 *
 	 * @return The device's local IP address or "0.0.0.0" if unavailable.
 	 */
-	fun getDeviceIpAddress(context: Context): String {
+    @SuppressLint("DefaultLocale")
+    fun getDeviceIpAddress(context: Context): String {
 		val foundIps = mutableListOf<String>()
 		try {
 			// Enumerate all network interfaces on the device.
-			val interfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())
+			val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
 			for (intf in interfaces) {
-				val addrs = java.util.Collections.list(intf.inetAddresses)
-				for (addr in addrs) {
+				val addresses = Collections.list(intf.inetAddresses)
+				for (address in addresses) {
 					// Skip loopback addresses to find real network IPs.
-					if (!addr.isLoopbackAddress) {
-						val sAddr = addr.hostAddress
-						val isIPv4 = sAddr.indexOf(':') < 0
+					if (!address.isLoopbackAddress) {
+						val strAddress = address.hostAddress
+						val isIPv4 = strAddress?.indexOf(':')!! < 0
 						if (isIPv4) {
-							foundIps.add(sAddr)
+                            foundIps.add(strAddress)
 						}
 					}
 				}
 			}
 		} catch (e: Exception) {
-			Log.w(TAG, "Could not determine IP address via NetworkInterface: ${e.message}")
+			Log.w(TAG, "[WARN] getDeviceIpAddress:: Could not determine IP address via NetworkInterface: ${e.message}")
 		}
 
 		if (foundIps.isNotEmpty()) {
-			Log.d(TAG, "Found local IPs: $foundIps")
+			Log.d(TAG, "[DEBUG] getDeviceIpAddress:: Found local IPs: $foundIps")
 
 			// Prioritize private network address ranges common in local networks.
 			val bestIp = foundIps.find { it.startsWith("192.168.") }
@@ -387,14 +417,13 @@ object LogStreamServer {
 				)
 			}
 		} catch (e: Exception) {
-			Log.w(TAG, "Could not determine WiFi IP address via WifiManager: ${e.message}")
+			Log.w(TAG, "[WARN] getDeviceIpAddress:: Could not determine WiFi IP address via WifiManager: ${e.message}")
 		}
 
 		return "0.0.0.0"
 	}
 
-	/**
-	 * Serves the log_viewer.html page from the Android assets directory.
+	/** Serves the log_viewer.html page from the Android assets directory.
 	 *
 	 * @param call The Ktor application call to respond to.
 	 * @param context The application context used for accessing assets.
@@ -405,7 +434,7 @@ object LogStreamServer {
 			val html = htmlStream.bufferedReader().use { it.readText() }
 			call.respondText(html, ContentType.Text.Html)
 		} catch (e: IOException) {
-			Log.e(TAG, "Failed to load log_viewer.html asset: ${e.message}")
+			Log.e(TAG, "[ERROR] serveLogViewerHtml:: Failed to load log_viewer.html asset: ${e.message}")
 			call.respondText(
 				"Failed to load log viewer page.",
 				ContentType.Text.Plain,
@@ -414,15 +443,14 @@ object LogStreamServer {
 		}
 	}
 
-	/**
-	 * Handles an individual WebSocket session lifecycle.
+	/** Handles an individual WebSocket session lifecycle.
 	 *
 	 * Enqueues a NewClient action to ensure sequential history delivery relative to live broadcasts.
 	 *
 	 * @param session The active WebSocket server session.
 	 */
 	private suspend fun handleWebSocketSession(session: DefaultWebSocketServerSession) {
-		Log.d(TAG, "WebSocket client connection initiated.")
+		Log.d(TAG, "[DEBUG] WebSocket client connection initiated.")
 
 		// Enqueue the registration action to the background worker.
 		actionChannel?.send(LogAction.NewClient(session))
@@ -438,15 +466,15 @@ object LogStreamServer {
 				}
 			}
 		} catch (e: Exception) {
-			Log.w(TAG, "WebSocket session exception: ${e.message}")
+			Log.w(TAG, "[WARN] handleWebSocketSession:: WebSocket session exception: ${e.message}")
 		} finally {
 			clients.remove(session)
-			Log.d(TAG, "WebSocket client disconnected.")
+			Log.d(TAG, "[DEBUG] handleWebSocketSession:: WebSocket client disconnected.")
 		}
 	}
 
-	/**
-	 * Performs history synchronization for a new client session.
+	/** Performs history synchronization for a new client session.
+	 *
 	 * Called by the background worker to ensure no live logs are sent before history is done.
 	 *
 	 * @param session The active WebSocket server session.
@@ -454,7 +482,8 @@ object LogStreamServer {
 	private suspend fun handleNewClientAction(session: DefaultWebSocketServerSession) {
 		try {
 			val historyToSync = synchronized(bufferLock) {
-				messageBuffer.toList() // Send chronological (oldest to newest)
+				// Send chronological (oldest to newest).
+				messageBuffer.toList()
 			}
 
 			if (historyToSync.isNotEmpty()) {
@@ -468,14 +497,13 @@ object LogStreamServer {
 
 			// Now that history is synced, add to clients for real-time broadcasts.
 			clients.add(session)
-			Log.d(TAG, "WebSocket client history sync complete and added to active set.")
+			Log.d(TAG, "[DEBUG] handleNewClientAction:: WebSocket client history sync complete and added to active set.")
 		} catch (e: Exception) {
-			Log.e(TAG, "Failed to sync history for new client: ${e.message}")
+			Log.e(TAG, "[ERROR] handleNewClientAction:: Failed to sync history for new client: ${e.message}")
 		}
 	}
 
-	/**
-	 * Scans the temp directory, compresses found images, and sends them to the client.
+	/** Scans the temp directory, compresses found images, and sends them to the client.
 	 *
 	 * @param session The active WebSocket server session.
 	 */
@@ -483,7 +511,7 @@ object LogStreamServer {
 		val context = applicationContext ?: return
 		val tempDir = File(context.getExternalFilesDir(null), "temp")
 		if (!tempDir.exists() || !tempDir.isDirectory) {
-			Log.w(TAG, "Temp directory does not exist or is not a directory: ${tempDir.absolutePath}")
+			Log.w(TAG, "[WARN] sendDebugImages:: Temp directory does not exist or is not a directory: ${tempDir.absolutePath}")
 			return
 		}
 
@@ -494,7 +522,7 @@ object LogStreamServer {
 					name.lowercase().endsWith(".webp")
 		} ?: return
 
-		Log.d(TAG, "Found ${imageFiles.size} image files in temp directory.")
+		Log.d(TAG, "[DEBUG] sendDebugImages:: Found ${imageFiles.size} image files in temp directory.")
 
 		for (file in imageFiles) {
 			try {
@@ -515,7 +543,7 @@ object LogStreamServer {
 					bitmap.recycle()
 				}
 			} catch (e: Exception) {
-				Log.e(TAG, "Failed to send image ${file.name}: ${e.message}")
+				Log.e(TAG, "[ERROR] sendDebugImages:: Failed to send image ${file.name}: ${e.message}")
 			}
 		}
 
@@ -523,12 +551,10 @@ object LogStreamServer {
 		session.send(Frame.Text(JSONObject().apply { put("type", "image_batch_done") }.toString()))
 	}
 
-	/**
-	 * Parses a raw log string into a JSON object.
+	/** Parses a raw log string into a JSON object.
 	 *
 	 * @param message The raw log message to parse.
-	 *
-	 * @return A JSONObject containing the parsed log data.
+	 * @return A [LogEntry] containing the parsed log data.
 	 */
 	private fun parseLogToJSON(message: String): JSONObject {
 		val matcher = logPattern.matcher(message)
@@ -565,12 +591,10 @@ object LogStreamServer {
 		}
 	}
 
-	/**
-	 * Detects common bot actions for session counters.
+	/** Detects common bot actions for session counters.
 	 *
 	 * @param text The log message text to check.
-	 *
-	 * @return The action name if detected, otherwise NULL.
+	 * @return The action name if detected, otherwise null.
 	 */
 	private fun detectAction(text: String): String? {
 		return when {
@@ -583,12 +607,10 @@ object LogStreamServer {
 		}
 	}
 
-	/**
-	 * Parses trainee detailed info for the dashboard.
+	/** Parses trainee detailed info for the dashboard.
 	 *
 	 * @param text The log message text to check.
-	 *
-	 * @return A JSONObject containing the trainee details if detected, otherwise NULL.
+	 * @return A [JSONObject] containing the trainee details if detected, otherwise null.
 	 */
 	private fun parseTraineeInfo(text: String): JSONObject? {
 		val matcher = traineePattern.matcher(text)
@@ -600,12 +622,10 @@ object LogStreamServer {
 		} else null
 	}
 
-	/**
-	 * Parses date and turn information for the dashboard.
+	/** Parses date and turn information for the dashboard.
 	 *
 	 * @param text The log message text to check.
-	 *
-	 * @return A JSONObject containing the date and turn if detected, otherwise NULL.
+	 * @return A [JSONObject] containing the date and turn if detected, otherwise null.
 	 */
 	private fun parseDateInfo(text: String): JSONObject? {
 		// Priority 1: Main bot date update log.
@@ -614,7 +634,7 @@ object LogStreamServer {
 			val date = newDateMatcher.group(1)?.trim() ?: ""
 			val turn = newDateMatcher.group(2) ?: ""
 
-			// Update state.
+			// Update current phase state.
 			isPreDebut = (turn.toIntOrNull() ?: 13) <= 12
 
 			return JSONObject().apply {
@@ -656,7 +676,7 @@ object LogStreamServer {
 		val detectedDateMatcher = dateDetectedPattern.matcher(text)
 		if (detectedDateMatcher.find()) {
 			val date = detectedDateMatcher.group(1)?.trim() ?: ""
-			// If it's the pre-debut string, ignore it and wait for the turn calculation log.
+			// If it's the Pre-Debut string, ignore it and wait for the turn calculation log.
 			if (date.contains("debut", ignoreCase = true)) {
 				isPreDebut = true
 				return null
@@ -696,11 +716,9 @@ object LogStreamServer {
 		return null
 	}
 
-	/**
-	 * Converts a turn number to a descriptive date string.
+	/** Converts a turn number to a descriptive date string.
 	 *
 	 * @param day The turn number (day) to convert.
-	 *
 	 * @return The descriptive date string.
 	 */
 	private fun dateFromDay(day: Int): String {
@@ -720,54 +738,51 @@ object LogStreamServer {
 		return "$yearStr $phaseStr $monthStr"
 	}
 
-	/**
-	 * Clears all messages from the history buffer.
-	 */
+	/** Clears all messages from the history buffer. */
 	private fun clearBuffer() {
 		synchronized(bufferLock) {
 			messageBuffer.clear()
 		}
 	}
 
-	/**
-	 * Handles a clear action by clearing the history buffer and notifying all clients.
+	/** Handles a clear action by clearing the history buffer and notifying all clients.
 	 *
 	 * Called by the background worker.
 	 */
 	private suspend fun handleClearAction() {
-		Log.i(TAG, "Executing log clear action.")
+		Log.i(TAG, "[LogStreamServer] Executing log clear action.")
 		clearBuffer()
-		isMuted = false // Ensure we are unmuted for the new run.
+		
+		// Ensure we are unmuted for the new run.
+		isMuted = false
 		
 		// Signal all connected clients to clear their displays.
 		for (client in clients) {
 			try {
 				client.send(Frame.Text("CMD:CLEAR"))
-			} catch (e: Exception) {
+			} catch (_: Exception) {
 				clients.remove(client)
 			}
 		}
 	}
 
-	/**
-	 * Pre-fills the history buffer with a given list of existing log messages.
+	/** Pre-fills the history buffer with a given list of existing log messages.
 	 *
 	 * @param history A list of log message strings to initialize the buffer.
 	 */
 	private fun populateBuffer(history: List<String>) {
 		synchronized(bufferLock) {
 			messageBuffer.clear()
-			// Only retain the last maxBufferSize messages to avoid overflow.
-			val start = (history.size - maxBufferSize).coerceAtLeast(0)
+			// Only retain the last messages of the maximum buffer size to avoid overflow.
+			val start = (history.size - MAX_BUFFER_SIZE).coerceAtLeast(0)
 			for (i in start until history.size) {
 				messageBuffer.add(history[i])
 			}
-			Log.d(TAG, "Populated buffer with ${messageBuffer.size} historical logs.")
+			Log.d(TAG, "[DEBUG] populateBuffer:: Populated buffer with ${messageBuffer.size} historical logs.")
 		}
 	}
 
-	/**
-	 * Enqueues a log message for sequential processing.
+	/** Enqueues a log message for sequential processing.
 	 *
 	 * @param message The log message to broadcast.
 	 */
@@ -780,8 +795,7 @@ object LogStreamServer {
 		}
 	}
 
-	/**
-	 * Processes a broadcast action by updating the buffer and sending to all active clients.
+	/** Processes a broadcast action by updating the buffer and sending to all active clients.
 	 *
 	 * Called by the background worker.
 	 *
@@ -793,14 +807,14 @@ object LogStreamServer {
 		// Update history buffer.
 		synchronized(bufferLock) {
 			messageBuffer.add(message)
-			if (messageBuffer.size > maxBufferSize) {
+			if (messageBuffer.size > MAX_BUFFER_SIZE) {
 				messageBuffer.removeAt(0)
 			}
 		}
 
 		// Detect end-of-run markers to mute subsequent logs after this one is buffered/sent.
 		if (message.contains("Campaign main loop exiting") || message.contains("Total runtime of")) {
-			Log.i(TAG, "End of run detected in logs. Muting subsequent broadcasts.")
+			Log.i(TAG, "[LogStreamServer] End of run detected in logs. Muting subsequent broadcasts.")
 			isMuted = true
 		}
 
@@ -812,7 +826,7 @@ object LogStreamServer {
 		for (client in clients) {
 			try {
 				client.send(Frame.Text(jsonResponse))
-			} catch (e: Exception) {
+			} catch (_: Exception) {
 				clients.remove(client)
 			}
 		}

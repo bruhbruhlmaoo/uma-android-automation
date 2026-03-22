@@ -20,22 +20,34 @@ import com.steve1316.automation_library.data.SharedData
  * (parsing detections and applying Non-Maximum Suppression).
  *
  * @property context The application context for accessing assets.
- * @property ortEnv The ONNX Runtime environment.
- * @property ortSession The ONNX Runtime session for model inference.
  */
 class YoloDetector(private val context: Context) {
 	companion object {
 		private const val TAG = "${SharedData.loggerTag}YoloDetector"
+		
+		/** Path to the ONNX model file in the assets directory. */
 		private const val MODEL_PATH = "best.onnx"
+		
+		/** Required input dimensions for the YOLO model. */
 		private const val INPUT_SIZE = 128
+		
+		/** Minimum confidence score for a detection to be considered valid. */
 		private const val CONFIDENCE_THRESHOLD = 0.8f
+		
+		/** Overlap threshold for Non-Maximum Suppression. */
 		private const val IOU_THRESHOLD = 0.45f
 		
-		// List of class labels supported by the YOLO model.
+		/** List of class labels supported by the YOLO model. */
 		private val LABELS = listOf("+", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+
+		/** Index for the first batch in the model output tensor. */
+		private const val BATCH_INDEX = 0
 	}
 
+	/** The ONNX Runtime environment instance. */
 	private var ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
+
+	/** The active ONNX Runtime session for model inference. */
 	private var ortSession: OrtSession? = null
 
 	init {
@@ -45,12 +57,12 @@ class YoloDetector(private val context: Context) {
 	/** Loads the ONNX model from the application assets. */
 	private fun loadModel() {
 		try {
-			Log.d(TAG, "Loading model from $MODEL_PATH...")
+			Log.d(TAG, "[DEBUG] loadMode:: Loading model from $MODEL_PATH...")
 			val modelBytes = context.assets.open(MODEL_PATH).readBytes()
 			ortSession = ortEnv.createSession(modelBytes)
-			Log.i(TAG, "Model loaded successfully with session: $ortSession")
+			Log.i(TAG, "[YOLO] Model loaded successfully with session: $ortSession")
 		} catch (e: Exception) {
-			Log.e(TAG, "Error loading model: ${e.message}")
+			Log.e(TAG, "[ERROR] loadModel:: Error loading model: ${e.message}")
 			e.printStackTrace()
 		}
 	}
@@ -86,21 +98,21 @@ class YoloDetector(private val context: Context) {
 		val ratio = minOf(INPUT_SIZE / w, INPUT_SIZE / h)
 		val newW = (w * ratio).toInt()
 		val newH = (h * ratio).toInt()
-		
+
 		// Create a blank canvas with the model's expected input size.
 		val letterboxBitmap = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
 		val canvas = Canvas(letterboxBitmap)
-		
+
 		// Fill background with grey.
 		canvas.drawColor(Color.rgb(114, 114, 114))
-		
+
 		val padX = (INPUT_SIZE - newW) / 2f
 		val padY = (INPUT_SIZE - newH) / 2f
-		
+
 		// Scale the image and draw it centered onto the padded background.
 		val scaledBitmap = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
 		canvas.drawBitmap(scaledBitmap, padX, padY, Paint(Paint.FILTER_BITMAP_FLAG))
-		
+
 		return LetterboxInfo(letterboxBitmap, ratio, padX, padY)
 	}
 
@@ -111,43 +123,43 @@ class YoloDetector(private val context: Context) {
 	 */
 	fun detect(bitmap: Bitmap): List<Detection> {
 		if (ortSession == null) {
-			Log.e(TAG, "OrtSession is null. Cannot run detection. Check if loadModel() failed.")
+			Log.e(TAG, "[ERROR] detect:: OrtSession is null. Cannot run detection. Check if loadModel() failed.")
 			return emptyList()
 		}
 
 		val startTime = System.currentTimeMillis()
-		
+
 		// Pre-process image with letterboxing.
 		val letterboxInfo = letterbox(bitmap)
 		val floatBuffer = bitmapToFloatBuffer(letterboxInfo.bitmap)
 		val inputName = ortSession?.inputNames?.iterator()?.next() ?: "images"
-		
+
 		try {
 			// Create input tensor and run inference.
 			val inputTensor = OnnxTensor.createTensor(ortEnv, floatBuffer, longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong()))
 			val results = ortSession?.run(Collections.singletonMap(inputName, inputTensor))
-			
+
 			results?.use {
 				val outputValue = it.get(0).value
-				
+
 				// Standard YOLOv8 output format is float[1][attributes][anchors] (e.g., [1][15][336]).
-				if (outputValue is Array<*> && outputValue[0] is Array<*>) {
-					val batchOutput = outputValue[0] as Array<FloatArray>
+				if (outputValue is Array<*> && outputValue[BATCH_INDEX] is Array<*>) {
+					val batchOutput = outputValue[BATCH_INDEX] as Array<FloatArray>
 
 					// Parse detections and scale coordinates back.
 					val detections = parseOutput(batchOutput, letterboxInfo)
 					val duration = System.currentTimeMillis() - startTime
-					Log.d(TAG, "Inference completed in ${duration}ms. Found ${detections.size} detections.")
+					Log.d(TAG, "[DEBUG] detect:: Inference completed in ${duration}ms. Found ${detections.size} detections.")
 					return detections
 				} else {
-					Log.e(TAG, "Unexpected output tensor structure: ${outputValue?.javaClass?.simpleName}")
+					Log.e(TAG, "[ERROR] detect:: Unexpected output tensor structure: ${outputValue?.javaClass?.simpleName}")
 				}
 			}
 		} catch (e: Exception) {
-			Log.e(TAG, "Error during inference: ${e.message}")
+			Log.e(TAG, "[ERROR] detect:: Error during inference: ${e.message}")
 			e.printStackTrace()
 		}
-		
+
 		return emptyList()
 	}
 
@@ -180,15 +192,15 @@ class YoloDetector(private val context: Context) {
 	private fun parseOutput(batchOutput: Array<FloatArray>, info: LetterboxInfo): List<Detection> {
 		// Output contains 4 bounding box coords plus scores for each class.
 		val detections = mutableListOf<Detection>()
-		
-        // Total number of prediction anchors and number of detection classes.
-		val numElements = batchOutput[0].size
+
+		// Total number of prediction anchors and number of detection classes.
+		val numElements = batchOutput[BATCH_INDEX].size
 		val numClasses = LABELS.size
 
 		for (i in 0 until numElements) {
 			var maxConf = -1.0f
 			var maxIdx = -1
-			
+
 			// Identify the class with the highest confidence score.
 			for (j in 0 until numClasses) {
 				val conf = batchOutput[j + 4][i]
@@ -197,20 +209,20 @@ class YoloDetector(private val context: Context) {
 					maxIdx = j
 				}
 			}
-			
+
 			// Process detections that exceed the confidence threshold.
 			if (maxConf > CONFIDENCE_THRESHOLD) {
 				val cx = batchOutput[0][i]
 				val cy = batchOutput[1][i]
 				val w = batchOutput[2][i]
 				val h = batchOutput[3][i]
-				
+
 				// Scale back to original coordinates and convert from center-based to top-left.
 				val resX = (cx - w / 2f - info.padX) / info.ratio
 				val resY = (cy - h / 2f - info.padY) / info.ratio
 				val resW = w / info.ratio
 				val resH = h / info.ratio
-				
+
 				// Ensure detections are within the physical bounds of the input bitmap.
 				// Allowing a slight margin for edge detections.
 				if (resX >= -2f && resY >= -2f && resX < info.bitmap.width && resY < info.bitmap.height) {
@@ -221,7 +233,7 @@ class YoloDetector(private val context: Context) {
 
 		// Apply Non-Maximum Suppression to filter overlapping redundant boxes.
 		val finalDetections = nms(detections)
-		Log.d(TAG, "Detections after NMS: ${finalDetections.size} -> ${finalDetections.joinToString { "${it.label} (${it.x})" }}")
+		Log.d(TAG, "[DEBUG] parseOutput:: Detections after NMS: ${finalDetections.size} -> ${finalDetections.joinToString { "${it.label} (${it.x})" }}")
 		return finalDetections
 	}
 
@@ -234,17 +246,17 @@ class YoloDetector(private val context: Context) {
 		val sortedDetections = detections.sortedByDescending { it.confidence }
 		val result = mutableListOf<Detection>()
 		val ignored = BooleanArray(sortedDetections.size)
-		
+
 		for (i in sortedDetections.indices) {
 			if (ignored[i]) continue
-			
+
 			val best = sortedDetections[i]
 			result.add(best)
-			
+
 			// Compare the primary detection against all other candidates.
 			for (j in i + 1 until sortedDetections.size) {
 				if (ignored[j]) continue
-				
+
 				// Ignore detections that have significant overlap with the primary.
 				if (iou(best, sortedDetections[j]) > IOU_THRESHOLD) {
 					ignored[j] = true
@@ -265,7 +277,7 @@ class YoloDetector(private val context: Context) {
 		val y1 = maxOf(a.y, b.y)
 		val x2 = minOf(a.x + a.w, b.x + b.w)
 		val y2 = minOf(a.y + a.h, b.y + b.h)
-		
+
 		val intersection = maxOf(0f, x2 - x1) * maxOf(0f, y2 - y1)
 		val union = a.w * a.h + b.w * b.h - intersection
 		return if (union > 0) intersection / union else 0f

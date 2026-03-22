@@ -56,33 +56,38 @@ import com.steve1316.uma_android_automation.components.BaseComponentInterface
 import com.steve1316.uma_android_automation.utils.CustomImageUtils
 import com.steve1316.uma_android_automation.types.BoundingBox
 
+/**
+ * Utility class for detecting and handling dialogs in the game.
+ */
 object DialogUtils {
     private val TAG: String = "[${MainActivity.loggerTag}]DialogUtils"
 
+	/** List of templates used to detect the title bar gradient of a dialog. */
     private val titleGradientTemplates: List<String> = listOf(
         "components/dialog/dialog_title_gradient_0",
         "components/dialog/dialog_title_gradient_1",
     )
 
-    // If any of these dialogs are ever detected, we want to throw an error
-    // immediately to stop the bot.
-    // These are typically just dialogs that involve IRL money (i.e. carats).
-    // See the `handleDangerousDialogs` function.
+    /** 
+	 * List of dialogs that are considered dangerous because they may involve real-world purchases.
+	 * Detection of these dialogs will cause the bot to stop immediately.
+	 */
     private val dangerousDialogs: List<DialogInterface> = listOf(
         DialogAgeConfirmation,
         DialogPurchaseCarats,
     )
 
-    /** Checks if any dialog is on screen.
-    *
-    * @param imageUtils The CustomImageUtils instance used to find the dialog.
-    * @param tries The number of times to attempt to find the image.
-    *
-    * @return Whether a dialog was detected.
-    */
+    /** 
+	 * Check if any dialog is currently displayed on the screen.
+     *
+     * @param imageUtils The CustomImageUtils instance used to find the dialog.
+     * @param tries The number of times to attempt to find the image.
+     * @return True if a dialog was detected, false otherwise.
+     */
     fun check(imageUtils: CustomImageUtils, tries: Int = 1): Boolean {
         var loc: Point? = null
         for (template in titleGradientTemplates) {
+			// Search for the dialog title gradient templates.
             loc = imageUtils.findImage(template, tries = tries, suppressError = true).first
             if (loc != null) {
                 break
@@ -91,41 +96,43 @@ object DialogUtils {
         return loc != null
     }
 
-    /** Gets the title bar text of any dialog current on screen.
-    *
-    * @param imageUtils The CustomImageUtils instance used to find the dialog.
-    * @param bitmap Optional bitmap to use when looking for a dialog.
-    * If not specified, a screenshot will be taken and used instead.
-    *
-    * @return The text of the dialog's title bar if one was found, else NULL.
-    */
+    /** 
+	 * Get the title bar text of any dialog currently on the screen.
+     *
+     * @param imageUtils The CustomImageUtils instance used to find the dialog.
+     * @param bitmap Optional bitmap to use when looking for a dialog.
+     * If not specified, a screenshot will be taken and used instead.
+     * @return The text of the dialog's title bar if one was found, else NULL.
+     */
     fun getTitle(imageUtils: CustomImageUtils, bitmap: Bitmap? = null): String? {
         val bitmap: Bitmap = bitmap ?: imageUtils.getSourceBitmap()
         var templateBitmap: Bitmap? = null
         var titleLocation: Point? = null
         for (template in titleGradientTemplates) {
+			// Find the location of the title gradient in the given bitmap.
             titleLocation = imageUtils.findImageWithBitmap(
                 template,
                 sourceBitmap = bitmap,
                 suppressError = true,
             )
             if (titleLocation != null) {
+				// Retrieve the template bitmap to calculate the bounding box.
                 templateBitmap = imageUtils.getTemplateBitmap(template.substringAfterLast('/'), "images/" + template.substringBeforeLast('/'))
                 break
             }
         }
 
-        // If titleLocation is null, then just return.
+        // Return null if the title location could not be determined.
         if (titleLocation == null) {
             return null
         }
 
-        // If we failed to find the template bitmap, we can't do any calculations.
+        // Return null if we failed to find the template bitmap for calculations.
         if (templateBitmap == null) {
             return null
         }
 
-        // Get top left coordinates of the title.
+        // Calculate the top-left coordinates and the bounding box of the title.
         val x = titleLocation.x - (templateBitmap.width / 2.0)
         val y = titleLocation.y - (templateBitmap.height / 2.0)
 
@@ -136,6 +143,7 @@ object DialogUtils {
             imageUtils.relHeight(templateBitmap.height),
         )
 
+		// Perform OCR on the identified title region.
         val text: String = imageUtils.performOCROnRegion(
             bitmap,
             bbox.x,
@@ -153,10 +161,10 @@ object DialogUtils {
             return null
         }
 
+		// Perform fuzzy matching against known dialog titles.
         val match: String? = TextUtils.matchStringInList(text, DialogObjects.items.map { it.title })
 
-        // If title detection failed, attempt to find some known titles
-        // that use a different font (like Trophy Won).
+        // Attempt to find known titles with different fonts if detection fails.
         if (match == null) {
             val croppedBitmap: Bitmap? = imageUtils.createSafeBitmap(
                 bitmap,
@@ -170,23 +178,24 @@ object DialogUtils {
                 return null
             }
 
+			// Check for the "Trophy Won" dialog as a special case.
             if (LabelTrophyWonDialogTitle.check(imageUtils, sourceBitmap = croppedBitmap)) {
                 return DialogTrophyWon.title
             }
 
-            MessageLog.e(TAG, "Failed to match any dialogs to the extracted title: $text")
+            MessageLog.e(TAG, "[ERROR] getTitle:: Failed to match any dialogs to the extracted title: $text")
             return null
         }
 
         return match
     }
 
-    /** Throws error if the specified dialog is in the [dangerousDialogs] list.
+    /** 
+	 * Stop the bot if the specified dialog is in the hardcoded [dangerousDialogs] list.
      *
-     * Some dialogs are dangerous in that they could lead to parts of the game
-     * that involve IRL purchases. This function checks if the passed [dialog]
-     * is in a hardcoded list of dangerous dialogs. If it is, then we throw
-     * an InterruptedException error to immediately stop the bot.
+     * Some dialogs are dangerous because they could lead to real-world purchases.
+     * This function throws an InterruptedException to immediately stop the bot if
+     * a dangerous dialog is detected.
      *
      * @param dialog The dialog to check.
      */
@@ -196,34 +205,33 @@ object DialogUtils {
         }
     }
 
-    /** Detect and return a DialogInterface on screen.
-    *
-    * @param imageUtils The CustomImageUtils instance used to find the dialog.
-    * @param bitmap Optional bitmap to use when looking for a dialog.
-    * If not specified, a screenshot will be taken and used instead.
-    *
-    * @return The DialogInterface if one was found, else NULL.
-    */
+    /** 
+	 * Detect and return the [DialogInterface] currently visible on the screen.
+     *
+     * @param imageUtils The CustomImageUtils instance used to find the dialog.
+     * @param bitmap Optional bitmap to use when looking for a dialog.
+     * If not specified, a screenshot will be taken and used instead.
+     * @return The [DialogInterface] if one was found, else NULL.
+     */
     fun getDialog(imageUtils: CustomImageUtils, bitmap: Bitmap? = null): DialogInterface? {
         val bitmap: Bitmap = bitmap ?: imageUtils.getSourceBitmap()
         val title: String = getTitle(imageUtils, bitmap) ?: return null
 
-        // There may be multiple matches for titles since they are not unique.
+        // Filter the list of known dialogs for any matches by title.
         val matches: List<DialogInterface> = DialogObjects.items.filter { it.title == title }
 
         if (matches.isEmpty()) {
-            // If there are no matches, that means there is a programmer error since
-            // getTitle should always return a valid title.
+            // Throw an exception if getTitle returns a title that is not in our known list.
             throw IllegalStateException("getTitle returned an invalid title: $title")
         }
 
         if (matches.size == 1) {
+			// Handle dangerous dialogs before returning the single match.
             handleDangerousDialogs(matches[0])
             return matches[0]
         }
 
-        // If we do have duplicates, then we need to check which dialog's
-        // set of buttons matches what is on screen.
+        // Handle duplicates by checking if the dialog's buttons match what is on screen.
         if (matches.size > 1) {
             for (dialog in matches) {
                 if (dialog.buttons.all { button -> button.check(imageUtils, sourceBitmap = bitmap) }) {
@@ -233,36 +241,39 @@ object DialogUtils {
             }
         }
 
-        MessageLog.e(TAG, "Multiple dialogs match the detected title ($title). However, we failed to match any of them to the buttons in the dialog on the screen.")
+        MessageLog.e(TAG, "[ERROR] getDialog:: Multiple dialogs match the detected title ($title). However, we failed to match any of them to the buttons in the dialog on the screen.")
         return null
     }
 }
 
-/** Defines the key components and functions for interacting with Dialogs. */
+/** Define the key components and functions for interacting with Dialogs. */
 interface DialogInterface {
+	/** Log tag used for this dialog. */
     val TAG: String
-    // This is a unique name used to identify this dialog.
+    /** A unique name used to identify this dialog. */
     val name: String
-    // This is the on-screen title of the dialog. Multiple dialogs may have the same title.
+    /** The on-screen title of the dialog. Multiple dialogs may have the same title. */
     val title: String
-    // Defines all the button components within the dialog.
-    // If there is a button used to close the dialog, then it MUST be the first
-    // entry in this list.
+    /** 
+	 * List of all the button components within the dialog.
+	 * If there is a button used to close the dialog, then it MUST be the first entry in this list. 
+	 */
     val buttons: List<BaseComponentInterface>
-    // The close button is just which ever button is used primarily to close the dialog
-    // If not specified, the first button in Buttons will be used.
+    /** 
+	 * The button used primarily to close the dialog.
+	 * If not specified, the first button in the buttons list will be used. 
+	 */
     val closeButton: BaseComponentInterface?
-    // The OK button is typically used in a dialog with two primary buttons
-    // and it closes the dialog while accepting the dialog.
-    // If not specified, no default is selected unlike the closeButton.
-    // This is because some dialogs may have a close button and a checkbox,
-    // but no OK button.
-    // If there is only one button in the dialog, then okButton will be set to that.
+    /** 
+	 * The button typically used to accept the dialog.
+	 * If there is only one button in the dialog, then this may be set to that button. 
+	 */
     val okButton: BaseComponentInterface?
 
-    /** Closes the dialog by clicking the Close button.
+    /** 
+	 * Close the dialog by clicking the close button.
      *
-     * If no Close button is specified, then the first button in the [buttons]
+     * If no close button is specified, then the first button in the [buttons]
      * list is treated as the close button and is clicked.
      *
      * @param imageUtils A reference to a CustomImageUtils instance.
@@ -276,7 +287,8 @@ interface DialogInterface {
         return closeButton?.click(imageUtils = imageUtils, tries = tries) ?: false
     }
 
-    /** Closes the dialog by clicking the OK button.
+    /** 
+	 * Close the dialog by clicking the OK button.
      *
      * If no OK button is defined for this dialog,
      * then the [close] function is called instead.
@@ -297,12 +309,9 @@ interface DialogInterface {
     }
 }
 
-/** Object used to store list of all dialog objects and a mapping of them.
- *
- * @property items A list of all Dialog interfaces.
- * @property map A mapping of each DialogInterface's name to the interface object.
- */
+/** Store the list of all dialog objects and a mapping of them for easy access. */
 object DialogObjects {
+	/** List of all [DialogInterface] objects. */
     val items: List<DialogInterface> = listOf(
         DialogAccountLink,                  // Title Screen
         DialogAgeConfirmation,              // Anywhere (ALWAYS THROW ERROR)
@@ -400,6 +409,7 @@ object DialogObjects {
         DialogViewStory,                    // Main Screen, end of career
     )
 
+	/** Mapping of each [DialogInterface]'s name to the interface object. */
     val map: Map<String, DialogInterface> = items.associateBy { it.name }
 }
 

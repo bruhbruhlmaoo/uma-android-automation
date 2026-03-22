@@ -29,26 +29,63 @@ import kotlin.intArrayOf
 
 /**
  * Main driver for bot activity and navigation.
+ *
+ * @property myContext The Android [Context] for the application.
  */
 class Game(val myContext: Context) {
 	private val TAG: String = "[${MainActivity.loggerTag}]Game"
+
+	/** The current Android notification message to display. */
 	var notificationMessage: String = ""
 
+	/** The utility class for image processing and template matching. */
 	val imageUtils: CustomImageUtils = CustomImageUtils(myContext, this)
-	val gestureUtils: MyAccessibilityService = MyAccessibilityService.getInstance()
-    val skillDatabase: SkillDatabase = SkillDatabase(this)
 
+	/** The Accessibility Service for performing screen gestures. */
+	val gestureUtils: MyAccessibilityService = MyAccessibilityService.getInstance()
+
+	/** The database for skill-related information. */
+	val skillDatabase: SkillDatabase = SkillDatabase(this)
+
+	/** The formatter for decimal values. */
 	val decimalFormat = DecimalFormat("#.##")
 
-	////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////
-	// SQLite Settings
+	/** The current campaign scenario (e.g., "URA Finale", "Unity Cup", "Trackblazer"). */
 	val scenario: String = SettingsHelper.getStringSetting("general", "scenario")
+
+	/** Whether debug mode is enabled for additional logging and saving debugging images to storage. */
 	val debugMode: Boolean = SettingsHelper.getBooleanSetting("debug", "enableDebugMode")
-    
+
+	/** Whether to check for certain popups to stop at during execution. */
 	val enablePopupCheck: Boolean = SettingsHelper.getBooleanSetting("general", "enablePopupCheck")
-    val waitDelay: Double = SettingsHelper.getDoubleSetting("general", "waitDelay")
-    val dialogWaitDelay: Double = SettingsHelper.getDoubleSetting("general", "dialogWaitDelay")
+
+	/** The default wait delay between common actions. */
+	val waitDelay: Double = SettingsHelper.getDoubleSetting("general", "waitDelay")
+
+	/** The wait delay specifically for dialog interactions. */
+	val dialogWaitDelay: Double = SettingsHelper.getDoubleSetting("general", "dialogWaitDelay")
+
+	/**
+	 * Holds the task instance corresponding to the selected scenario.
+	 */
+    val task: Task = when (scenario) {
+        "URA Finale" -> UraFinale(this)
+        "Unity Cup" -> UnityCup(this)
+        "Trackblazer" -> Trackblazer(this)
+        else -> throw InterruptedException("Invalid scenario: $scenario")
+    }
+
+    /** The maximum number of connection error retry attempts allowed. */
+    internal val maxConnectionErrorRetryAttempts: Int = 3
+
+    /** The current number of connection error retry attempts. */
+    internal var connectionErrorRetryAttempts: Int = 0
+
+    /** The timestamp of the last connection error retry. */
+    internal var lastConnectionErrorRetryTimeMs: Long = 0
+
+    /** The cooldown time between connection error retries. */
+    internal val connectionErrorRetryCooldownTimeMs: Long = 10000 // 10 seconds
 
 	// Initialize Discord settings from SQLite.
 	init {
@@ -58,7 +95,7 @@ class Game(val myContext: Context) {
 				DiscordUtils.discordToken = SettingsHelper.getStringSetting("discord", "discordToken")
 				DiscordUtils.discordUserID = SettingsHelper.getStringSetting("discord", "discordUserID").toString()
 			} catch (e: Exception) {
-				Log.w(TAG, "Failed to read Discord settings: ${e.message}")
+				Log.w(TAG, "[WARN] Failed to read Discord settings: ${e.message}")
 				DiscordUtils.enableDiscordNotifications = false
 			}
 		}
@@ -66,28 +103,10 @@ class Game(val myContext: Context) {
 
 	////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////
-    val task: Task = when (scenario) {
-        "URA Finale" -> UraFinale(this)
-        "Unity Cup" -> UnityCup(this)
-        "Trackblazer" -> Trackblazer(this)
-        else -> throw InterruptedException("Invalid scenario: $scenario")
-    }
-
-	////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////
-
-    // Tracks the number of connection error retries. After hitting max, bot stops.
-    internal val maxConnectionErrorRetryAttempts: Int = 3
-    internal var connectionErrorRetryAttempts: Int = 0
-    internal var lastConnectionErrorRetryTimeMs: Long = 0
-    internal val connectionErrorRetryCooldownTimeMs: Long = 10000 // 10 seconds
-
-	////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////
-	// Helper functions for bot interaction.
 
 	/**
-	 * Wait the specified seconds to account for ping or loading.
+	 * Waits the specified seconds to account for ping or loading.
+	 *
 	 * It also checks for interruption every 100ms to allow faster interruption and checks if the game is still in the middle of loading.
 	 *
 	 * @param seconds Number of seconds to pause execution.
@@ -118,7 +137,9 @@ class Game(val myContext: Context) {
 	}
 
 	/**
-	 * Wait for the game to finish loading. Note that this function is responsible for dictating how fast the bot will run so adjusting this should be done with caution.
+	 * Waits for the game to finish loading.
+	 *
+	 * Note that this function is responsible for dictating how fast the bot will run so adjusting this should be done with caution.
 	 */
 	fun waitForLoading() {
         var loadingCounter = 0
@@ -133,7 +154,7 @@ class Game(val myContext: Context) {
 	}
 
 	/**
-	 * Find and tap the specified image.
+	 * Finds and taps the specified image.
 	 *
 	 * @param imageName Name of the button image file in the /assets/images/ folder.
      * @param sourceBitmap The source bitmap to find the image on. This is optional and defaults to null which will fetch its own source bitmap.
@@ -145,7 +166,7 @@ class Game(val myContext: Context) {
 	 */
 	fun findAndTapImage(imageName: String, sourceBitmap: Bitmap? = null, tries: Int = 3, region: IntArray = intArrayOf(0, 0, 0, 0), taps: Int = 1, suppressError: Boolean = false): Boolean {
 		if (debugMode) {
-			MessageLog.d(TAG, "Now attempting to find and click the \"$imageName\" button.")
+			MessageLog.d(TAG, "[DEBUG] findAndTapImage:: Now attempting to find and click the \"$imageName\" button.")
 		}
 
 		val tempLocation: Point? = if (sourceBitmap == null) {
@@ -155,7 +176,7 @@ class Game(val myContext: Context) {
         }
 
 		return if (tempLocation != null) {
-			Log.d(TAG, "Found and going to tap: $imageName")
+			Log.d(TAG, "[DEBUG] findAndTapImage:: Found and going to tap: $imageName")
 			tap(tempLocation.x, tempLocation.y, imageName, taps = taps)
 			true
 		} else {
@@ -184,7 +205,9 @@ class Game(val myContext: Context) {
 	}
 
     /**
-     * Checks if the bot is at a "Now Loading..." screen or if the game is awaiting for a server response. This may cause significant delays in normal bot processes.
+     * Checks if the bot is at a "Now Loading..." screen or if the game is awaiting for a server response.
+	 *
+	 * This may cause significant delays in normal bot processes.
      *
      * @param suppressLogging Whether or not to suppress logging for this function. Defaults to false.
      * @return True if the game is still loading or is awaiting for a server response. Otherwise, false.
@@ -203,11 +226,8 @@ class Game(val myContext: Context) {
         }
     }
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	/**
-	 * Bot will begin automation here.
+	 * Begins automation here.
 	 *
 	 * @return True if all automation goals have been met. False otherwise.
 	 */
@@ -227,21 +247,22 @@ class Game(val myContext: Context) {
 			}
 			MessageLog.i(TAG, "=====================================\n")
 		} catch (e: Exception) {
-			MessageLog.w(TAG, "Failed to load formatted settings from SQLite: ${e.message}")
-			MessageLog.i(TAG, "Using fallback settings display...")
+			MessageLog.w(TAG, "[WARN] start:: Failed to load formatted settings from SQLite: ${e.message}")
+			MessageLog.i(TAG, "[INFO] Using fallback settings display...")
+
 			// Fallback to basic settings display if formatted string is not available.
-			MessageLog.i(TAG, "Scenario: $scenario")
-			MessageLog.i(TAG, "Debug Mode: $debugMode")
+			MessageLog.i(TAG, "[INFO] Scenario: $scenario")
+			MessageLog.i(TAG, "[INFO] Debug Mode: $debugMode")
 		}
 
 		// Print device and version information.
-		MessageLog.i(TAG, "Device Information: ${SharedData.displayWidth}x${SharedData.displayHeight}, DPI ${SharedData.displayDPI}")
-		if (SharedData.displayWidth != 1080) MessageLog.w(TAG, "⚠️ Bot performance will be severely degraded since display width is not 1080p unless an appropriate scale is set for your device.")
-		if (debugMode) MessageLog.w(TAG, "⚠️ Debug Mode is enabled. All bot operations will be significantly slower as a result.")
-		if (SettingsHelper.getStringSetting("debug", "templateMatchCustomScale").toDouble() != 1.0) MessageLog.i(TAG, "Manual scale has been set to ${SettingsHelper.getStringSetting("debug", "templateMatchCustomScale").toDouble()}")
-		MessageLog.w(TAG, "⚠️ Note that certain Android notification styles (like banners) are big enough that they cover the area that contains the Mood which will interfere with mood recovery logic in the beginning.")
+		MessageLog.i(TAG, "[INFO] Device Information: ${SharedData.displayWidth}x${SharedData.displayHeight}, DPI ${SharedData.displayDPI}")
+		if (SharedData.displayWidth != 1080) MessageLog.w(TAG, "[WARN] ⚠️ Bot performance will be severely degraded since display width is not 1080p unless an appropriate scale is set for your device.")
+		if (debugMode) MessageLog.w(TAG, "[WARN] ⚠️ Debug Mode is enabled. All bot operations will be significantly slower as a result.")
+		if (SettingsHelper.getStringSetting("debug", "templateMatchCustomScale").toDouble() != 1.0) MessageLog.w(TAG, "[WARN] Manual scale has been set to ${SettingsHelper.getStringSetting("debug", "templateMatchCustomScale").toDouble()}")
+		MessageLog.w(TAG, "[WARN] ⚠️ Note that certain Android notification styles (like banners) are big enough that they cover the area that contains the Mood which will interfere with mood recovery logic in the beginning.")
 		val packageInfo = myContext.packageManager.getPackageInfo(myContext.packageName, 0)
-		MessageLog.i(TAG, "Bot version: ${packageInfo.versionName} (${packageInfo.versionCode})\n\n")
+		MessageLog.i(TAG, "[INFO] Bot version: ${packageInfo.versionName} (${packageInfo.versionCode})\n\n")
 
 		// Start debug tests here if enabled. Otherwise, proceed with regular bot operations.
         // A small delay here to ensure any notifications are out of the way.
@@ -263,7 +284,7 @@ class Game(val myContext: Context) {
             task.start()
 		}
 
-		MessageLog.i(TAG, "Total runtime of ${MessageLog.formatElapsedTime(startTime, System.currentTimeMillis())} and stopped at ${MessageLog.getSystemTimeString()}.")
+		MessageLog.i(TAG, "[INFO] Total runtime of ${MessageLog.formatElapsedTime(startTime, System.currentTimeMillis())} and stopped at ${MessageLog.getSystemTimeString()}.")
 
         // Wait to make sure Discord webhook message queue gets fully processed before terminating Bot Thread.
         if (DiscordUtils.enableDiscordNotifications) {

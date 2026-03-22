@@ -11,139 +11,158 @@ import com.steve1316.uma_android_automation.bot.Game
 import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
 
+/** The possible result codes for a task's execution. */
 enum class TaskResultCode {
-    TASK_RESULT_COMPLETE,
-    TASK_RESULT_BREAKPOINT_REACHED,
-    TASK_RESULT_MANUALLY_STOPPED,
-    TASK_RESULT_UNHANDLED_EXCEPTION,
-    TASK_RESULT_CONNECTION_ERROR,
-    TASK_RESULT_TIMED_OUT,
+	/** The task completed all its objectives successfully. */
+	TASK_RESULT_COMPLETE,
+	/** The task reached a predefined breakpoint and stopped. */
+	TASK_RESULT_BREAKPOINT_REACHED,
+	/** The task was manually stopped by the user. */
+	TASK_RESULT_MANUALLY_STOPPED,
+	/** An unhandled exception occurred during task execution. */
+	TASK_RESULT_UNHANDLED_EXCEPTION,
+	/** A connection error occurred during task execution. */
+	TASK_RESULT_CONNECTION_ERROR,
+	/** The task timed out before completing its objectives. */
+	TASK_RESULT_TIMED_OUT,
 }
 
+/** Represents the final result of a task's execution. */
 sealed interface TaskResult {
-    val code: TaskResultCode
-    val message: String
+	val code: TaskResultCode
+	val message: String
 
-    data class Success(
-        override val code: TaskResultCode = TaskResultCode.TASK_RESULT_COMPLETE,
-        override val message: String = "Task completed successfully.",
-    ) : TaskResult
-    data class Error(
-        override val code: TaskResultCode = TaskResultCode.TASK_RESULT_UNHANDLED_EXCEPTION,
-        override val message: String = "Task completed with errors.",
-    ) : TaskResult
+	/** Indicates a successful task completion.
+	 *
+	 * @property code The [TaskResultCode] associated with the result.
+	 * @property message A descriptive message about the result.
+	 */
+	data class Success(
+		override val code: TaskResultCode = TaskResultCode.TASK_RESULT_COMPLETE,
+		override val message: String = "Task completed successfully.",
+	) : TaskResult
+	
+	/** Indicates a task completion with errors.
+	 *
+	 * @property code The [TaskResultCode] associated with the result.
+	 * @property message A descriptive message about the error.
+	 */
+	data class Error(
+		override val code: TaskResultCode = TaskResultCode.TASK_RESULT_UNHANDLED_EXCEPTION,
+		override val message: String = "Task completed with errors.",
+	) : TaskResult
 }
 
+/**
+ * Base class for all automation tasks.
+ *
+ * @property game The [Game] instance used for bot interaction.
+ */
 abstract class Task(game: Game) : DialogHandler(game) {
-    val TAG: String = "[${MainActivity.loggerTag}]${this::class.simpleName}"
+	val TAG: String = "[${MainActivity.loggerTag}]${this::class.simpleName}"
 
-    /** Processes a single iteration of the main loop.
-     *
-     * @return If the main loop should stop, then a TaskResult should be returned.
-     * Otherwise, return NULL for the main loop to continue iterating.
-     */
-    abstract fun process(): TaskResult?
+	/** Process a single iteration of the task's main loop.
+	 *
+	 * @return A [TaskResult] if the main loop should stop, or null to continue iterating.
+	 */
+	abstract fun process(): TaskResult?
 
-    /** Runs all tests for this task.
-     *
-     * @return Whether any tests ran.
-     */
-    open fun startTests(): Boolean {
-        return false
-    }
+	/** Run all tests for this task.
+	 *
+	 * @return Whether any tests were executed.
+	 */
+	open fun startTests(): Boolean {
+		return false
+	}
 
-    /** Attempts to handle dialogs.
-     *
-     * This allows us to handle successive dialogs in a single function call.
-     * This can be useful in mainloops so that we don't need to process the entire
-     * mainloop for each successive dialog on the screen.
-     *
-     * @param timeoutMs The max time (in milliseconds) that this operation can run.
-     *
-     * @return Whether a dialog was successfully handled.
-     * If no dialog is detected at all, then False is returned.
-     * If an unhandled dialog was detected, throws an InterruptedException.
-     */
-    fun tryHandleAllDialogs(timeoutMs: Int = 15000): Boolean {
-        var bWasDialogHandled: Boolean = false
-        var dialogResult: DialogHandlerResult = DialogHandlerResult.NoDialogDetected
-        var startTime = System.currentTimeMillis()
-        while (System.currentTimeMillis() - startTime < timeoutMs) {
-            dialogResult = handleDialogs()
+	/** Attempt to handle all active dialog boxes.
+	 *
+	 * This method continuously handles dialogs until no more are detected or the timeout is reached.
+	 *
+	 * @param timeoutMs The maximum time (in milliseconds) allowed for this operation.
+	 * @return True if at least one dialog was successfully handled, false otherwise.
+	 * @throws IllegalStateException If an unhandled dialog is detected.
+	 */
+	fun tryHandleAllDialogs(timeoutMs: Int = 15000): Boolean {
+		var bWasDialogHandled = false
+		var dialogResult: DialogHandlerResult = DialogHandlerResult.NoDialogDetected
+		val startTime = System.currentTimeMillis()
+		while (System.currentTimeMillis() - startTime < timeoutMs) {
+			dialogResult = handleDialogs()
 
-            if (dialogResult !is DialogHandlerResult.Handled) {
-                break
-            }
-            bWasDialogHandled = true
-        }
+			if (dialogResult !is DialogHandlerResult.Handled) {
+				break
+			}
+			bWasDialogHandled = true
+		}
 
-        if (dialogResult is DialogHandlerResult.Unhandled) {
-            throw IllegalStateException("Unhandled dialog: ${dialogResult.dialog.name}")
-        }
+		if (dialogResult is DialogHandlerResult.Unhandled) {
+			throw IllegalStateException("Unhandled dialog: ${dialogResult.dialog.name}")
+		}
 
-        return bWasDialogHandled
-    }
+		return bWasDialogHandled
+	}
 
-    /** Handles cleanup when the task main loop breaks and the task is ending.
-     *
-     * @param result The [TaskResult] of the main loop.
-     */
-    private fun handleTaskEnd(result: TaskResult) {
-        val logMessage: String = "${result.javaClass.simpleName} (${result.code}): ${result.message}"
-        game.notificationMessage = logMessage
-        val discordMessage: String = "${this::class.simpleName}:: ${result.javaClass.simpleName} (${result.code}): ${result.message}"
-        var diffChar: String = ""
-        when (result) {
-            is TaskResult.Success -> {
-                MessageLog.i(TAG, logMessage)
-                diffChar = "+"
-            }
-            is TaskResult.Error -> {
-                MessageLog.e(TAG, logMessage)
-                diffChar = "-"
-            }
-        }
+	/** Handle cleanup actions when the task's main loop finishes.
+	 *
+	 * This method logs the result and sends a Discord notification if enabled.
+	 *
+	 * @param result The [TaskResult] that caused the task to end.
+	 */
+	private fun handleTaskEnd(result: TaskResult) {
+		val logMessage = "${result.javaClass.simpleName} (${result.code}): ${result.message}"
+		game.notificationMessage = logMessage
+		val discordMessage = "${this::class.simpleName}:: ${result.javaClass.simpleName} (${result.code}): ${result.message}"
+		var diffChar = ""
+		when (result) {
+			is TaskResult.Success -> {
+				MessageLog.i(TAG, logMessage)
+				diffChar = "+"
+			}
+			is TaskResult.Error -> {
+				MessageLog.e(TAG, logMessage)
+				diffChar = "-"
+			}
+		}
 
-        if (DiscordUtils.enableDiscordNotifications) {
-            DiscordUtils.queue.add("```diff\n$diffChar ${MessageLog.getSystemTimeString()} $discordMessage.\n```")
-            // Wait to make sure Discord webhook message queue gets fully processed.
-            game.wait(1.0, skipWaitingForLoading = true)
-        }
-    }
+		if (DiscordUtils.enableDiscordNotifications) {
+			DiscordUtils.queue.add("```diff\n$diffChar ${MessageLog.getSystemTimeString()} $discordMessage.\n```")
+			// Wait to ensure the Discord message queue is processed.
+			game.wait(1.0, skipWaitingForLoading = true)
+		}
+	}
 
-    /** Runs the task's main loop.
-     *
-     * @param maxRuntimeMinutes The max allowed time (in minutes) that the main loop
-     * can run before it times out.
-     *
-     * @return The [TaskResult] result of this task's main loop.
-     */
-    open fun start(maxRuntimeMinutes: Int = 90): TaskResult {
-        var result: TaskResult = TaskResult.Error(
-            TaskResultCode.TASK_RESULT_TIMED_OUT,
-            "The task timed out after $maxRuntimeMinutes minutes.",
-        )
+	/** Run the task's main loop until completion or timeout.
+	 *
+	 * @param maxRuntimeMinutes The maximum time (in minutes) allowed for the task before timing out.
+	 * @return The final [TaskResult] of the task's execution.
+	 */
+	open fun start(maxRuntimeMinutes: Int = 90): TaskResult {
+		var result: TaskResult = TaskResult.Error(
+			TaskResultCode.TASK_RESULT_TIMED_OUT,
+			"The task timed out after $maxRuntimeMinutes minutes.",
+		)
 
-        val timeoutMs: Long = (maxRuntimeMinutes * (60 * 1000)).toLong()
-        val startTime: Long = System.currentTimeMillis()
-        while (System.currentTimeMillis() - startTime < timeoutMs) {
-            try {
-                val tmpResult: TaskResult? = process()
-                // If we receive any result, then we need to stop the task.
-                if (tmpResult != null) {
-                    result = tmpResult
-                    break
-                }
-            } catch (e: InterruptedException) {
-                result = TaskResult.Error(
-                    TaskResultCode.TASK_RESULT_UNHANDLED_EXCEPTION,
-                    e.message ?: "Unhandled exception. Stopping bot...",
-                )
-                break
-            }
-        }
+		val timeoutMs = (maxRuntimeMinutes * (60 * 1000)).toLong()
+		val startTime = System.currentTimeMillis()
+		while (System.currentTimeMillis() - startTime < timeoutMs) {
+			try {
+				val tmpResult: TaskResult? = process()
+				// Stop the task if a non-null result is received.
+				if (tmpResult != null) {
+					result = tmpResult
+					break
+				}
+			} catch (e: InterruptedException) {
+				result = TaskResult.Error(
+					TaskResultCode.TASK_RESULT_UNHANDLED_EXCEPTION,
+					e.message ?: "Unhandled exception. Stopping bot...",
+				)
+				break
+			}
+		}
 
-        handleTaskEnd(result)
-        return result
-    }
+		handleTaskEnd(result)
+		return result
+	}
 }

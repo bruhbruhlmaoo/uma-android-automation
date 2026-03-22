@@ -5,7 +5,7 @@
  * companion object in that class. Anything else that could be used elsewhere
  * should go in here.
  *
- * If a custom type gets too complex (such as GameDate) then it should be moved
+ * If a custom type gets too complex (such as [GameDate]) then it should be moved
  * to its own file.
  */
 
@@ -25,6 +25,7 @@ enum class FanCountClass {
     LEGEND;
 
     companion object {
+        /** Mapping of fan count class names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
 
         fun fromName(value: String): FanCountClass? = nameMap[value.uppercase()]
@@ -39,6 +40,7 @@ enum class StatName {
     WIT;
 
     companion object {
+        /** Mapping of stat names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
 
         fun fromName(value: String): StatName? = nameMap[value.uppercase()]
@@ -56,6 +58,7 @@ enum class Aptitude {
     S;
 
     companion object {
+        /** Mapping of aptitude names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
 
         fun fromName(value: String): Aptitude? = nameMap[value.uppercase()]
@@ -69,7 +72,9 @@ enum class RunningStyle(val shortName: String) {
     END_CLOSER("END");
 
     companion object {
+        /** Mapping of running style names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+        /** Mapping of ordinals to their corresponding running style enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): RunningStyle? = nameMap[value.uppercase()]
@@ -83,7 +88,9 @@ enum class TrackSurface {
     DIRT;
 
     companion object {
+        /** Mapping of track surface names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+        /** Mapping of ordinals to their corresponding track surface enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): TrackSurface? = nameMap[value.uppercase()]
@@ -98,7 +105,9 @@ enum class TrackDistance {
     LONG;
 
     companion object {
+        /** Mapping of track distance names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+        /** Mapping of ordinals to their corresponding track distance enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): TrackDistance? = nameMap[value.uppercase()]
@@ -113,7 +122,7 @@ enum class Mood {
     GOOD,
     GREAT;
 
-    /** Increments the mood level by one, capping at GREAT.
+    /** Increments the mood level by one, capping at [GREAT].
      *
      * @return The new mood level.
      */
@@ -121,7 +130,7 @@ enum class Mood {
         return entries.getOrElse(ordinal + 1) { GREAT }
     }
 
-    /** Decrements the mood level by one, capping at AWFUL.
+    /** Decrements the mood level by one, capping at [AWFUL].
      *
      * @return The new mood level.
      */
@@ -130,6 +139,7 @@ enum class Mood {
     }
 
     companion object {
+        /** Mapping of mood names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
 
         fun fromName(value: String): Mood? = nameMap[value.uppercase()]
@@ -147,6 +157,7 @@ enum class RaceGrade {
     EX;
 
     companion object {
+        /** Mapping of race grade names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
 
         fun fromName(value: String): RaceGrade? = nameMap[value.uppercase()]
@@ -158,7 +169,9 @@ enum class DatePhase {
     LATE;
 
     companion object {
+        /** Mapping of date phase names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+        /** Mapping of ordinals to their corresponding date phase enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): DatePhase? = nameMap[value.uppercase()]
@@ -181,7 +194,9 @@ enum class DateMonth(val shortName: String) {
     DECEMBER("DEC");
 
     companion object {
+        /** Mapping of month names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+        /** Mapping of ordinals to their corresponding month enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): DateMonth? = nameMap[value.uppercase()]
@@ -196,7 +211,9 @@ enum class DateYear(val longName: String) {
     SENIOR("SENIOR YEAR");
 
     companion object {
+        /** Mapping of year names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
+        /** Mapping of ordinals to their corresponding year enum entries. */
         private val ordinalMap = entries.associateBy { it.ordinal }
 
         fun fromName(value: String): DateYear? = nameMap[value.uppercase()]
@@ -212,18 +229,17 @@ enum class DateYear(val longName: String) {
  * @param y The bounding region's bottom left corner's Y-coordinate.
  * @param w The bounding region's width.
  * @param h The bounding region's height.
- *
- * @property cx The bounding region's center X-coordinate.
- * @property cy The bounding region's center Y-coordinate.
- * @property center A pair containing the bounding region's center coordinates.
  */
 data class BoundingBox(val x: Int, val y: Int, val w: Int, val h: Int) {
+    /** The bounding region's center X-coordinate. */
     val cx: Int
         get() = (x + (w / 2))
     
+    /** The bounding region's center Y-coordinate. */
     val cy: Int
         get() = (y + (h / 2))
 
+    /** A pair containing the bounding region's center coordinates. */
     val center: Pair<Int, Int>
         get() = Pair(cx, cy)
 
@@ -250,6 +266,7 @@ enum class SkillType {
     RED;
 
     companion object {
+        /** Mapping of skill type names to their corresponding enum entries. */
         private val nameMap = entries.associateBy { it.name }
 
         fun fromName(value: String): SkillType? = nameMap[value.uppercase()]
@@ -281,7 +298,9 @@ enum class SkillCommunityTier {
         B;
 
         companion object {
+            /** Mapping of community tier names to their corresponding enum entries. */
             private val nameMap = entries.associateBy { it.name }
+            /** Mapping of ordinals to their corresponding community tier enum entries. */
             private val ordinalMap = entries.associateBy { it.ordinal }
 
             fun fromName(value: String): SkillCommunityTier? = nameMap[value]
@@ -289,27 +308,7 @@ enum class SkillCommunityTier {
         }
     }
 
-/**
- * @property bIsGold Whether this skill is an upgraded version of another skill.
- * This is calculated using the Icon ID. If the last digit is a 2, then it is gold.
- * @property bIsUnique Whether this skill is considered a unique skill.
- * This is calculated using the Icon ID. If the last digit is a 3, then it is unique.
- * @property bIsNegative Whether this skill is considered a negative skill.
- * This is calculated using the Icon ID. If the last digit is a 4, then it is negative.
- * @property type The type of this skill (i.e. Green, Blue, Red, Yellow).
- * @property bIsInPlace Whether this skill chain has an in-place upgrade system.
- * Only certain types of skills can have in-place upgrades:
- *      Negative Skills (purple)
- *      Green Skills
- *      Distance-based Skills (i.e. [Distance/Style] Straightaway/Corners)
- * @property communityTierName The name of the community tier for this skill (SS, S, A, or B).
- * @property conditions The activation conditions for this skill.
- * @property runningStyle The Running Style required to activate this skill. Can be NULL.
- * @property trackDistance The Track Distance required to activate this skill. Can be NULL.
- * @property trackSurface The Track Surface required to activate this skill. Can be NULL.
- * @property inferredRunningStyles The list of Running Styles that best suit this skill.
- * Can be empty.
- */
+/** Defines the metadata and properties of a skill in the game. */
 data class SkillData(
     val id: Int,
     val geneId: Int,
@@ -328,43 +327,79 @@ data class SkillData(
     val upgrade: Int?,
     val downgrade: Int?,
 ) {
+    /** Whether this skill is an upgraded version of another skill.
+     *
+     * This is calculated using the Icon ID. If the last digit is a 2, then it is gold.
+     */
     val bIsGold: Boolean = iconId % 10 == 2
+
+    /** Whether this skill is considered a unique skill.
+     *
+     * This is calculated using the Icon ID. If the last digit is a 3, then it is unique.
+     */
     val bIsUnique: Boolean = bIsInheritedUnique || iconId % 10 == 3
+
+    /** Whether this skill is considered a negative skill.
+     *
+     * This is calculated using the Icon ID. If the last digit is a 4, then it is negative.
+     */
     val bIsNegative: Boolean = iconId % 10 == 4
+
+    /** The type of this skill (i.e. Green, Blue, Red, Yellow). */
     val type: SkillType = SkillType.fromIconId(iconId)!!
+
+    /** Whether this skill chain has an in-place upgrade system.
+     *
+     * Only certain types of skills can have in-place upgrades:
+     * - Negative Skills (purple)
+     * - Green Skills
+     * - Distance-based Skills (i.e. [Distance/Style] Straightaway/Corners)
+     */
     val bIsInPlace: Boolean =
         type == SkillType.GREEN ||
         bIsNegative ||
         name.dropLast(2).endsWith("straightaways", ignoreCase = true) ||
         name.dropLast(2).endsWith("corners", ignoreCase = true)
 
+    /** Mapping of community tier identifiers to their corresponding names. */
     private val communityTierNameMap: Map<Int, String> = mapOf(
         0 to "SS",
         1 to "S",
         2 to "A",
         3 to "B",
     )
+    /** The name of the community tier for this skill (SS, S, A, or B). */
     val communityTierName: String? = communityTierNameMap[communityTier]
 
-    // &=AND, @=OR. Split groupings of AND conditions into separate strings.
-    // Then each one of those is converted to a mapping of the
-    // condition to the effect string.
-    val conditions: Conditions = Conditions.fromString(
-        listOf(condition, precondition)
-            .filter { it.isNotEmpty() }
-            .joinToString("@")
-        )
+	/** The activation conditions for this skill.
+     *
+     * &=AND, @=OR. Split groupings of AND conditions into separate strings.
+     * Then each one of those is converted to a mapping of the condition to the effect string.
+     */
+	val conditions: Conditions = Conditions.fromString(
+		listOf(condition, precondition)
+			.filter { it.isNotEmpty() }
+			.joinToString("@")
+		)
 
-    // Some skills are for specific running styles or track distances/surfaces.
-    // We want to extract this from the scraped data.
-    val runningStyle: RunningStyle? = conditions.runningStyle
-    val trackDistance: TrackDistance? = conditions.trackDistance
-    val trackSurface: TrackSurface? = conditions.trackSurface
+	/** The Running Style required to activate this skill. Can be null.
+     *
+     * Some skills are for specific running styles or track distances/surfaces.
+     * We want to extract this from the scraped data.
+     */
+	val runningStyle: RunningStyle? = conditions.runningStyle
+	/** The Track Distance required to activate this skill. Can be null. */
+	val trackDistance: TrackDistance? = conditions.trackDistance
+	/** The Track Surface required to activate this skill. Can be null. */
+	val trackSurface: TrackSurface? = conditions.trackSurface
 
-    // These running styles are calculated based on a skill's activation conditions.
-    // However since these might not actually be specific to a running style,
-    // the skill will not give any rank bonus based on aptitudes.
-    val inferredRunningStyles: List<RunningStyle> = calculateInferredRunningStyles()
+	/** The list of Running Styles that best suit this skill. Can be empty.
+     *
+     * These running styles are calculated based on a skill's activation conditions.
+     * However since these might not actually be specific to a running style,
+     * the skill will not give any rank bonus based on aptitudes.
+     */
+	val inferredRunningStyles: List<RunningStyle> = calculateInferredRunningStyles()
 
     constructor(
         id: Int,
@@ -415,6 +450,7 @@ data class SkillData(
         LE("<=");
 
         companion object {
+            /** Mapping of operator names to their corresponding enum entries. */
             private val nameMap = entries.associateBy { it.name }
 
             fun fromName(value: String): Operator? = nameMap[value]
@@ -485,19 +521,25 @@ data class SkillData(
         }
     }
 
-    /** Represents a group of Condition objects joined together with "&" symbols.
+    /** Represents a group of [Condition] objects joined together with "&" symbols.
      *
-     * Condition group conditions are evaluated using AND logic.
+     * [Condition] group conditions are evaluated using AND logic.
      * These entries are separated by an "&" in the condition string.
      *
-     * @param conditions The list of Condition objects in the group.
+     * @param conditions The list of [Condition] objects in the group.
      */
     class ConditionGroup(val conditions: List<Condition>) {
+        /** Whether this group indicates a leading position (e.g., 1st place). */
         val bIsLeading: Boolean = isLeading()
+        /** Whether this group indicates a well-positioned runner near the front. */
         val bIsWellPositioned: Boolean = isWellPositioned()
+        /** Whether this group indicates a runner off the pace. */
         val bIsOffThePace: Boolean = isOffThePace()
+        /** Whether this group indicates a mid-pack position. */
         val bIsMidPack: Boolean = isMidPack()
+        /** Whether this group indicates a position toward the back of the field. */
         val bIsTowardTheBack: Boolean = isTowardTheBack()
+        /** Whether this group indicates a position toward the front of the field. */
         val bIsTowardTheFront: Boolean = isTowardTheFront()
 
         companion object {
@@ -506,10 +548,18 @@ data class SkillData(
             }
         }
 
+        /** Checks whether this group indicates a leading position (e.g., 1st place).
+         *
+         * @return True if leading.
+         */
         private fun isLeading(): Boolean {
             return check(Condition("order", Operator.EQ, 1))
         }
 
+        /** Checks whether this group indicates a well-positioned runner near the front.
+         *
+         * @return True if well-positioned.
+         */
         private fun isWellPositioned(): Boolean {
             return (
                 checkInRange("order", 2, 5) ||
@@ -517,6 +567,10 @@ data class SkillData(
             )
         }
 
+        /** Checks whether this group indicates a runner off the pace.
+         *
+         * @return True if off the pace.
+         */
         private fun isOffThePace(): Boolean {
             return (
                 check(Condition("order", Operator.GE, 3)) &&
@@ -524,6 +578,10 @@ data class SkillData(
             )
         }
 
+        /** Checks whether this group indicates a mid-pack position.
+         *
+         * @return True if in the mid-pack.
+         */
         private fun isMidPack(): Boolean {
             return (
                 (check(Condition("order", Operator.GE, 3)) && checkInRange("order_rate", 30, 80)) ||
@@ -531,6 +589,10 @@ data class SkillData(
             )
         }
 
+        /** Checks whether this group indicates a position toward the back of the field.
+         *
+         * @return True if toward the back.
+         */
         private fun isTowardTheBack(): Boolean {
             return (
                 checkInRange("order", 5, 50) ||
@@ -541,6 +603,10 @@ data class SkillData(
 
         }
 
+        /** Checks whether this group indicates a position toward the front of the field.
+         *
+         * @return True if toward the front.
+         */
         private fun isTowardTheFront(): Boolean {
             return (
                 checkInRange("order", 0, 5) ||
@@ -551,6 +617,11 @@ data class SkillData(
             )
         }
 
+        /** Checks whether the group contains the specified [Condition] object.
+         *
+         * @param condition The [Condition] object to check.
+         * @return True if the [Condition] object is present.
+         */
         fun check(condition: Condition): Boolean {
             return conditions.any {
                 it.name == condition.name &&
@@ -559,14 +630,30 @@ data class SkillData(
             }
         }
 
+        /** Checks whether the group contains all the specified [Condition] objects.
+         *
+         * @param conditions The list of [Condition] objects to check.
+         * @return True if all [Condition] objects are present.
+         */
         fun check(conditions: List<Condition>): Boolean {
             return conditions.all { check(it) }
         }
 
+        /** Checks whether any condition with the specified [name] has a value within the range.
+         *
+         * @param name The condition name to check.
+         * @param minVal The minimum value (inclusive).
+         * @param maxVal The maximum value (inclusive).
+         * @return True if any matching condition is in range.
+         */
         fun checkInRange(name: String, minVal: Int, maxVal: Int): Boolean {
             return conditions.any { it.name == name && it.value in minVal..maxVal }
         }
 
+        /** Retrieves the [RunningStyle] specified in this group's conditions.
+         *
+         * @return The running style, or null if not found.
+         */
         fun getRunningStyle(): RunningStyle? {
             for (condition in conditions) {
                 if (condition.name == "running_style") {
@@ -576,6 +663,10 @@ data class SkillData(
             return null
         }
 
+        /** Retrieves the [TrackDistance] specified in this group's conditions.
+         *
+         * @return The track distance, or null if not found.
+         */
         fun getTrackDistance(): TrackDistance? {
             for (condition in conditions) {
                 if (condition.name == "distance_type") {
@@ -585,6 +676,10 @@ data class SkillData(
             return null
         }
 
+        /** Retrieves the [TrackSurface] specified in this group's conditions.
+         *
+         * @return The track surface, or null if not found.
+         */
         fun getTrackSurface(): TrackSurface? {
             for (condition in conditions) {
                 if (condition.name == "ground_type") {
@@ -599,17 +694,29 @@ data class SkillData(
         }
     }
 
-    /** Parses the activation conditions string scraped from skill data. */
+    /** Parses the activation conditions string scraped from skill data.
+     *
+     * @param groups The list of [ConditionGroup] objects in the conditions.
+     */
     class Conditions(val groups: List<ConditionGroup>) {
+        /** True if any condition group indicates a leading position. */
         val bIsLeading: Boolean = groups.any { it.bIsLeading }
+        /** True if any condition group indicates a well-positioned placement. */
         val bIsWellPositioned: Boolean = groups.any { it.bIsWellPositioned }
+        /** True if any condition group indicates being off the pace. */
         val bIsOffThePace: Boolean = groups.any { it.bIsOffThePace }
+        /** True if any condition group indicates a mid-pack placement. */
         val bIsMidPack: Boolean = groups.any { it.bIsMidPack }
+        /** True if any condition group indicates being toward the back. */
         val bIsTowardTheBack: Boolean = groups.any { it.bIsTowardTheBack }
+        /** True if any condition group indicates being toward the front. */
         val bIsTowardTheFront: Boolean = groups.any { it.bIsTowardTheFront }
 
+        /** The [RunningStyle] required to activate these conditions. Can be null. */
         val runningStyle: RunningStyle? = calculateRunningStyle()
+        /** The [TrackDistance] required to activate these conditions. Can be null. */
         val trackDistance: TrackDistance? = calculateTrackDistance()
+        /** The [TrackSurface] required to activate these conditions. Can be null. */
         val trackSurface: TrackSurface? = calculateTrackSurface()
 
         companion object {
@@ -618,6 +725,10 @@ data class SkillData(
             }
         }
 
+        /** Calculates the [RunningStyle] required to activate these conditions.
+         *
+         * @return The [RunningStyle] or null if no style was found.
+         */
         private fun calculateRunningStyle(): RunningStyle? {
             for (group in groups) {
                 val result: RunningStyle? = group.getRunningStyle()
@@ -628,6 +739,10 @@ data class SkillData(
             return null
         }
 
+        /** Calculates the [TrackDistance] required to activate these conditions.
+         *
+         * @return The [TrackDistance] or null if no distance was found.
+         */
         private fun calculateTrackDistance(): TrackDistance? {
             for (group in groups) {
                 val result: TrackDistance? = group.getTrackDistance()
@@ -638,6 +753,10 @@ data class SkillData(
             return null
         }
 
+        /** Calculates the [TrackSurface] required to activate these conditions.
+         *
+         * @return The [TrackSurface] or null if no surface was found.
+         */
         private fun calculateTrackSurface(): TrackSurface? {
             for (group in groups) {
                 val result: TrackSurface? = group.getTrackSurface()
@@ -648,15 +767,13 @@ data class SkillData(
             return null
         }
 
-        /**
-         * NOTE: Not currently working due to GameTora's seemingly inaccurate
-         * conditions. Too many conditions cause overlapping running styles that
-         * don't make any sense. For example they have some data that defines
-         * "toward the back" as being any lower than 5th place which doesn't make
-         * any sense in larger fields. Other things conflict as well so I'm not sure
-         * if many of the positional conditions are accurate.
+        /** Infers a distinct list of [RunningStyle] entries based on positional conditions.
          *
-         * @return A distinct list of inferred running styles based on positional conditions.
+         * NOTE: This is currently unreliable due to potential inaccuracies in GameTora's data.
+         * Overlapping conditions can lead to nonsensical results (e.g., "toward the back"
+         * being defined as 5th place regardless of field size).
+         *
+         * @return A list of inferred [RunningStyle] entries.
          */
         @Deprecated("Not currently working due to GameTora's seemingly inaccurate conditions.")
         private fun calculateInferredRunningStyles(): List<RunningStyle> {
@@ -742,8 +859,7 @@ data class SkillData(
      * @return A list of inferred running styles.
      */
     fun calculateInferredRunningStyles(): List<RunningStyle> {
-        // If a running style is specified, then we do not want to infer
-        // any other styles since they won't apply.
+        // If a running style is specified, then we do not want to infer any other styles since they won't apply.
         if (runningStyle != null) {
             return emptyList()
         }

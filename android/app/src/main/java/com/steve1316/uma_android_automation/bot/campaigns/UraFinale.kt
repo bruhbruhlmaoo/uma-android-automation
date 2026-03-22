@@ -24,9 +24,13 @@ import org.opencv.core.Point
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-open class UraFinale(game: Game) : Campaign(game) {
+/**
+ * Handles the URA Finale scenario with scenario-specific logic and handling.
+ *
+ * @property game The [Game] instance for interacting with the game state.
+ */
+class UraFinale(game: Game) : Campaign(game) {
     override fun openFansDialog() {
-        MessageLog.d(TAG, "Opening fans dialog...")
         ButtonHomeFansInfo.click(game.imageUtils, region = game.imageUtils.regionTopHalf, tries = 10)
         bHasTriedCheckingFansToday = true
         game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
