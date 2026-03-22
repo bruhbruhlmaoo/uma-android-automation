@@ -386,6 +386,9 @@ class GameDate {
         }
     }
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
     /**
      * Converts the current date to its corresponding turn number.
      *
@@ -406,26 +409,6 @@ class GameDate {
      */
     fun isSummer(): Boolean {
         return isSummer(this.day)
-    }
-
-    /**
-     * Returns a human-readable string representation of the current date.
-     *
-     * For example: "Junior Year Early Jan (Turn 1)" or "Finale Qualifier (Turn 73)".
-     *
-     * @return The string representation.
-     */
-    override fun toString(): String {
-        // Special strings for the Finale season.
-        if (bIsFinaleSeason) {
-            return when (this.day) {
-                73 -> "Finale Qualifier (Turn ${this.day})"
-                74 -> "Finale Semi-Final (Turn ${this.day})"
-                75 -> "Finale Finals (Turn ${this.day})"
-                else -> "INVALID FINALE DAY (> 75): ${this.day}"
-            }
-        }
-        return "${this.year.longName} ${this.phase} ${this.month} (Turn ${this.day})"
     }
 
     /**
@@ -455,6 +438,29 @@ class GameDate {
     fun getNextDate(): GameDate {
         return fromDay(this.day + 1)
     }
+
+    /**
+     * Returns a human-readable string representation of the current date.
+     *
+     * For example: "Junior Year Early Jan (Turn 1)" or "Finale Qualifier (Turn 73)".
+     *
+     * @return The string representation.
+     */
+    override fun toString(): String {
+        // Special strings for the Finale season.
+        if (bIsFinaleSeason) {
+            return when (this.day) {
+                73 -> "Finale Qualifier (Turn ${this.day})"
+                74 -> "Finale Semi-Final (Turn ${this.day})"
+                75 -> "Finale Finals (Turn ${this.day})"
+                else -> "INVALID FINALE DAY (> 75): ${this.day}"
+            }
+        }
+        return "${this.year.longName} ${this.phase} ${this.month} (Turn ${this.day})"
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Updates the current date by detecting it from the screen.

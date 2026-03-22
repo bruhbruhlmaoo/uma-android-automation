@@ -132,6 +132,9 @@ class TrackblazerShopList(private val game: Game) {
 	/** Whether the "Do not show again" checkbox has been clicked during the purchase flow. */
 	private var hasClickedDoNotShowAgain: Boolean = false
 
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
 	 * Scroll through the Shop list to identify available items.
 	 *
@@ -342,171 +345,6 @@ class TrackblazerShopList(private val game: Game) {
 		// Remove non-numeric characters and parse.
 		val cleanedText = detectedText.replace(Regex("[^0-9]"), "")
 		return cleanedText.toIntOrNull() ?: originalPrice
-	}
-
-	/**
-	 * Buy items from the Shop list based on a priority list and currency amount.
-	 *
-	 * @param priorityList An ordered list of item names to buy.
-	 * @param currentCoins The current amount of Shop Coins available.
-	 * @param inventoryLimits A map of item names to the maximum amount that can be bought for each.
-	 * @param bDryRun If true, only logs intentions without performing any clicks.
-	 * @return A list of successfully purchased items.
-	 */
-	fun buyItems(priorityList: List<String>, currentCoins: Int, inventoryLimits: Map<String, Int>, bDryRun: Boolean = false): List<String> {
-		if (priorityList.isEmpty()) {
-			MessageLog.i(TAG, "[INFO] Priority shopping list is empty. No items to buy.")
-			return emptyList()
-		}
-
-		// Step 1: Pre-scan Phase.
-		// Scan the entire shop to log each item and its price, and to identify what is available.
-		MessageLog.i(TAG, "[INFO] Beginning process of scanning shop items...")
-		val availableInShop = mutableListOf<Triple<String, Int, ScrollListEntry>>()
-		val itemNameMap = mutableMapOf<Int, String>()
-		processItemsWithFallback(
-			keyExtractor = { entry -> 
-				val name = getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
-				if (name != null) itemNameMap[entry.index] = name
-				name
-			}
-		) { entry ->
-			// Check if the item's plus button is disabled.
-			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
-			val itemName = itemNameMap[entry.index] ?: getShopItemName(entry, isDisabled)
-			if (itemName != null) {
-				val price = getShopItemPrice(itemName, entry.bitmap)
-				MessageLog.i(TAG, "\t$itemName: $price coins at index ${entry.index}")
-				availableInShop.add(Triple(itemName, price, entry))
-			}
-			false
-		}
-
-		// Step 2: Calculation & Summary Phase.
-		// Determine which items from the priority list are available and affordable.
-		val itemsToBuy = mutableListOf<Triple<String, Int, ScrollListEntry>>()
-		val skippedItemsReasons = mutableMapOf<String, String>()
-		var remainingCoinsAfterProposed = currentCoins
-		
-		val tempAvailable = availableInShop.toMutableList()
-		for (item in priorityList) {
-			val limit = inventoryLimits[item] ?: 0
-			if (limit <= 0) continue
-
-			var boughtCount = 0
-			while (boughtCount < limit) {
-				val availableIndex = tempAvailable.indexOfFirst { it.first == item }
-				if (availableIndex != -1) {
-					// Check if we can afford the item.
-					val foundItem = tempAvailable[availableIndex]
-					val price = foundItem.second
-					if (remainingCoinsAfterProposed >= price) {
-						itemsToBuy.add(foundItem)
-						remainingCoinsAfterProposed -= price
-						// Remove from temp list so we don't buy the same slot twice for one priority entry.
-						tempAvailable.removeAt(availableIndex)
-						boughtCount++
-					} else {
-						skippedItemsReasons[item] = "Too expensive ($price required, but only $remainingCoinsAfterProposed left)"
-						break
-					}
-				} else {
-					skippedItemsReasons[item] = if (boughtCount == 0) "Not found in shop" else "No more instances found in shop"
-					break
-				}
-			}
-		}
-		
-		// Log the summary of proposed purchases.
-        MessageLog.v(TAG, "============== Shop Evaluation Summary ==============")
-		if (availableInShop.isEmpty()) {
-			MessageLog.v(TAG, "No items were successfully identified in the shop scan. Check OCR and bounding boxes.")
-		} else {
-			MessageLog.v(TAG, "Identified ${availableInShop.size} items in shop.")
-		}
-
-        if (itemsToBuy.isEmpty()) {
-            MessageLog.v(TAG, "No items from the priority list will be bought. Current coins: $currentCoins.")
-			if (skippedItemsReasons.isNotEmpty()) {
-				MessageLog.v(TAG, "Evaluation reasons for first 10 priority items:")
-				priorityList.take(10).forEach { item ->
-					val reason = skippedItemsReasons[item] ?: "Eligible but somehow skipped"
-					MessageLog.v(TAG, "\t- $item: $reason")
-				}
-			}
-            // Exit early if not a dry run.
-            if (!bDryRun) {
-                MessageLog.v(TAG, "==========================================")
-                return emptyList()
-            }
-        }
-
-		// Log each item planned to be bought.
-        for (boughtItem in itemsToBuy) {
-            MessageLog.v(TAG, "\t${boughtItem.first}: ${boughtItem.second} coins")
-        }
-        val totalCost = currentCoins - remainingCoinsAfterProposed
-        MessageLog.v(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
-        MessageLog.v(TAG, "==========================================")
-
-		if (bDryRun) {
-            // Return early for the dry run test.
-			return itemsToBuy.map { it.first }
-		}
-
-        // Step 3: Purchasing Phase.
-		// Re-process the list to click on the selected items.
-		val itemsBought = mutableListOf<String>()
-		val itemsRemainingToClick = itemsToBuy.toMutableList()
-		val itemNameMapInPurchase = mutableMapOf<Int, String>()
-		processItemsWithFallback(
-			keyExtractor = { entry -> 
-				val name = getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
-				if (name != null) itemNameMapInPurchase[entry.index] = name
-				name
-			}
-		) { entry ->
-			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
-			val itemName = itemNameMapInPurchase[entry.index] ?: getShopItemName(entry, isDisabled)
-			
-			if (itemName != null) {
-				// Find the first matching item in our purchase list.
-				val targetIndex = itemsRemainingToClick.indexOfFirst { it.first == itemName }
-				if (targetIndex != -1) {
-					val targetItem = itemsRemainingToClick[targetIndex]
-					MessageLog.i(TAG, "[INFO] Selecting \"$itemName\" for ${targetItem.second} coins at index ${entry.index}.")
-					// Tap the item's entry to select it.
-					game.tap(entry.bbox.cx.toDouble(), entry.bbox.cy.toDouble())
-					itemsBought.add(itemName)
-					itemsRemainingToClick.removeAt(targetIndex)
-				}
-			}
-			// Early exit if we've bought all items in the proposed list.
-			itemsRemainingToClick.isEmpty()
-		}
-
-		if (itemsBought.isNotEmpty()) {
-			// Click the confirm button to finalize the selection.
-			MessageLog.i(TAG, "[INFO] Confirming purchase of ${itemsBought.size} items.")
-			ButtonConfirm.click(game.imageUtils)
-			game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-
-			// Handle "Do not show again" checkbox if found.
-			if (!hasClickedDoNotShowAgain) {
-				if (CheckboxDoNotShowAgain.click(game.imageUtils)) {
-					MessageLog.i(TAG, "[INFO] Successfully clicked \"Do not show again\" checkbox.")
-					hasClickedDoNotShowAgain = true
-					game.wait(0.5, skipWaitingForLoading = true)
-				}
-			}
-
-			// Final exchange confirmation click.
-			ButtonExchange.click(game.imageUtils)
-			game.wait(game.dialogWaitDelay)
-			return itemsBought.toList()
-		}
-
-		return emptyList()
 	}
 
 	/**
@@ -789,4 +627,172 @@ class TrackblazerShopList(private val game: Game) {
         MessageLog.e(TAG, "[ERROR] processItemsWithFallback:: Failed to detect shop list or any items.")
         return false
     }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+	 * Buy items from the Shop list based on a priority list and currency amount.
+	 *
+	 * @param priorityList An ordered list of item names to buy.
+	 * @param currentCoins The current amount of Shop Coins available.
+	 * @param inventoryLimits A map of item names to the maximum amount that can be bought for each.
+	 * @param bDryRun If true, only logs intentions without performing any clicks.
+	 * @return A list of successfully purchased items.
+	 */
+	fun buyItems(priorityList: List<String>, currentCoins: Int, inventoryLimits: Map<String, Int>, bDryRun: Boolean = false): List<String> {
+		if (priorityList.isEmpty()) {
+			MessageLog.i(TAG, "[INFO] Priority shopping list is empty. No items to buy.")
+			return emptyList()
+		}
+
+		// Step 1: Pre-scan Phase.
+		// Scan the entire shop to log each item and its price, and to identify what is available.
+		MessageLog.i(TAG, "[INFO] Beginning process of scanning shop items...")
+		val availableInShop = mutableListOf<Triple<String, Int, ScrollListEntry>>()
+		val itemNameMap = mutableMapOf<Int, String>()
+		processItemsWithFallback(
+			keyExtractor = { entry -> 
+				val name = getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
+				if (name != null) itemNameMap[entry.index] = name
+				name
+			}
+		) { entry ->
+			// Check if the item's plus button is disabled.
+			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
+			val itemName = itemNameMap[entry.index] ?: getShopItemName(entry, isDisabled)
+			if (itemName != null) {
+				val price = getShopItemPrice(itemName, entry.bitmap)
+				MessageLog.i(TAG, "\t$itemName: $price coins at index ${entry.index}")
+				availableInShop.add(Triple(itemName, price, entry))
+			}
+			false
+		}
+
+		// Step 2: Calculation & Summary Phase.
+		// Determine which items from the priority list are available and affordable.
+		val itemsToBuy = mutableListOf<Triple<String, Int, ScrollListEntry>>()
+		val skippedItemsReasons = mutableMapOf<String, String>()
+		var remainingCoinsAfterProposed = currentCoins
+		
+		val tempAvailable = availableInShop.toMutableList()
+		for (item in priorityList) {
+			val limit = inventoryLimits[item] ?: 0
+			if (limit <= 0) continue
+
+			var boughtCount = 0
+			while (boughtCount < limit) {
+				val availableIndex = tempAvailable.indexOfFirst { it.first == item }
+				if (availableIndex != -1) {
+					// Check if we can afford the item.
+					val foundItem = tempAvailable[availableIndex]
+					val price = foundItem.second
+					if (remainingCoinsAfterProposed >= price) {
+						itemsToBuy.add(foundItem)
+						remainingCoinsAfterProposed -= price
+						// Remove from temp list so we don't buy the same slot twice for one priority entry.
+						tempAvailable.removeAt(availableIndex)
+						boughtCount++
+					} else {
+						skippedItemsReasons[item] = "Too expensive ($price required, but only $remainingCoinsAfterProposed left)"
+						break
+					}
+				} else {
+					skippedItemsReasons[item] = if (boughtCount == 0) "Not found in shop" else "No more instances found in shop"
+					break
+				}
+			}
+		}
+		
+		// Log the summary of proposed purchases.
+        MessageLog.v(TAG, "============== Shop Evaluation Summary ==============")
+		if (availableInShop.isEmpty()) {
+			MessageLog.v(TAG, "No items were successfully identified in the shop scan. Check OCR and bounding boxes.")
+		} else {
+			MessageLog.v(TAG, "Identified ${availableInShop.size} items in shop.")
+		}
+
+        if (itemsToBuy.isEmpty()) {
+            MessageLog.v(TAG, "No items from the priority list will be bought. Current coins: $currentCoins.")
+			if (skippedItemsReasons.isNotEmpty()) {
+				MessageLog.v(TAG, "Evaluation reasons for first 10 priority items:")
+				priorityList.take(10).forEach { item ->
+					val reason = skippedItemsReasons[item] ?: "Eligible but somehow skipped"
+					MessageLog.v(TAG, "\t- $item: $reason")
+				}
+			}
+            // Exit early if not a dry run.
+            if (!bDryRun) {
+                MessageLog.v(TAG, "==========================================")
+                return emptyList()
+            }
+        }
+
+		// Log each item planned to be bought.
+        for (boughtItem in itemsToBuy) {
+            MessageLog.v(TAG, "\t${boughtItem.first}: ${boughtItem.second} coins")
+        }
+        val totalCost = currentCoins - remainingCoinsAfterProposed
+        MessageLog.v(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
+        MessageLog.v(TAG, "==========================================")
+
+		if (bDryRun) {
+            // Return early for the dry run test.
+			return itemsToBuy.map { it.first }
+		}
+
+        // Step 3: Purchasing Phase.
+		// Re-process the list to click on the selected items.
+		val itemsBought = mutableListOf<String>()
+		val itemsRemainingToClick = itemsToBuy.toMutableList()
+		val itemNameMapInPurchase = mutableMapOf<Int, String>()
+		processItemsWithFallback(
+			keyExtractor = { entry -> 
+				val name = getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
+				if (name != null) itemNameMapInPurchase[entry.index] = name
+				name
+			}
+		) { entry ->
+			val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
+			val itemName = itemNameMapInPurchase[entry.index] ?: getShopItemName(entry, isDisabled)
+			
+			if (itemName != null) {
+				// Find the first matching item in our purchase list.
+				val targetIndex = itemsRemainingToClick.indexOfFirst { it.first == itemName }
+				if (targetIndex != -1) {
+					val targetItem = itemsRemainingToClick[targetIndex]
+					MessageLog.i(TAG, "[INFO] Selecting \"$itemName\" for ${targetItem.second} coins at index ${entry.index}.")
+					// Tap the item's entry to select it.
+					game.tap(entry.bbox.cx.toDouble(), entry.bbox.cy.toDouble())
+					itemsBought.add(itemName)
+					itemsRemainingToClick.removeAt(targetIndex)
+				}
+			}
+			// Early exit if we've bought all items in the proposed list.
+			itemsRemainingToClick.isEmpty()
+		}
+
+		if (itemsBought.isNotEmpty()) {
+			// Click the confirm button to finalize the selection.
+			MessageLog.i(TAG, "[INFO] Confirming purchase of ${itemsBought.size} items.")
+			ButtonConfirm.click(game.imageUtils)
+			game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+
+			// Handle "Do not show again" checkbox if found.
+			if (!hasClickedDoNotShowAgain) {
+				if (CheckboxDoNotShowAgain.click(game.imageUtils)) {
+					MessageLog.i(TAG, "[INFO] Successfully clicked \"Do not show again\" checkbox.")
+					hasClickedDoNotShowAgain = true
+					game.wait(0.5, skipWaitingForLoading = true)
+				}
+			}
+
+			// Final exchange confirmation click.
+			ButtonExchange.click(game.imageUtils)
+			game.wait(game.dialogWaitDelay)
+			return itemsBought.toList()
+		}
+
+		return emptyList()
+	}
 }

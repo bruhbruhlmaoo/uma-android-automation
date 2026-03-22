@@ -286,12 +286,15 @@ class ScrollList private constructor(
             }
 
             if (game.debugMode) {
-                game.imageUtils.saveBitmap(bitmap, "getListBoundingRegion_$debugString", bbox)
+                game.imageUtils.saveBitmapWithBbox(bitmap, "getListBoundingRegion_$debugString", bbox)
             }
 
             return bbox
         }
     }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     /** Detects locations of each entry in the visible portion of the list.
      *
@@ -611,6 +614,9 @@ class ScrollList private constructor(
         )
         stopScrolling()
     }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     /** Scrolls through the list and executes a callback for each entry.
      *

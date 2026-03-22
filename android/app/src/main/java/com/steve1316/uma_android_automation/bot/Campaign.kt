@@ -97,7 +97,6 @@ abstract class Campaign(game: Game) : Task(game) {
 	/** The specific date string at which the bot should stop. */
 	protected val stopAtDate: String = SettingsHelper.getStringSetting("general", "stopAtDate")
 
-	// Miscellaneous flags and variables for control logic.
 	/** Whether the bot is currently in the final season. */
 	var isFinals: Boolean = false
 	/** Whether a recreation date event has been completed today. */
@@ -137,101 +136,9 @@ abstract class Campaign(game: Game) : Task(game) {
      */
 	protected var bHasCheckedDateThisTurn: Boolean = false
 
-    // =============================================================================
-    // CAMPAIGN-SPECIFIC FUNCTIONS
-    // =============================================================================
-
-    /**
-     * Performs campaign-specific checks for special screens or conditions.
-     *
-     * @return True if the conditions are met, false otherwise.
-     */
-    open fun checkCampaignSpecificConditions(): Boolean {
-        return false
-    }
-
-    /**
-     * Handles campaign-specific Training Events.
-     */
-    open fun handleTrainingEvent() {
-        trainingEvent.handleTrainingEvent()
-    }
-
-    /**
-     * Handles campaign-specific race events.
-     *
-     * @param isScheduledRace True if the race is scheduled, false otherwise.
-     * @return True if the race was handled successfully, false otherwise.
-     */
-    open fun handleRaceEvents(isScheduledRace: Boolean = false): Boolean {
-        val bDidRace: Boolean = racing.handleRaceEvents(isScheduledRace)
-        bNeedToCheckFans = bDidRace
-
-        return bDidRace
-    }
-
-    /**
-     * Performs campaign-specific logic to handle a race win.
-     */
-    open fun onRaceWin() {
-        return
-    }
-
-    // =============================================================================
-    // MAIN SCREEN HOOKS
-    // =============================================================================
-
-    /**
-     * Executes logic at the very beginning of [handleMainScreen].
-     */
-    open fun onBeforeMainScreenUpdate() {
-        return
-    }
-
-    /**
-     * Resets any scenario-specific daily flags when a new day is detected.
-     */
-    open fun resetDailyFlags() {
-        return
-    }
-
-    /**
-     * Executes logic after the parallel turn-start updates (stat, mood, energy, etc.) have completed.
-     */
-    open fun onAfterTurnStartUpdates() {
-        return
-    }
-
-    /**
-     * Executes logic after all updates and global checks have completed, but before decision making.
-     */
-    open fun onMainScreenEntry() {
-        return
-    }
-
-    /**
-     * Determines if mood recovery should be attempted.
-     *
-     * @param sourceBitmap Current screen bitmap.
-     * @return True if mood recovery is needed and possible, false otherwise.
-     */
-    open fun shouldRecoverMood(sourceBitmap: Bitmap): Boolean {
-        // Only recover mood if its below Good mood and its not Summer.
-        return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
-            MessageLog.i(TAG, "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.")
-            false
-        } else (trainee.mood < Mood.GOOD)
-    }
-
-    /**
-     * Performs mood recovery for the trainee.
-     *
-     * @param sourceBitmap Current screen bitmap.
-     * @return True if mood was successfully recovered, false otherwise.
-     */
-    open fun performMoodRecovery(sourceBitmap: Bitmap): Boolean {
-        return recoverMood(sourceBitmap)
-    }
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
 
     /**
      * Starts the automated tests for the campaign.
@@ -532,9 +439,321 @@ abstract class Campaign(game: Game) : Task(game) {
         }
     }
 
-    // =============================================================================
-    // SCREEN CHECK FUNCTIONS
-    // =============================================================================
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Handles game dialogs by identifying them and performing the appropriate responses.
+     *
+     * @param dialog The optional dialog interface to handle.
+     * @param args Additional arguments for dialog handling logic.
+     * @return The result of the dialog handling operation.
+     */
+    open override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
+        val result: DialogHandlerResult = super.handleDialogs(dialog, args)
+        if (result !is DialogHandlerResult.Unhandled) {
+            return result
+        }
+
+        when (result.dialog.name) {
+            "consecutive_race_warning" -> {
+                val overrideIgnoreConsecutiveRaceWarning = args["overrideIgnoreConsecutiveRaceWarning"] as? Boolean ?: false
+                racing.raceRepeatWarningCheck = true
+                if (overrideIgnoreConsecutiveRaceWarning || racing.enableForceRacing || racing.ignoreConsecutiveRaceWarning) {
+                    MessageLog.i(TAG, "[RACE] Consecutive race warning! Racing anyway...")
+                    result.dialog.ok(game.imageUtils)
+                    // This dialog requires a little extra delay since it loads the race list instead of just closing the dialog.
+                    game.wait(1.0, skipWaitingForLoading = true)
+                } else {
+                    MessageLog.i(TAG, "[RACE] Consecutive race warning! Aborting racing...")
+                    racing.clearRacingRequirementFlags()
+                    result.dialog.close(game.imageUtils)
+                }
+            }
+            "goal_not_reached" -> {
+                // We are handling the logic for when to race on our own.
+                // Thus we just close this warning.
+                racing.encounteredRacingPopup = true
+                result.dialog.close(game.imageUtils)
+            }
+            "insufficient_fans" -> {
+                // We are handling the logic for when to race on our own.
+                // Thus we just close this warning.
+                racing.encounteredRacingPopup = true
+                result.dialog.close(game.imageUtils)
+            }
+            "scheduled_race_available" -> {
+                MessageLog.i(TAG, "[INFO] There is a scheduled race today. Racing it now...")
+                result.dialog.ok(game.imageUtils)
+                if (!racing.handleRaceEvents(isScheduledRace = true) && handleRaceEventFallback()) {
+                    throw IllegalStateException("Stopping the bot due to failing to handle a scheduled race.")
+                }
+            }
+            "strategy" -> {
+                if (!trainee.bHasUpdatedAptitudes) {
+                    trainee.bTemporaryRunningStyleAptitudesUpdated = racing.updateRaceScreenRunningStyleAptitudes()
+                }
+
+                if (date.day == 1) {
+                    MessageLog.i(TAG, "[DIALOG] Unknown date. Using Original race strategy.")
+                }
+
+                var runningStyle: RunningStyle? = null
+                val runningStyleString: String = when {
+                    // Special case for when the bot has not been able to check the date i.e. when the bot starts at the race screen.
+                    date.day == 1 -> racing.userSelectedOriginalStrategy
+                    date.year == DateYear.JUNIOR -> racing.juniorYearRaceStrategy
+                    else -> racing.userSelectedOriginalStrategy
+                }
+                when (runningStyleString.uppercase()) {
+                    // Do not select a strategy. Use what is already selected.
+                    "DEFAULT" -> {
+                        MessageLog.i(TAG, "[DIALOG] Using the default running style.")
+                        result.dialog.ok(game.imageUtils)
+                        // Confirming this dialog triggers connection to server.
+                        game.waitForLoading()
+                        // If date is unknown we want to set style next time we're at race prep screen.
+                        trainee.bHasSetRunningStyle = date.day != 1
+                        racing.bHasSetTemporaryRunningStyle = true
+                        return DialogHandlerResult.Handled(result.dialog)
+                    }
+                    // Auto-select the optimal running style based on trainee aptitudes.
+                    "AUTO" -> {
+                        MessageLog.i(TAG, "[DIALOG] Auto-selecting the trainee's optimal running style.")
+                        runningStyle = trainee.runningStyle
+                    }
+                    else -> {
+                        MessageLog.i(TAG, "[DIALOG] Using user-specified running style: $runningStyleString")
+                        runningStyle = RunningStyle.fromShortName(runningStyleString)
+                    }
+                }
+
+                when (runningStyle) {
+                    RunningStyle.FRONT_RUNNER -> ButtonRaceStrategyFront.click(game.imageUtils)
+                    RunningStyle.PACE_CHASER -> ButtonRaceStrategyPace.click(game.imageUtils)
+                    RunningStyle.LATE_SURGER -> ButtonRaceStrategyLate.click(game.imageUtils)
+                    RunningStyle.END_CLOSER -> ButtonRaceStrategyEnd.click(game.imageUtils)
+                    null -> {
+                        // This indicates programmer error.
+                        MessageLog.e(TAG, "[ERROR] handleDialogs:: Invalid running style: $runningStyle")
+                        result.dialog.close(game.imageUtils)
+                        trainee.bHasSetRunningStyle = false
+                        return DialogHandlerResult.Handled(result.dialog)
+                    }
+                }
+
+                // We only want to set this flag if the date has been checked.
+                // Otherwise, if the day is still 1, that means we probably started the bot at the racing screen.
+                // In this case, we still want to set the running style the next time we get back to the race selection screen after verifying the date.
+                if (date.day != 1) {
+                    trainee.bHasSetRunningStyle = true
+                }
+                racing.bHasSetTemporaryRunningStyle = true
+                result.dialog.ok(game.imageUtils)
+            }
+            "try_again" -> {
+                // All branches need a slight delay to allow the dialog to close since the runRaceWithRetries() loop handles dialogs at the start of each iteration.
+                // Can cause problem where we handle one branch then immediately handle dialogs again and handle a second branch for the same dialog instance.
+                if (racing.disableRaceRetries) {
+                    if (racing.enableFreeRaceRetry && IconOneFreePerDayTooltip.check(game.imageUtils)) {
+                        MessageLog.i(TAG, "[RACE] Failed mandatory race. Using daily free race retry...")
+                        racing.raceRetries--
+                        result.dialog.ok(game.imageUtils)
+                        game.wait(0.5)
+                        return DialogHandlerResult.Handled(result.dialog)
+                    }
+                    if (racing.enableCompleteCareerOnFailure) {
+                        MessageLog.i(TAG, "[RACE] Failed a mandatory race and no retries remaining. Completing career...")
+                        // Manually set retries to -1 to break the race retry loop.
+                        racing.raceRetries = -1
+                        result.dialog.close(game.imageUtils)
+                        game.wait(0.5)
+                        return DialogHandlerResult.Handled(result.dialog)
+                    }
+                    MessageLog.i(TAG, "\n[END] Stopping the bot due to failing a mandatory race.")
+                    MessageLog.i(TAG, "********************")
+                    game.notificationMessage = "Stopping the bot due to failing a mandatory race."
+                    if (DiscordUtils.enableDiscordNotifications) {
+                        DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Stopping the bot due to failing a mandatory race.\n```")
+                    }
+                    throw IllegalStateException()
+                }
+                if (racing.raceRetries >= 0) {
+                    MessageLog.i(TAG, "[RACE] Retrying the race. Retries remaining: ${racing.raceRetries}")
+                    racing.raceRetries--
+                    game.wait(0.5)
+                    ButtonTryAgain.click(game.imageUtils)
+                } else {
+                    MessageLog.w(TAG, "[WARN] handleDialogs:: No retries remaining but Try Again dialog detected. Closing dialog...")
+                    result.dialog.close(game.imageUtils)
+                }
+            }
+            "umamusume_class" -> {
+                val bitmap: Bitmap = game.imageUtils.getSourceBitmap()
+                val templateBitmap: Bitmap? = game.imageUtils.getBitmaps(LabelUmamusumeClassFans.template.path).second
+                if (templateBitmap == null) {
+                    MessageLog.e(TAG, "[ERROR] handleDialogs:: Could not get template bitmap for LabelUmamusumeClassFans: ${LabelUmamusumeClassFans.template.path}.")
+                    result.dialog.close(game.imageUtils)
+                    return DialogHandlerResult.Handled(result.dialog)
+                }
+                val point: Point? = LabelUmamusumeClassFans.find(game.imageUtils).first
+                if (point == null) {
+                    MessageLog.w(TAG, "[WARN] handleDialogs:: Could not find LabelUmamusumeClassFans.")
+                    result.dialog.close(game.imageUtils)
+                    return DialogHandlerResult.Handled(result.dialog)
+                }
+
+                // Add a small 8px buffer to vertical component.
+                val bbox = BoundingBox(
+                    x = game.imageUtils.relX(0.0, (point.x + (templateBitmap.width / 2)).toInt()),
+                    y = game.imageUtils.relY(0.0, (point.y - (templateBitmap.height / 2) - 4).toInt()),
+                    w = game.imageUtils.relWidth(300),
+                    h = game.imageUtils.relHeight(templateBitmap.height + 4),
+                )
+
+                val croppedBitmap = game.imageUtils.createSafeBitmap(
+                    bitmap,
+                    bbox.x,
+                    bbox.y,
+                    bbox.w,
+                    bbox.h,
+                    "dialog::umamusume_class: Cropped bitmap.",
+                )
+                if (croppedBitmap == null) {
+                    MessageLog.e(TAG, "[ERROR] handleDialogs:: Failed to crop bitmap.")
+                    result.dialog.close(game.imageUtils)
+                    return DialogHandlerResult.Handled(result.dialog)
+                }
+                val fans = game.imageUtils.getUmamusumeClassDialogFanCount(croppedBitmap)
+                if (fans != null) {
+                    trainee.fans = fans
+                    bNeedToCheckFans = false
+                    MessageLog.i(TAG, "[INFO] Updated fan count: ${trainee.fans}")
+                } else {
+                    MessageLog.w(TAG, "[WARN] handleDialogs:: getUmamusumeClassDialogFanCount returned null.")
+                }
+
+                result.dialog.close(game.imageUtils)
+
+                // Print the trainee info with the updated fan count.
+                trainee.logInfo()
+            }
+            "umamusume_details" -> {
+                val prevTrackSurface = trainee.trackSurface
+                val prevTrackDistance = trainee.trackDistance
+                val prevRunningStyle = trainee.runningStyle
+                trainee.updateAptitudes(game.imageUtils)
+                trainee.updateStats(game.imageUtils, isAptitudeDialog = true)
+                trainee.bTemporaryRunningStyleAptitudesUpdated = false
+
+                // Read the trainee's name once per run while the dialog is still open.
+                if (trainee.name.isEmpty()) {
+                    trainee.readName(game.imageUtils)
+                }
+
+                if (trainee.runningStyle != prevRunningStyle) {
+                    // Reset this flag since our preferred running style has changed.
+                    trainee.bHasSetRunningStyle = false
+                }
+                result.dialog.close(game.imageUtils)
+            }
+            else -> {
+                Log.w(TAG, "[WARN] handleDialogs:: Unknown dialog \"${result.dialog.name}\" detected so it will not be handled.")
+                return DialogHandlerResult.Unhandled(result.dialog)
+            }
+        }
+
+        game.wait(0.5)
+        return DialogHandlerResult.Handled(result.dialog)
+    }
+
+    /**
+     * Performs campaign-specific checks for special screens or conditions.
+     *
+     * @return True if the conditions are met, false otherwise.
+     */
+    open fun checkCampaignSpecificConditions(): Boolean {
+        return false
+    }
+
+    /**
+     * Handles campaign-specific Training Events.
+     */
+    open fun handleTrainingEvent() {
+        trainingEvent.handleTrainingEvent()
+    }
+
+    /**
+     * Handles campaign-specific race events.
+     *
+     * @param isScheduledRace True if the race is scheduled, false otherwise.
+     * @return True if the race was handled successfully, false otherwise.
+     */
+    open fun handleRaceEvents(isScheduledRace: Boolean = false): Boolean {
+        val bDidRace: Boolean = racing.handleRaceEvents(isScheduledRace)
+        bNeedToCheckFans = bDidRace
+
+        return bDidRace
+    }
+
+    /**
+     * Performs campaign-specific logic to handle a race win.
+     */
+    open fun onRaceWin() {
+        return
+    }
+
+    /**
+     * Executes logic at the very beginning of [handleMainScreen].
+     */
+    open fun onBeforeMainScreenUpdate() {
+        return
+    }
+
+    /**
+     * Resets any scenario-specific daily flags when a new day is detected.
+     */
+    open fun resetDailyFlags() {
+        return
+    }
+
+    /**
+     * Executes logic after the parallel turn-start updates (stat, mood, energy, etc.) have completed.
+     */
+    open fun onAfterTurnStartUpdates() {
+        return
+    }
+
+    /**
+     * Executes logic after all updates and global checks have completed, but before decision making.
+     */
+    open fun onMainScreenEntry() {
+        return
+    }
+
+    /**
+     * Determines if mood recovery should be attempted.
+     *
+     * @param sourceBitmap Current screen bitmap.
+     * @return True if mood recovery is needed and possible, false otherwise.
+     */
+    open fun shouldRecoverMood(sourceBitmap: Bitmap): Boolean {
+        // Only recover mood if its below Good mood and its not Summer.
+        return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
+            MessageLog.i(TAG, "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.")
+            false
+        } else (trainee.mood < Mood.GOOD)
+    }
+
+    /**
+     * Performs mood recovery for the trainee.
+     *
+     * @param sourceBitmap Current screen bitmap.
+     * @return True if mood was successfully recovered, false otherwise.
+     */
+    open fun performMoodRecovery(sourceBitmap: Bitmap): Boolean {
+        return recoverMood(sourceBitmap)
+    }
 
     /**
      * Checks if the bot is currently at the Main screen or the screen with available options.
@@ -740,10 +959,6 @@ abstract class Campaign(game: Game) : Task(game) {
             }
         }
     }
-
-    // =============================================================================
-    // HELPER FUNCTIONS
-    // =============================================================================
 
     /**
      * Returns whether the trainee is currently in the finale season.
@@ -1324,12 +1539,7 @@ abstract class Campaign(game: Game) : Task(game) {
         catch (_: InterruptedException) { MessageLog.e(TAG, "[ERROR] performTurnStartUpdates:: Date change operations threads timed out.") }
         finally { MessageLog.disableOutput = false }
 
-        MessageLog.i(TAG, "[INFO] Skills Updated: ${trainee.getStatsString()}")
-        MessageLog.i(TAG, "[INFO] Mood Updated: ${trainee.mood}")
-        MessageLog.i(TAG, "[INFO] Energy Updated: ${trainee.energy}%")
-        if (trainee.bHasUpdatedAptitudes) {
-            trainee.logInfo()
-        }
+        trainee.logInfo()
     }
 
     /**
@@ -1488,230 +1698,8 @@ abstract class Campaign(game: Game) : Task(game) {
         return true
     }
 
-    /**
-     * Handles game dialogs by identifying them and performing the appropriate responses.
-     *
-     * @param dialog The optional dialog interface to handle.
-     * @param args Additional arguments for dialog handling logic.
-     * @return The result of the dialog handling operation.
-     */
-    open override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
-        val result: DialogHandlerResult = super.handleDialogs(dialog, args)
-        if (result !is DialogHandlerResult.Unhandled) {
-            return result
-        }
-
-        when (result.dialog.name) {
-            "consecutive_race_warning" -> {
-                val overrideIgnoreConsecutiveRaceWarning = args["overrideIgnoreConsecutiveRaceWarning"] as? Boolean ?: false
-                racing.raceRepeatWarningCheck = true
-                if (overrideIgnoreConsecutiveRaceWarning || racing.enableForceRacing || racing.ignoreConsecutiveRaceWarning) {
-                    MessageLog.i(TAG, "[RACE] Consecutive race warning! Racing anyway...")
-                    result.dialog.ok(game.imageUtils)
-                    // This dialog requires a little extra delay since it loads the race list instead of just closing the dialog.
-                    game.wait(1.0, skipWaitingForLoading = true)
-                } else {
-                    MessageLog.i(TAG, "[RACE] Consecutive race warning! Aborting racing...")
-                    racing.clearRacingRequirementFlags()
-                    result.dialog.close(game.imageUtils)
-                }
-            }
-            "goal_not_reached" -> {
-                // We are handling the logic for when to race on our own.
-                // Thus we just close this warning.
-                racing.encounteredRacingPopup = true
-                result.dialog.close(game.imageUtils)
-            }
-            "insufficient_fans" -> {
-                // We are handling the logic for when to race on our own.
-                // Thus we just close this warning.
-                racing.encounteredRacingPopup = true
-                result.dialog.close(game.imageUtils)
-            }
-            "scheduled_race_available" -> {
-                MessageLog.i(TAG, "[INFO] There is a scheduled race today. Racing it now...")
-                result.dialog.ok(game.imageUtils)
-                if (!racing.handleRaceEvents(isScheduledRace = true) && handleRaceEventFallback()) {
-                    throw IllegalStateException("Stopping the bot due to failing to handle a scheduled race.")
-                }
-            }
-            "strategy" -> {
-                if (!trainee.bHasUpdatedAptitudes) {
-                    trainee.bTemporaryRunningStyleAptitudesUpdated = racing.updateRaceScreenRunningStyleAptitudes()
-                }
-
-                if (date.day == 1) {
-                    MessageLog.i(TAG, "[DIALOG] Unknown date. Using Original race strategy.")
-                }
-
-                var runningStyle: RunningStyle? = null
-                val runningStyleString: String = when {
-                    // Special case for when the bot has not been able to check the date i.e. when the bot starts at the race screen.
-                    date.day == 1 -> racing.userSelectedOriginalStrategy
-                    date.year == DateYear.JUNIOR -> racing.juniorYearRaceStrategy
-                    else -> racing.userSelectedOriginalStrategy
-                }
-                when (runningStyleString.uppercase()) {
-                    // Do not select a strategy. Use what is already selected.
-                    "DEFAULT" -> {
-                        MessageLog.i(TAG, "[DIALOG] Using the default running style.")
-                        result.dialog.ok(game.imageUtils)
-                        // Confirming this dialog triggers connection to server.
-                        game.waitForLoading()
-                        // If date is unknown we want to set style next time we're at race prep screen.
-                        trainee.bHasSetRunningStyle = date.day != 1
-                        racing.bHasSetTemporaryRunningStyle = true
-                        return DialogHandlerResult.Handled(result.dialog)
-                    }
-                    // Auto-select the optimal running style based on trainee aptitudes.
-                    "AUTO" -> {
-                        MessageLog.i(TAG, "[DIALOG] Auto-selecting the trainee's optimal running style.")
-                        runningStyle = trainee.runningStyle
-                    }
-                    else -> {
-                        MessageLog.i(TAG, "[DIALOG] Using user-specified running style: $runningStyleString")
-                        runningStyle = RunningStyle.fromShortName(runningStyleString)
-                    }
-                }
-
-                when (runningStyle) {
-                    RunningStyle.FRONT_RUNNER -> ButtonRaceStrategyFront.click(game.imageUtils)
-                    RunningStyle.PACE_CHASER -> ButtonRaceStrategyPace.click(game.imageUtils)
-                    RunningStyle.LATE_SURGER -> ButtonRaceStrategyLate.click(game.imageUtils)
-                    RunningStyle.END_CLOSER -> ButtonRaceStrategyEnd.click(game.imageUtils)
-                    null -> {
-                        // This indicates programmer error.
-                        MessageLog.e(TAG, "[ERROR] handleDialogs:: Invalid running style: $runningStyle")
-                        result.dialog.close(game.imageUtils)
-                        trainee.bHasSetRunningStyle = false
-                        return DialogHandlerResult.Handled(result.dialog)
-                    }
-                }
-
-                // We only want to set this flag if the date has been checked.
-                // Otherwise, if the day is still 1, that means we probably started the bot at the racing screen.
-                // In this case, we still want to set the running style the next time we get back to the race selection screen after verifying the date.
-                if (date.day != 1) {
-                    trainee.bHasSetRunningStyle = true
-                }
-                racing.bHasSetTemporaryRunningStyle = true
-                result.dialog.ok(game.imageUtils)
-            }
-            "try_again" -> {
-                // All branches need a slight delay to allow the dialog to close since the runRaceWithRetries() loop handles dialogs at the start of each iteration.
-                // Can cause problem where we handle one branch then immediately handle dialogs again and handle a second branch for the same dialog instance.
-                if (racing.disableRaceRetries) {
-                    if (racing.enableFreeRaceRetry && IconOneFreePerDayTooltip.check(game.imageUtils)) {
-                        MessageLog.i(TAG, "[RACE] Failed mandatory race. Using daily free race retry...")
-                        racing.raceRetries--
-                        result.dialog.ok(game.imageUtils)
-                        game.wait(0.5)
-                        return DialogHandlerResult.Handled(result.dialog)
-                    }
-                    if (racing.enableCompleteCareerOnFailure) {
-                        MessageLog.i(TAG, "[RACE] Failed a mandatory race and no retries remaining. Completing career...")
-                        // Manually set retries to -1 to break the race retry loop.
-                        racing.raceRetries = -1
-                        result.dialog.close(game.imageUtils)
-                        game.wait(0.5)
-                        return DialogHandlerResult.Handled(result.dialog)
-                    }
-                    MessageLog.i(TAG, "\n[END] Stopping the bot due to failing a mandatory race.")
-                    MessageLog.i(TAG, "********************")
-                    game.notificationMessage = "Stopping the bot due to failing a mandatory race."
-                    if (DiscordUtils.enableDiscordNotifications) {
-                        DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Stopping the bot due to failing a mandatory race.\n```")
-                    }
-                    throw IllegalStateException()
-                }
-                if (racing.raceRetries >= 0) {
-                    MessageLog.i(TAG, "[RACE] Retrying the race. Retries remaining: ${racing.raceRetries}")
-                    racing.raceRetries--
-                    game.wait(0.5)
-                    ButtonTryAgain.click(game.imageUtils)
-                } else {
-                    MessageLog.w(TAG, "[WARN] handleDialogs:: No retries remaining but Try Again dialog detected. Closing dialog...")
-                    result.dialog.close(game.imageUtils)
-                }
-            }
-            "umamusume_class" -> {
-                val bitmap: Bitmap = game.imageUtils.getSourceBitmap()
-                val templateBitmap: Bitmap? = game.imageUtils.getBitmaps(LabelUmamusumeClassFans.template.path).second
-                if (templateBitmap == null) {
-                    MessageLog.e(TAG, "[ERROR] handleDialogs:: Could not get template bitmap for LabelUmamusumeClassFans: ${LabelUmamusumeClassFans.template.path}.")
-                    result.dialog.close(game.imageUtils)
-                    return DialogHandlerResult.Handled(result.dialog)
-                }
-                val point: Point? = LabelUmamusumeClassFans.find(game.imageUtils).first
-                if (point == null) {
-                    MessageLog.w(TAG, "[WARN] handleDialogs:: Could not find LabelUmamusumeClassFans.")
-                    result.dialog.close(game.imageUtils)
-                    return DialogHandlerResult.Handled(result.dialog)
-                }
-
-                // Add a small 8px buffer to vertical component.
-                val bbox = BoundingBox(
-                    x = game.imageUtils.relX(0.0, (point.x + (templateBitmap.width / 2)).toInt()),
-                    y = game.imageUtils.relY(0.0, (point.y - (templateBitmap.height / 2) - 4).toInt()),
-                    w = game.imageUtils.relWidth(300),
-                    h = game.imageUtils.relHeight(templateBitmap.height + 4),
-                )
-
-                val croppedBitmap = game.imageUtils.createSafeBitmap(
-                    bitmap,
-                    bbox.x,
-                    bbox.y,
-                    bbox.w,
-                    bbox.h,
-                    "dialog::umamusume_class: Cropped bitmap.",
-                )
-                if (croppedBitmap == null) {
-                    MessageLog.e(TAG, "[ERROR] handleDialogs:: Failed to crop bitmap.")
-                    result.dialog.close(game.imageUtils)
-                    return DialogHandlerResult.Handled(result.dialog)
-                }
-                val fans = game.imageUtils.getUmamusumeClassDialogFanCount(croppedBitmap)
-                if (fans != null) {
-                    trainee.fans = fans
-                    bNeedToCheckFans = false
-                    MessageLog.i(TAG, "[INFO] Updated fan count: ${trainee.fans}")
-                } else {
-                    MessageLog.w(TAG, "[WARN] handleDialogs:: getUmamusumeClassDialogFanCount returned null.")
-                }
-                
-                result.dialog.close(game.imageUtils)
-
-                // Print the trainee info with the updated fan count.
-                trainee.logInfo()
-            }
-            "umamusume_details" -> {
-                val prevTrackSurface = trainee.trackSurface
-                val prevTrackDistance = trainee.trackDistance
-                val prevRunningStyle = trainee.runningStyle
-                trainee.updateAptitudes(game.imageUtils)
-                trainee.updateStats(game.imageUtils, isAptitudeDialog = true)
-                trainee.bTemporaryRunningStyleAptitudesUpdated = false
-
-                // Read the trainee's name once per run while the dialog is still open.
-                if (trainee.name.isEmpty()) {
-                    trainee.readName(game.imageUtils)
-                }
-
-                if (trainee.runningStyle != prevRunningStyle) {
-                    // Reset this flag since our preferred running style has changed.
-                    trainee.bHasSetRunningStyle = false
-                }
-                result.dialog.close(game.imageUtils)
-            }
-            else -> {
-                Log.w(TAG, "[WARN] handleDialogs:: Unknown dialog \"${result.dialog.name}\" detected so it will not be handled.")
-                return DialogHandlerResult.Unhandled(result.dialog)
-            }
-        }
-
-        game.wait(0.5)
-        return DialogHandlerResult.Handled(result.dialog)
-    }
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Executes the main processing loop for the campaign task.

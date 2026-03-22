@@ -213,6 +213,34 @@ class Trainee {
     val bHasCompletedMaidenRace: Boolean
         get() = fanCountClass.ordinal > FanCountClass.MAIDEN.ordinal
 
+    /** The trainee's calculated or overridden preferred [TrackSurface]. */
+    val trackSurface: TrackSurface
+        get() = getMaxAptitude<TrackSurface>(
+            aptitudeMap=trackSurfaceAptitudes,
+            defaultMaxKey=TrackSurface.TURF,
+        )
+
+    /** The trainee's calculated or overridden preferred [TrackDistance]. */
+    val trackDistance: TrackDistance
+        get() = TrackDistance.fromName(preferredDistanceOverride) ?: getMaxAptitude<TrackDistance>(
+            aptitudeMap=trackDistanceAptitudes,
+            defaultMaxKey=TrackDistance.MEDIUM,
+        )
+    
+    /** The trainee's calculated preferred [RunningStyle]. */
+    val runningStyle: RunningStyle
+        get() = getMaxAptitude<RunningStyle>(
+            aptitudeMap=runningStyleAptitudes,
+            defaultMaxKey=RunningStyle.FRONT_RUNNER,
+        )
+
+    init {
+        setStatTargetsByDistances()
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
     /** Calculates the highest-priority enum key based on current aptitude levels.
      *
      * This logic determines the "best" fit for a trainee among multiple options.
@@ -247,31 +275,6 @@ class Trainee {
         }
 
         return maxKey
-    }
-
-    /** The trainee's calculated or overridden preferred [TrackSurface]. */
-    val trackSurface: TrackSurface
-        get() = getMaxAptitude<TrackSurface>(
-            aptitudeMap=trackSurfaceAptitudes,
-            defaultMaxKey=TrackSurface.TURF,
-        )
-
-    /** The trainee's calculated or overridden preferred [TrackDistance]. */
-    val trackDistance: TrackDistance
-        get() = TrackDistance.fromName(preferredDistanceOverride) ?: getMaxAptitude<TrackDistance>(
-            aptitudeMap=trackDistanceAptitudes,
-            defaultMaxKey=TrackDistance.MEDIUM,
-        )
-    
-    /** The trainee's calculated preferred [RunningStyle]. */
-    val runningStyle: RunningStyle
-        get() = getMaxAptitude<RunningStyle>(
-            aptitudeMap=runningStyleAptitudes,
-            defaultMaxKey=RunningStyle.FRONT_RUNNER,
-        )
-
-    init {
-        setStatTargetsByDistances()
     }
 
     /** Retrieves a specific stat value using its enum identifier.
@@ -929,25 +932,9 @@ class Trainee {
         }
     }
 
-    /** Returns a formatted string of the trainee's preferred aptitudes.
-     *
-     * @return A multi-line string containing [trackSurface], [trackDistance], and [runningStyle].
-     */
-    fun getAptitudesString(): String {
-        return "TrackSurface: $trackSurface\nTrackDistance: $trackDistance\nRunningStyle: $runningStyle"
-    }
-
-    /** Returns a formatted string of the trainee's current [stats].
-     *
-     * @return A string representation of all stat values.
-     */
-    fun getStatsString(): String {
-        return stats.toString()
-    }
-
     override fun toString(): String {
-        val aptitudesString = getAptitudesString()
-        val statsString = getStatsString()
+        val aptitudesString = "TrackSurface: $trackSurface\nTrackDistance: $trackDistance\nRunningStyle: $runningStyle"
+        val statsString = stats.toString()
         return "Aptitudes: $aptitudesString" +
             "\nStats: $statsString" +
             "\nSkill Points: $skillPoints" +

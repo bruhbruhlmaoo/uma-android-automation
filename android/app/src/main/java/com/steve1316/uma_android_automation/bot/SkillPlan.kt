@@ -112,6 +112,77 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
 		val skillNames: List<String>,
 	)
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
+
+	/**
+	 * Perform a test run of the skill list OCR and purchasing logic using mock skill points.
+	 *
+	 * This method allows for testing the skill identification and selection logic
+	 * without performing actual transactions in the game.
+	 */
+	fun startSkillListBuyTest() {
+		MessageLog.i(TAG, "\n[TEST] Now beginning Skill List Buy test.")
+
+		val skillList = SkillList(game, campaign)
+
+		// Verify that the bot is currently at the skill list screen.
+		if (!skillList.checkSkillListScreen()) {
+			MessageLog.e(TAG, "[ERROR] startSkillListBuyTest:: Not on the Skill List screen. Ending test.")
+			return
+		}
+
+		// Detect the current skill points.
+		val currentPoints: Int? = skillList.detectSkillPoints()
+		if (currentPoints == null) {
+			MessageLog.e(TAG, "[ERROR] startSkillListBuyTest:: Failed to detect skill points. Ending test.")
+			return
+		}
+		MessageLog.i(TAG, "[TEST] Current Skill Points: $currentPoints")
+
+		// Scan the skill list and parse all available entries.
+		// Use mock data if enabled for logic testing without a game instance.
+		MessageLog.i(TAG, "[TEST] Scanning skill list...")
+		val allSkills: Map<String, SkillListEntry> = skillList.parseSkillListEntries(bUseMockData = USE_MOCK_DATA)
+
+		val availableSkills: Map<String, SkillListEntry> = allSkills.filter { !it.value.bIsObtained && !it.value.bIsVirtual }
+
+		// Log a summary of all identified available skills.
+		MessageLog.i(TAG, "[TEST] Summary of available skills:")
+		availableSkills.forEach { (name, entry) ->
+			MessageLog.i(TAG, "\t- $name: ${entry.price} SP")
+		}
+
+		// Calculate optimal purchases using a greedy heuristic to minimize remaining points.
+		val sortedSkills: List<SkillListEntry> = availableSkills.values.toList().sortedByDescending { it.price }
+
+		val skillsToBuy = mutableListOf<SkillListEntry>()
+		var remainingPoints = currentPoints
+
+		for (skill in sortedSkills) {
+			if (skill.price <= remainingPoints) {
+				skillsToBuy.add(skill)
+				remainingPoints -= skill.price
+			}
+		}
+
+		// Log a summary of the skills that would be purchased.
+		MessageLog.i(TAG, "[TEST] Identified skills that would be bought to bring SP close to zero:")
+		if (skillsToBuy.isEmpty()) {
+			MessageLog.i(TAG, "\t- No skills can be purchased with current SP.")
+		} else {
+			skillsToBuy.forEach { skill ->
+				MessageLog.i(TAG, "\t- ${skill.name}: ${skill.price} SP")
+			}
+		}
+		MessageLog.i(TAG, "[TEST] Expected remaining Skill Points: $remainingPoints")
+		MessageLog.i(TAG, "[TEST] Skill List Buy test complete.")
+	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
 	 * Retrieve all available negative skills from the skill list.
 	 *
@@ -634,6 +705,9 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
 		return false
 	}
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
 	 * Start the skill purchasing process.
 	 *
@@ -741,69 +815,5 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
 		skillList.confirmAndExit()
 		campaign.trainee.skillPoints = skillList.skillPoints
 		return true
-	}
-
-	/**
-	 * Perform a test run of the skill list OCR and purchasing logic using mock skill points.
-	 *
-	 * This method allows for testing the skill identification and selection logic
-	 * without performing actual transactions in the game.
-	 */
-	fun startSkillListBuyTest() {
-		MessageLog.i(TAG, "\n[TEST] Now beginning Skill List Buy test.")
-
-		val skillList = SkillList(game, campaign)
-
-		// Verify that the bot is currently at the skill list screen.
-		if (!skillList.checkSkillListScreen()) {
-			MessageLog.e(TAG, "[ERROR] startSkillListBuyTest:: Not on the Skill List screen. Ending test.")
-			return
-		}
-
-		// Detect the current skill points.
-		val currentPoints: Int? = skillList.detectSkillPoints()
-		if (currentPoints == null) {
-			MessageLog.e(TAG, "[ERROR] startSkillListBuyTest:: Failed to detect skill points. Ending test.")
-			return
-		}
-		MessageLog.i(TAG, "[TEST] Current Skill Points: $currentPoints")
-
-		// Scan the skill list and parse all available entries.
-		// Use mock data if enabled for logic testing without a game instance.
-		MessageLog.i(TAG, "[TEST] Scanning skill list...")
-		val allSkills: Map<String, SkillListEntry> = skillList.parseSkillListEntries(bUseMockData = USE_MOCK_DATA)
-
-		val availableSkills: Map<String, SkillListEntry> = allSkills.filter { !it.value.bIsObtained && !it.value.bIsVirtual }
-
-		// Log a summary of all identified available skills.
-		MessageLog.i(TAG, "[TEST] Summary of available skills:")
-		availableSkills.forEach { (name, entry) ->
-			MessageLog.i(TAG, "\t- $name: ${entry.price} SP")
-		}
-
-		// Calculate optimal purchases using a greedy heuristic to minimize remaining points.
-		val sortedSkills: List<SkillListEntry> = availableSkills.values.toList().sortedByDescending { it.price }
-
-		val skillsToBuy = mutableListOf<SkillListEntry>()
-		var remainingPoints = currentPoints
-
-		for (skill in sortedSkills) {
-			if (skill.price <= remainingPoints) {
-				skillsToBuy.add(skill)
-				remainingPoints -= skill.price
-			}
-		}
-
-		// Log a summary of the skills that would be purchased.
-		MessageLog.i(TAG, "[TEST] Identified skills that would be bought to bring SP close to zero:")
-		if (skillsToBuy.isEmpty()) {
-			MessageLog.i(TAG, "\t- No skills can be purchased with current SP.")
-		} else {
-			skillsToBuy.forEach { skill ->
-				MessageLog.i(TAG, "\t- ${skill.name}: ${skill.price} SP")
-			}
-		}
-		MessageLog.i(TAG, "[TEST] Expected remaining Skill Points: $remainingPoints")
-		MessageLog.i(TAG, "[TEST] Skill List Buy test complete.")
 	}
 }

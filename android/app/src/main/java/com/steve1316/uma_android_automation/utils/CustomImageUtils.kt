@@ -154,14 +154,6 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		val correctedStats: List<StatName> = emptyList()
 	)
 
-	////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////
-
-	init {
-		initTesseract("eng.traineddata")
-		SharedData.templateSubfolderPathName = "images/"
-	}
-
     companion object {
 		private val TAG: String = "[${MainActivity.loggerTag}]CustomImageUtils"
 
@@ -179,6 +171,14 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                 yoloDetectorInstance ?: YoloDetector(context).also { yoloDetectorInstance = it }
             }
     }
+
+    init {
+		initTesseract("eng.traineddata")
+		SharedData.templateSubfolderPathName = "images/"
+	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/** Finds all occurrences of an image using a provided source bitmap.
 	 *
@@ -243,8 +243,9 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		return null
 	}
 
-	////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Training Event Helper Functions
 
 	/** Performs OCR detection on the training event title.
 	 *
@@ -317,6 +318,10 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
 		return result
 	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Training Helper Functions
 
 	/** Finds the failure percentage chance for the currently selected training.
 	 *
@@ -399,294 +404,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		return result
 	}
 
-	/** Determines the number of turns remaining before the next scenario goal.
-	 *
-	 * @return The number of turns remaining, or -1 if detection fails.
-	 */
-	fun determineTurnsRemainingBeforeNextGoal(): Int {
-		val (energyTextLocation, sourceBitmap) = LabelEnergy.find(this)
-
-		if (energyTextLocation != null) {
-			// Determine crop region based on the current scenario.
-			val (offsetX, offsetY, width, height) = if (game.scenario == "Unity Cup") {
-				listOf(-260, -137, relWidth(100), relHeight(80))
-			} else {
-				listOf(-246, -100, relWidth(140), relHeight(95))
-			}
-
-			// Perform OCR with 2x scaling.
-			val detectedText = performOCROnRegion(
-				sourceBitmap,
-				relX(energyTextLocation.x, offsetX),
-				relY(energyTextLocation.y, offsetY),
-				width,
-				height,
-				useThreshold = true,
-				useGrayscale = true,
-				scale = 2.0,
-				ocrEngine = "tesseract_digits",
-				debugName = "DayForExtraRace"
-			)
-
-			// Parse the result.
-			val result = try {
-				if (detectedText.lowercase().contains("ace") || detectedText.lowercase().contains("da")) {
-					// This is "Race Day", so there are 0 turns left before the mandatory race.
-					MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected Race Day for extra racing: $detectedText")
-					0
-				} else {
-					val cleanedResult = detectedText.replace(Regex("[^0-9]"), "")
-					MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected day for extra racing: $detectedText")
-					cleanedResult.toInt()
-				}
-			} catch (_: NumberFormatException) {
-				MessageLog.e(TAG, "[ERROR] determineTurnsRemainingBeforeNextGoal:: Could not convert \"$detectedText\" to integer for the turns remaining.")
-				-1
-			}
-
-			return result
-		}
-
-		return -1
-	}
-
-	/** Extracts the race name from the race selection screen using OCR.
-	 *
-	 * @param extraRaceLocation The screen location of the race entry.
-	 * @return The detected race name, or an empty string if detection fails.
-	 */
-	fun extractRaceName(extraRaceLocation: Point): String {
-		try {
-			val detectedText = performOCRFromReference(
-				referencePoint = extraRaceLocation,
-				offsetX = -455,
-				offsetY = -105,
-				width = relWidth(585),
-				height = relHeight(45),
-				useThreshold = true,
-				useGrayscale = true,
-				scale = 2.0,
-				ocrEngine = "mlkit",
-				debugName = "extractRaceName"
-			)
-			
-            // Ensure forward slashes are surrounded by spaces.
-			val refinedResult = detectedText.replace(Regex("""\s*/\s*"""), " / ").trim()
-			MessageLog.i(TAG, "[INFO] extractRaceName:: Extracted race name: \"$refinedResult\"")
-			return refinedResult
-		} catch (e: Exception) {
-			MessageLog.e(TAG, "[ERROR] extractRaceName:: Exception during race name extraction: ${e.message}")
-			return ""
-		}
-	}
-
-	/** Determines the agenda header text associated with each race list button.
-	 *
-	 * @param sourceBitmap The source bitmap to analyze.
-	 * @param loadListButtonLocations List of screen locations for the buttons.
-	 * @return A map of button locations to their corresponding agenda text (e.g., "Agenda 1").
-	 */
-	fun determineAgendaHeaderMappings(sourceBitmap: Bitmap, loadListButtonLocations: ArrayList<Point>): Map<Point, String> {
-		val mappings = mutableMapOf<Point, String>()
-		
-		// Offset from button to header text (relative to 1080x2340 baseline).
-		val offsetX = -830
-		val offsetY = -190
-		val cropWidth = relWidth(135)
-		val cropHeight = relHeight(35)
-		
-		for ((index, buttonLocation) in loadListButtonLocations.withIndex()) {
-			val headerX = relX(buttonLocation.x, offsetX)
-			val headerY = relY(buttonLocation.y, offsetY)
-			
-			// Perform OCR on the header region.
-			val detectedText = performOCROnRegion(
-				sourceBitmap,
-				headerX,
-				headerY,
-				cropWidth,
-				cropHeight,
-				useThreshold = true,
-				useGrayscale = true,
-				scale = 2.0,
-				ocrEngine = "mlkit",
-				debugName = "AgendaHeader${index + 1}"
-			)
-			
-			// Clean up the detected text and remove any OCR noise characters like '|' or '!'.
-			var cleanedText = detectedText.replace("|", "").replace("!", "").trim()
-
-			// Handle OCR edge case: "Agenda I" should be "Agenda 1".
-			if (cleanedText.equals("Agenda I", ignoreCase = true)) {
-				cleanedText = "Agenda 1"
-			}
-			
-			if (cleanedText.isNotEmpty()) {
-				mappings[buttonLocation] = cleanedText
-				if (debugMode) {
-					MessageLog.d(TAG, "[DEBUG] determineAgendaHeaderMappings:: Agenda header #${index + 1} at button ($buttonLocation): \"$cleanedText\"")
-				} else {
-					Log.d(TAG, "[DEBUG] determineAgendaHeaderMappings:: Agenda header #${index + 1} at button ($buttonLocation): \"$cleanedText\"")
-				}
-			}
-		}
-		
-		return mappings
-	}
-
-	/** Determines the number of fans given by an extra race if it matches predictions.
-	 *
-	 * @param extraRaceLocation The screen location of the extra race.
-	 * @param sourceBitmap The source bitmap to analyze.
-	 * @param forceRacing Whether to skip the double star prediction check. Defaults to false.
-	 * @return RaceDetails containing the detected fan count and other race info.
-	 */
-	fun determineExtraRaceFans(extraRaceLocation: Point, sourceBitmap: Bitmap, forceRacing: Boolean = false): RaceDetails {
-		// Check for Rival status.
-		val rivalCheck = if (game.scenario == "Trackblazer") {
-			val rivalBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -165), relY(extraRaceLocation.y, -165), relWidth(320), relHeight(80), "determineExtraRaceFans rival")
-			if (rivalBitmap != null) {
-				LabelRivalRacer.check(this, sourceBitmap = rivalBitmap, region = intArrayOf(0, 0, 0, 0))
-			} else false
-		} else false
-
-		// Crop the source screenshot to show only the fan amount and the predictions.
-		val croppedBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -173), relY(extraRaceLocation.y, -106), relWidth(163), relHeight(96), "determineExtraRaceFans prediction")
-		if (croppedBitmap == null) {
-			MessageLog.e(TAG, "[ERROR] determineExtraRaceFans:: Failed to create cropped bitmap for extra race prediction detection.")
-			return RaceDetails(-1, false, rivalCheck)
-		}
-
-		val cvImage = Mat()
-		Utils.bitmapToMat(croppedBitmap, cvImage)
-		if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugExtraRacePrediction.png", cvImage)
-
-		// Determine if the extra race has double star prediction.
-        val predictionCheck = IconRaceListPredictionDoubleStar.check(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
-
-		return if (forceRacing || predictionCheck) {
-			if (debugMode && !forceRacing) MessageLog.d(TAG, "[DEBUG] determineExtraRaceFans:: This race has double predictions. Now checking how many fans this race gives.")
-			else if (debugMode) MessageLog.d(TAG, "[DEBUG] determineExtraRaceFans:: Check for double predictions was skipped due to the force racing flag being enabled. Now checking how many fans this race gives.")
-
-			// Crop the source screenshot to show only the fans.
-            var xOffset = -625
-            var yOffset = -75
-            if (game.scenario == "Trackblazer") {
-                xOffset = -580
-                yOffset = -50
-            }
-			val croppedBitmap2 = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, xOffset), relY(extraRaceLocation.y, yOffset), relWidth(250), relHeight(35), "determineExtraRaceFans fans")
-			if (croppedBitmap2 == null) {
-				MessageLog.e(TAG, "[ERROR] determineExtraRaceFans:: Failed to create cropped bitmap for extra race fans detection.")
-				return RaceDetails(-1, predictionCheck, rivalCheck)
-			}
-
-			// Make the cropped screenshot grayscale.
-			Utils.bitmapToMat(croppedBitmap2, cvImage)
-			Imgproc.cvtColor(cvImage, cvImage, Imgproc.COLOR_BGR2GRAY)
-			if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugExtraRaceFans_afterCrop.png", cvImage)
-
-			// Convert the Mat directly to Bitmap and then pass it to the text reader.
-			var resultBitmap = createBitmap(cvImage.cols(), cvImage.rows())
-			Utils.matToBitmap(cvImage, resultBitmap)
-
-			// Thresh the grayscale cropped image to make it black and white.
-			val bwImage = Mat()
-			Imgproc.threshold(cvImage, bwImage, threshold.toDouble(), 255.0, Imgproc.THRESH_BINARY)
-			if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugExtraRaceFans_afterThreshold.png", bwImage)
-
-			resultBitmap = createBitmap(bwImage.cols(), bwImage.rows())
-			Utils.matToBitmap(bwImage, resultBitmap)
-			tessDigitsBaseAPI.setImage(resultBitmap)
-
-			var result = ""
-			try {
-				// Finally, detect text on the cropped region.
-				result = tessDigitsBaseAPI.utF8Text
-			} catch (e: Exception) {
-				MessageLog.e(TAG, "[ERROR] determineExtraRaceFans:: Cannot perform OCR with Tesseract: ${e.stackTraceToString()}")
-			}
-
-			tessDigitsBaseAPI.clear()
-			cvImage.release()
-			bwImage.release()
-
-			// Format the string to be converted to an integer.
-			MessageLog.i(TAG, "[INFO] determineExtraRaceFans:: Detected number of fans from Tesseract before formatting: $result")
-			result = result
-				.replace(",", "")
-				.replace(".", "")
-				.replace("+", "")
-				.replace("-", "")
-				.replace(">", "")
-				.replace("<", "")
-				.replace("(", "")
-				.replace("人", "")
-				.replace("ォ", "")
-				.replace("fans", "").trim()
-
-			try {
-				Log.d(TAG, "[DEBUG] determineExtraRaceFans:: Converting $result to integer for fans")
-				val cleanedResult = result.replace(Regex("[^0-9]"), "")
-				RaceDetails(cleanedResult.toInt(), predictionCheck, rivalCheck)
-			} catch (_: NumberFormatException) {
-				RaceDetails(-1, predictionCheck, rivalCheck)
-			}
-		} else {
-			Log.d(TAG, "[DEBUG] determineExtraRaceFans:: This race has no double prediction.")
-            RaceDetails(-1, false, rivalCheck)
-		}
-	}
-
-	/** Determines the current number of skill points.
-	 *
-	 * @param sourceBitmap Optional source bitmap to use. Defaults to null.
-	 * @param skillPointsLocation Optional point location of the skill points icon. Defaults to null.
-	 * @return The number of skill points, or -1 if detection fails.
-	 */
-	fun determineSkillPoints(sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null): Int {
-		val (skillPointsLocation, sourceBitmap) = if (skillPointsLocation == null) {
-			LabelStatTableHeaderSkillPoints.find(this)
-        } else if (sourceBitmap == null) {
-            Pair(skillPointsLocation, getSourceBitmap())
-        } else {
-			Pair(skillPointsLocation, sourceBitmap)
-		}
-
-        if (skillPointsLocation == null) {
-            MessageLog.e(TAG, "[ERROR] determineSkillPoints:: skillPointsLocation is null.")
-            return -1
-        }
-
-        // Determine crop region.
-        val (offsetX, offsetY, width, height) = listOf(-70, 28, relWidth(135), relHeight(70))
-
-        // Perform OCR with thresholding.
-        val detectedText = performOCROnRegion(
-            sourceBitmap,
-            relX(skillPointsLocation.x, offsetX),
-            relY(skillPointsLocation.y, offsetY),
-            width,
-            height,
-            useThreshold = true,
-            useGrayscale = true,
-            scale = 1.0,
-            ocrEngine = "mlkit",
-            debugName = "SkillPoints"
-        )
-
-        // Parse the result.
-        Log.d(TAG, "[DEBUG] determineSkillPoints:: Detected number of skill points before formatting: $detectedText")
-        return try {
-            Log.d(TAG, "[DEBUG] determineSkillPoints:: Converting $detectedText to integer for skill points")
-            val cleanedResult = detectedText.replace(Regex("[^0-9]"), "")
-            cleanedResult.toInt()
-        } catch (_: NumberFormatException) {
-            -1
-        }
-	}
-
-	/** Analyzes relationship bars for the currently selected training.
+    /** Analyzes relationship bars for the currently selected training.
 	 *
 	 * @param sourceBitmap Optional source bitmap to use. Defaults to null.
 	 * @param statName The stat name associated with the selected training.
@@ -1166,89 +884,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		return result.toMap()
 	}
 
-	/** Extracts the current date string from the screen.
-	 *
-	 * @param isOnMainScreen Whether detection is performed on the Main screen.
-	 * @return The detected date string, or an empty string if detection fails.
-	 */
-	fun determineDayString(isOnMainScreen: Boolean = false): String {
-		var result = ""
-
-		// Skip this check if we know we're on the Main screen.
-		if (!isOnMainScreen) {
-			val (raceStatusLocation, sourceBitmap) = ButtonRaceListFullStats.find(this)
-			if (raceStatusLocation != null) {
-				// Perform OCR with thresholding (date text is on solid white background).
-				MessageLog.i(TAG, "[INFO] Detecting date from the Race List screen.")
-				result = performOCROnRegion(
-					sourceBitmap,
-					relX(raceStatusLocation.x, -170),
-					relY(raceStatusLocation.y, 105),
-					relWidth(640),
-					relHeight(70),
-					useThreshold = true,
-					useGrayscale = true,
-					scale = 1.0,
-					ocrEngine = "mlkit",
-					debugName = "dateString"
-				)
-				if (result != "") {
-					MessageLog.i(TAG, "[INFO] Detected date: $result")
-					
-					if (debugMode) {
-						MessageLog.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
-					} else {
-						Log.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
-					}
-
-					return result
-				}
-			}
-		}
-
-		// Main screen detection path.
-		val (energyLocation, sourceBitmap) = LabelEnergy.find(this)
-		val offsetX = if (game.scenario == "Unity Cup") {
-			-40
-		} else {
-			-268
-		}
-
-		if (energyLocation != null) {
-			// Perform OCR with no thresholding (date text is on moving background).
-			MessageLog.i(TAG, "[INFO] Detecting date from the Main screen.")
-			result = performOCROnRegion(
-				sourceBitmap,
-				relX(energyLocation.x, offsetX),
-				relY(energyLocation.y, -180),
-				relWidth(308),
-				relHeight(35),
-				useThreshold = false,
-				useGrayscale = true,
-				scale = 1.0,
-				ocrEngine = "mlkit",
-				debugName = "dateString"
-			)
-		}
-
-		if (result != "") {
-			MessageLog.i(TAG, "[INFO] Detected date: $result")
-			
-			if (debugMode) {
-				MessageLog.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
-			} else {
-				Log.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
-			}
-
-			return result
-		} else {
-			MessageLog.e(TAG, "[ERROR] determineDayString:: Could not start the process of detecting the date string.")
-		}
-
-		return ""
-	}
-
-	/** Determines the stat gain values from a training session.
+    /** Determines the stat gain values from a training session.
 	 *
 	 * Uses template matching to identify individual digits and the "+" sign in the
 	 * stat gain area. Supports multi-row detection for specialized scenarios.
@@ -1886,9 +1522,598 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		return if (den == 0.0) 0.0 else num / den
 	}
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Date Helper Functions
+
+	/** Determines the number of turns remaining before the next scenario goal.
+	 *
+	 * @return The number of turns remaining, or -1 if detection fails.
+	 */
+	fun determineTurnsRemainingBeforeNextGoal(): Int {
+		val (energyTextLocation, sourceBitmap) = LabelEnergy.find(this)
+
+		if (energyTextLocation != null) {
+			// Determine crop region based on the current scenario.
+			val (offsetX, offsetY, width, height) = if (game.scenario == "Unity Cup") {
+				listOf(-260, -137, relWidth(100), relHeight(80))
+			} else {
+				listOf(-246, -100, relWidth(140), relHeight(95))
+			}
+
+			// Perform OCR with 2x scaling.
+			val detectedText = performOCROnRegion(
+				sourceBitmap,
+				relX(energyTextLocation.x, offsetX),
+				relY(energyTextLocation.y, offsetY),
+				width,
+				height,
+				useThreshold = true,
+				useGrayscale = true,
+				scale = 2.0,
+				ocrEngine = "tesseract_digits",
+				debugName = "DayForExtraRace"
+			)
+
+			// Parse the result.
+			val result = try {
+				if (detectedText.lowercase().contains("ace") || detectedText.lowercase().contains("da")) {
+					// This is "Race Day", so there are 0 turns left before the mandatory race.
+					MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected Race Day for extra racing: $detectedText")
+					0
+				} else {
+					val cleanedResult = detectedText.replace(Regex("[^0-9]"), "")
+					MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected day for extra racing: $detectedText")
+					cleanedResult.toInt()
+				}
+			} catch (_: NumberFormatException) {
+				MessageLog.e(TAG, "[ERROR] determineTurnsRemainingBeforeNextGoal:: Could not convert \"$detectedText\" to integer for the turns remaining.")
+				-1
+			}
+
+			return result
+		}
+
+		return -1
+	}
+
+    /** Extracts the current date string from the screen.
+	 *
+	 * @param isOnMainScreen Whether detection is performed on the Main screen.
+	 * @return The detected date string, or an empty string if detection fails.
+	 */
+	fun determineDayString(isOnMainScreen: Boolean = false): String {
+		var result = ""
+
+		// Skip this check if we know we're on the Main screen.
+		if (!isOnMainScreen) {
+			val (raceStatusLocation, sourceBitmap) = ButtonRaceListFullStats.find(this)
+			if (raceStatusLocation != null) {
+				// Perform OCR with thresholding (date text is on solid white background).
+				MessageLog.i(TAG, "[INFO] Detecting date from the Race List screen.")
+				result = performOCROnRegion(
+					sourceBitmap,
+					relX(raceStatusLocation.x, -170),
+					relY(raceStatusLocation.y, 105),
+					relWidth(640),
+					relHeight(70),
+					useThreshold = true,
+					useGrayscale = true,
+					scale = 1.0,
+					ocrEngine = "mlkit",
+					debugName = "dateString"
+				)
+				if (result != "") {
+					MessageLog.i(TAG, "[INFO] Detected date: $result")
+					
+					if (debugMode) {
+						MessageLog.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
+					} else {
+						Log.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
+					}
+
+					return result
+				}
+			}
+		}
+
+		// Main screen detection path.
+		val (energyLocation, sourceBitmap) = LabelEnergy.find(this)
+		val offsetX = if (game.scenario == "Unity Cup") {
+			-40
+		} else {
+			-268
+		}
+
+		if (energyLocation != null) {
+			// Perform OCR with no thresholding (date text is on moving background).
+			MessageLog.i(TAG, "[INFO] Detecting date from the Main screen.")
+			result = performOCROnRegion(
+				sourceBitmap,
+				relX(energyLocation.x, offsetX),
+				relY(energyLocation.y, -180),
+				relWidth(308),
+				relHeight(35),
+				useThreshold = false,
+				useGrayscale = true,
+				scale = 1.0,
+				ocrEngine = "mlkit",
+				debugName = "dateString"
+			)
+		}
+
+		if (result != "") {
+			MessageLog.i(TAG, "[INFO] Detected date: $result")
+			
+			if (debugMode) {
+				MessageLog.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
+			} else {
+				Log.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
+			}
+
+			return result
+		} else {
+			MessageLog.e(TAG, "[ERROR] determineDayString:: Could not start the process of detecting the date string.")
+		}
+
+		return ""
+	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Main Screen Helper Functions
+
+    /** Determines the current number of skill points.
+	 *
+	 * @param sourceBitmap Optional source bitmap to use. Defaults to null.
+	 * @param skillPointsLocation Optional point location of the skill points icon. Defaults to null.
+	 * @return The number of skill points, or -1 if detection fails.
+	 */
+	fun determineSkillPoints(sourceBitmap: Bitmap? = null, skillPointsLocation: Point? = null): Int {
+		val (skillPointsLocation, sourceBitmap) = if (skillPointsLocation == null) {
+			LabelStatTableHeaderSkillPoints.find(this)
+        } else if (sourceBitmap == null) {
+            Pair(skillPointsLocation, getSourceBitmap())
+        } else {
+			Pair(skillPointsLocation, sourceBitmap)
+		}
+
+        if (skillPointsLocation == null) {
+            MessageLog.e(TAG, "[ERROR] determineSkillPoints:: skillPointsLocation is null.")
+            return -1
+        }
+
+        // Determine crop region.
+        val (offsetX, offsetY, width, height) = listOf(-70, 28, relWidth(135), relHeight(70))
+
+        // Perform OCR with thresholding.
+        val detectedText = performOCROnRegion(
+            sourceBitmap,
+            relX(skillPointsLocation.x, offsetX),
+            relY(skillPointsLocation.y, offsetY),
+            width,
+            height,
+            useThreshold = true,
+            useGrayscale = true,
+            scale = 1.0,
+            ocrEngine = "mlkit",
+            debugName = "SkillPoints"
+        )
+
+        // Parse the result.
+        Log.d(TAG, "[DEBUG] determineSkillPoints:: Detected number of skill points before formatting: $detectedText")
+        return try {
+            Log.d(TAG, "[DEBUG] determineSkillPoints:: Converting $detectedText to integer for skill points")
+            val cleanedResult = detectedText.replace(Regex("[^0-9]"), "")
+            cleanedResult.toInt()
+        } catch (_: NumberFormatException) {
+            -1
+        }
+	}
+
+    /** Detects the number of fans from the Umamusume Class dialog.
+	 *
+	 * @param bitmap The source bitmap to analyze.
+	 * @return The number of fans if successful, or null if detection fails.
+	 */
+    fun getUmamusumeClassDialogFanCount(bitmap: Bitmap): Int? {
+        val cvImage = Mat()
+		Utils.bitmapToMat(bitmap, cvImage)
+        // Convert to grayscale.
+        Utils.bitmapToMat(bitmap, cvImage)
+        Imgproc.cvtColor(cvImage, cvImage, Imgproc.COLOR_BGR2GRAY)
+        if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugGetUmamusumeClassDialogFanCount_afterCrop.png", cvImage)
+
+        // Convert the Mat directly to Bitmap and then pass it to the text reader.
+        var resultBitmap = createBitmap(cvImage.cols(), cvImage.rows())
+        Utils.matToBitmap(cvImage, resultBitmap)
+
+        // Thresh the grayscale cropped image to make it black and white.
+        val bwImage = Mat()
+        Imgproc.threshold(cvImage, bwImage, threshold.toDouble(), 255.0, Imgproc.THRESH_BINARY)
+        if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugGetUmamusumeClassDialogFanCount_afterThreshold.png", bwImage)
+
+        resultBitmap = createBitmap(bwImage.cols(), bwImage.rows())
+        Utils.matToBitmap(bwImage, resultBitmap)
+        tessDigitsBaseAPI.setImage(resultBitmap)
+
+        var result = "empty!"
+        try {
+            // Finally, detect text on the cropped region.
+            result = tessDigitsBaseAPI.utF8Text
+        } catch (e: Exception) {
+            MessageLog.e(TAG, "[ERROR] getUmamusumeClassDialogFanCount:: Cannot perform OCR with Tesseract: ${e.stackTraceToString()}")
+        }
+
+        tessDigitsBaseAPI.clear()
+        cvImage.release()
+        bwImage.release()
+
+        // Format the string to be converted to an integer.
+        MessageLog.d(TAG, "[DEBUG] getUmamusumeClassDialogFanCount:: Detected number of fans from Tesseract before formatting: $result")
+        result = result
+            .replace(",", "")
+            .replace(".", "")
+            .replace("+", "")
+            .replace("-", "")
+            .replace(">", "")
+            .replace("<", "")
+            .replace("(", "")
+            .replace("人", "")
+            .replace("ォ", "")
+            .replace("fans", "").trim()
+
+        try {
+            Log.d(TAG, "[DEBUG] getUmamusumeClassDialogFanCount:: Converting $result to integer for fans")
+            val cleanedResult = result.replace(Regex("[^0-9]"), "").toInt()
+            return cleanedResult
+        } catch (_: NumberFormatException) {
+            return null
+        }
+    }
+
+	/** Calculates the filled percentage of the energy bar.
+	 *
+	 * @return The filled percentage (0-100), or null if the bar is not detected.
+	 */
+    fun analyzeEnergyBar(): Int? {
+        val templateBitmap: Bitmap = LabelEnergy.template.getBitmap(this)!!
+        val (energyTextLocation, sourceBitmap) = LabelEnergy.find(this)
+        if (energyTextLocation == null) {
+            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the text location of the energy bar.")
+            return null
+        }
+
+        // Get top right of energyText.
+        var x: Int = relX(energyTextLocation.x, templateBitmap.width / 2)
+        var y: Int = relY(energyTextLocation.y, -(templateBitmap.height / 2))
+        var w: Int = relWidth(700)
+        var h: Int = relHeight(75)
+
+        // Crop just the energy bar in the image.
+        // This crop extends to the right beyond the energy bar a bit since the bar is able to grow.
+        var croppedBitmap = createSafeBitmap(sourceBitmap, x, y, w, h, "analyzeEnergyBar:: Crop energy bar.")
+        if (croppedBitmap == null) {
+            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to crop the bitmap of the energy bar.")
+            return null
+        }
+
+        // Now find the left and right brackets of the energy bar to refine our cropped region.
+        val energyBarLeftPartTemplateBitmap: Bitmap? = IconEnergyBarLeftPart.template.getBitmap(this)
+        if (energyBarLeftPartTemplateBitmap == null) {
+            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the template bitmap for the left part of the energy bar.")
+            return null
+        }
+
+        val leftPartLocation: Point? = IconEnergyBarLeftPart.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
+        if (leftPartLocation == null) {
+            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the location of the left part of the energy bar.")
+            return null
+        }
+
+        // The right side of the energy bar looks very different depending on whether the max energy has been increased. Thus, we need to look for one of two bitmaps.
+        var energyBarRightPartTemplateBitmap: Bitmap? = IconEnergyBarRightPart0.template.getBitmap(this)
+        var rightPartLocation: Point?
+        if (energyBarRightPartTemplateBitmap == null) {
+            energyBarRightPartTemplateBitmap = IconEnergyBarRightPart1.template.getBitmap(this)
+            if (energyBarRightPartTemplateBitmap == null) {
+                MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the template bitmap for the right part of the energy bar.")
+                return null
+            }
+            rightPartLocation = IconEnergyBarRightPart1.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
+        } else {
+            rightPartLocation = IconEnergyBarRightPart0.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
+        }
+
+        if (rightPartLocation == null) {
+            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the location of the right part of the energy bar.")
+            return null
+        }
+
+        // Crop the energy bar further to refine the cropped region so that we can measure the length of the bar.
+        // This crop is just a single pixel high line at the center of the bounding region.
+        val left: Int = relX(leftPartLocation.x, energyBarLeftPartTemplateBitmap.width / 2)
+        val right: Int = relX(rightPartLocation.x, -(energyBarRightPartTemplateBitmap.width / 2))
+        x = left
+        y = relHeight(croppedBitmap.height / 2)
+        w = relWidth(right - left)
+        h = 1
+
+        croppedBitmap = createSafeBitmap(croppedBitmap, x, y, w, h, "analyzeEnergyBar:: Refine cropped energy bar.")
+        if (croppedBitmap == null) {
+            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to refine the cropped bitmap region of the energy bar.")
+            return null
+        }
+
+        // HSV color range for gray portion of energy bar.
+        val grayLower = Scalar(0.0, 0.0, 116.0)
+        val grayUpper = Scalar(180.0, 255.0, 118.0)
+        val colorLower = Scalar(5.0, 0.0, 120.0)
+        val colorUpper = Scalar(180.0, 255.0, 255.0)
+
+        // Convert the cropped region to HSV
+        val barMat = Mat()
+        Utils.bitmapToMat(croppedBitmap, barMat)
+        val hsvMat = Mat()
+        Imgproc.cvtColor(barMat, hsvMat, Imgproc.COLOR_BGR2HSV)
+
+        // Create masks for the gray and color portions of the image.
+        val grayMask = Mat()
+        val colorMask = Mat()
+        Core.inRange(hsvMat, grayLower, grayUpper, grayMask)
+        Core.inRange(hsvMat, colorLower, colorUpper, colorMask)
+
+        // Calculate ratio of color and gray pixels.
+        val grayPixels = Core.countNonZero(grayMask)
+        val colorPixels = Core.countNonZero(colorMask)
+        val totalPixels = grayPixels + colorPixels
+
+        var fillPercent = 0.0
+        if (totalPixels > 0) {
+            fillPercent = (colorPixels.toDouble() / totalPixels.toDouble()) * 100.0
+        }
+        val result: Int = fillPercent.toInt().coerceIn(0, 100)
+
+        barMat.release()
+        hsvMat.release()
+        grayMask.release()
+        colorMask.release()
+
+        Log.d(TAG, "[DEBUG] analyzeEnergyBar:: Results of energy bar analysis: Gray pixels=$grayPixels, Color pixels=$colorPixels, Energy=$result")
+        return result
+    }
+
+	/** Detects the current scenario goal text using OCR.
+	 *
+	 * @return The detected goal text, or an empty string if detection fails.
+	 */
+	fun getGoalText(): String {
+        val bbox = BoundingBox(
+            x = relX(0.0, 365),
+            y = relY(0.0, 110),
+            w = relWidth(550),
+            h = relHeight(40),
+        )
+        val sourceBitmap = getSourceBitmap()
+
+		// Perform OCR with 2x scaling and no thresholding.
+		val result = performOCROnRegion(
+            sourceBitmap,
+			bbox.x,
+            bbox.y,
+            bbox.w,
+            bbox.h,
+			useThreshold = false,
+			useGrayscale = true,
+			scale = 1.0,
+			ocrEngine = "mlkit",
+			debugName = "GoalText",
+		)
+
+		if (debugMode) {
+			MessageLog.d(TAG, "[DEBUG] getGoalText:: Detected text: $result")
+		} else {
+			Log.d(TAG, "[DEBUG] getGoalText:: Detected text: $result")
+		}
+
+		return result
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Racing Helper Functions
+
+	/** Extracts the race name from the race selection screen using OCR.
+	 *
+	 * @param extraRaceLocation The screen location of the race entry.
+	 * @return The detected race name, or an empty string if detection fails.
+	 */
+	fun extractRaceName(extraRaceLocation: Point): String {
+		try {
+			val detectedText = performOCRFromReference(
+				referencePoint = extraRaceLocation,
+				offsetX = -455,
+				offsetY = -105,
+				width = relWidth(585),
+				height = relHeight(45),
+				useThreshold = true,
+				useGrayscale = true,
+				scale = 2.0,
+				ocrEngine = "mlkit",
+				debugName = "extractRaceName"
+			)
+			
+            // Ensure forward slashes are surrounded by spaces.
+			val refinedResult = detectedText.replace(Regex("""\s*/\s*"""), " / ").trim()
+			MessageLog.i(TAG, "[INFO] extractRaceName:: Extracted race name: \"$refinedResult\"")
+			return refinedResult
+		} catch (e: Exception) {
+			MessageLog.e(TAG, "[ERROR] extractRaceName:: Exception during race name extraction: ${e.message}")
+			return ""
+		}
+	}
+
+	/** Determines the agenda header text associated with each race list button.
+	 *
+	 * @param sourceBitmap The source bitmap to analyze.
+	 * @param loadListButtonLocations List of screen locations for the buttons.
+	 * @return A map of button locations to their corresponding agenda text (e.g., "Agenda 1").
+	 */
+	fun determineAgendaHeaderMappings(sourceBitmap: Bitmap, loadListButtonLocations: ArrayList<Point>): Map<Point, String> {
+		val mappings = mutableMapOf<Point, String>()
+		
+		// Offset from button to header text (relative to 1080x2340 baseline).
+		val offsetX = -830
+		val offsetY = -190
+		val cropWidth = relWidth(135)
+		val cropHeight = relHeight(35)
+		
+		for ((index, buttonLocation) in loadListButtonLocations.withIndex()) {
+			val headerX = relX(buttonLocation.x, offsetX)
+			val headerY = relY(buttonLocation.y, offsetY)
+			
+			// Perform OCR on the header region.
+			val detectedText = performOCROnRegion(
+				sourceBitmap,
+				headerX,
+				headerY,
+				cropWidth,
+				cropHeight,
+				useThreshold = true,
+				useGrayscale = true,
+				scale = 2.0,
+				ocrEngine = "mlkit",
+				debugName = "AgendaHeader${index + 1}"
+			)
+			
+			// Clean up the detected text and remove any OCR noise characters like '|' or '!'.
+			var cleanedText = detectedText.replace("|", "").replace("!", "").trim()
+
+			// Handle OCR edge case: "Agenda I" should be "Agenda 1".
+			if (cleanedText.equals("Agenda I", ignoreCase = true)) {
+				cleanedText = "Agenda 1"
+			}
+			
+			if (cleanedText.isNotEmpty()) {
+				mappings[buttonLocation] = cleanedText
+				if (debugMode) {
+					MessageLog.d(TAG, "[DEBUG] determineAgendaHeaderMappings:: Agenda header #${index + 1} at button ($buttonLocation): \"$cleanedText\"")
+				} else {
+					Log.d(TAG, "[DEBUG] determineAgendaHeaderMappings:: Agenda header #${index + 1} at button ($buttonLocation): \"$cleanedText\"")
+				}
+			}
+		}
+		
+		return mappings
+	}
+
+	/** Determines the number of fans given by an extra race if it matches predictions.
+	 *
+	 * @param extraRaceLocation The screen location of the extra race.
+	 * @param sourceBitmap The source bitmap to analyze.
+	 * @param forceRacing Whether to skip the double star prediction check. Defaults to false.
+	 * @return RaceDetails containing the detected fan count and other race info.
+	 */
+	fun determineExtraRaceFans(extraRaceLocation: Point, sourceBitmap: Bitmap, forceRacing: Boolean = false): RaceDetails {
+		// Check for Rival status.
+		val rivalCheck = if (game.scenario == "Trackblazer") {
+			val rivalBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -165), relY(extraRaceLocation.y, -165), relWidth(320), relHeight(80), "determineExtraRaceFans rival")
+			if (rivalBitmap != null) {
+				LabelRivalRacer.check(this, sourceBitmap = rivalBitmap, region = intArrayOf(0, 0, 0, 0))
+			} else false
+		} else false
+
+		// Crop the source screenshot to show only the fan amount and the predictions.
+		val croppedBitmap = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, -173), relY(extraRaceLocation.y, -106), relWidth(163), relHeight(96), "determineExtraRaceFans prediction")
+		if (croppedBitmap == null) {
+			MessageLog.e(TAG, "[ERROR] determineExtraRaceFans:: Failed to create cropped bitmap for extra race prediction detection.")
+			return RaceDetails(-1, false, rivalCheck)
+		}
+
+		val cvImage = Mat()
+		Utils.bitmapToMat(croppedBitmap, cvImage)
+		if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugExtraRacePrediction.png", cvImage)
+
+		// Determine if the extra race has double star prediction.
+        val predictionCheck = IconRaceListPredictionDoubleStar.check(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
+
+		return if (forceRacing || predictionCheck) {
+			if (debugMode && !forceRacing) MessageLog.d(TAG, "[DEBUG] determineExtraRaceFans:: This race has double predictions. Now checking how many fans this race gives.")
+			else if (debugMode) MessageLog.d(TAG, "[DEBUG] determineExtraRaceFans:: Check for double predictions was skipped due to the force racing flag being enabled. Now checking how many fans this race gives.")
+
+			// Crop the source screenshot to show only the fans.
+            var xOffset = -625
+            var yOffset = -75
+            if (game.scenario == "Trackblazer") {
+                xOffset = -580
+                yOffset = -50
+            }
+			val croppedBitmap2 = createSafeBitmap(sourceBitmap, relX(extraRaceLocation.x, xOffset), relY(extraRaceLocation.y, yOffset), relWidth(250), relHeight(35), "determineExtraRaceFans fans")
+			if (croppedBitmap2 == null) {
+				MessageLog.e(TAG, "[ERROR] determineExtraRaceFans:: Failed to create cropped bitmap for extra race fans detection.")
+				return RaceDetails(-1, predictionCheck, rivalCheck)
+			}
+
+			// Make the cropped screenshot grayscale.
+			Utils.bitmapToMat(croppedBitmap2, cvImage)
+			Imgproc.cvtColor(cvImage, cvImage, Imgproc.COLOR_BGR2GRAY)
+			if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugExtraRaceFans_afterCrop.png", cvImage)
+
+			// Convert the Mat directly to Bitmap and then pass it to the text reader.
+			var resultBitmap = createBitmap(cvImage.cols(), cvImage.rows())
+			Utils.matToBitmap(cvImage, resultBitmap)
+
+			// Thresh the grayscale cropped image to make it black and white.
+			val bwImage = Mat()
+			Imgproc.threshold(cvImage, bwImage, threshold.toDouble(), 255.0, Imgproc.THRESH_BINARY)
+			if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugExtraRaceFans_afterThreshold.png", bwImage)
+
+			resultBitmap = createBitmap(bwImage.cols(), bwImage.rows())
+			Utils.matToBitmap(bwImage, resultBitmap)
+			tessDigitsBaseAPI.setImage(resultBitmap)
+
+			var result = ""
+			try {
+				// Finally, detect text on the cropped region.
+				result = tessDigitsBaseAPI.utF8Text
+			} catch (e: Exception) {
+				MessageLog.e(TAG, "[ERROR] determineExtraRaceFans:: Cannot perform OCR with Tesseract: ${e.stackTraceToString()}")
+			}
+
+			tessDigitsBaseAPI.clear()
+			cvImage.release()
+			bwImage.release()
+
+			// Format the string to be converted to an integer.
+			MessageLog.i(TAG, "[INFO] determineExtraRaceFans:: Detected number of fans from Tesseract before formatting: $result")
+			result = result
+				.replace(",", "")
+				.replace(".", "")
+				.replace("+", "")
+				.replace("-", "")
+				.replace(">", "")
+				.replace("<", "")
+				.replace("(", "")
+				.replace("人", "")
+				.replace("ォ", "")
+				.replace("fans", "").trim()
+
+			try {
+				Log.d(TAG, "[DEBUG] determineExtraRaceFans:: Converting $result to integer for fans")
+				val cleanedResult = result.replace(Regex("[^0-9]"), "")
+				RaceDetails(cleanedResult.toInt(), predictionCheck, rivalCheck)
+			} catch (_: NumberFormatException) {
+				RaceDetails(-1, predictionCheck, rivalCheck)
+			}
+		} else {
+			Log.d(TAG, "[DEBUG] determineExtraRaceFans:: This race has no double prediction.")
+            RaceDetails(-1, false, rivalCheck)
+		}
+	}
+
 	////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////
-	// Helper functions for OCR operations.
+	// OCR Helper Functions
 
 	/**
 	 * Performs OCR on a cropped region by filtering pixels matching a specific RGB color.
@@ -2122,213 +2347,9 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 		)
 	}
 
-	/** Detects the number of fans from the Umamusume Class dialog.
-	 *
-	 * @param bitmap The source bitmap to analyze.
-	 * @return The number of fans if successful, or null if detection fails.
-	 */
-    fun getUmamusumeClassDialogFanCount(bitmap: Bitmap): Int? {
-        val cvImage = Mat()
-		Utils.bitmapToMat(bitmap, cvImage)
-        // Convert to grayscale.
-        Utils.bitmapToMat(bitmap, cvImage)
-        Imgproc.cvtColor(cvImage, cvImage, Imgproc.COLOR_BGR2GRAY)
-        if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugGetUmamusumeClassDialogFanCount_afterCrop.png", cvImage)
-
-        // Convert the Mat directly to Bitmap and then pass it to the text reader.
-        var resultBitmap = createBitmap(cvImage.cols(), cvImage.rows())
-        Utils.matToBitmap(cvImage, resultBitmap)
-
-        // Thresh the grayscale cropped image to make it black and white.
-        val bwImage = Mat()
-        Imgproc.threshold(cvImage, bwImage, threshold.toDouble(), 255.0, Imgproc.THRESH_BINARY)
-        if (debugMode) Imgcodecs.imwrite("$matchFilePath/debugGetUmamusumeClassDialogFanCount_afterThreshold.png", bwImage)
-
-        resultBitmap = createBitmap(bwImage.cols(), bwImage.rows())
-        Utils.matToBitmap(bwImage, resultBitmap)
-        tessDigitsBaseAPI.setImage(resultBitmap)
-
-        var result = "empty!"
-        try {
-            // Finally, detect text on the cropped region.
-            result = tessDigitsBaseAPI.utF8Text
-        } catch (e: Exception) {
-            MessageLog.e(TAG, "[ERROR] getUmamusumeClassDialogFanCount:: Cannot perform OCR with Tesseract: ${e.stackTraceToString()}")
-        }
-
-        tessDigitsBaseAPI.clear()
-        cvImage.release()
-        bwImage.release()
-
-        // Format the string to be converted to an integer.
-        MessageLog.d(TAG, "[DEBUG] getUmamusumeClassDialogFanCount:: Detected number of fans from Tesseract before formatting: $result")
-        result = result
-            .replace(",", "")
-            .replace(".", "")
-            .replace("+", "")
-            .replace("-", "")
-            .replace(">", "")
-            .replace("<", "")
-            .replace("(", "")
-            .replace("人", "")
-            .replace("ォ", "")
-            .replace("fans", "").trim()
-
-        try {
-            Log.d(TAG, "[DEBUG] getUmamusumeClassDialogFanCount:: Converting $result to integer for fans")
-            val cleanedResult = result.replace(Regex("[^0-9]"), "").toInt()
-            return cleanedResult
-        } catch (_: NumberFormatException) {
-            return null
-        }
-    }
-
-	/** Calculates the filled percentage of the energy bar.
-	 *
-	 * @return The filled percentage (0-100), or null if the bar is not detected.
-	 */
-    fun analyzeEnergyBar(): Int? {
-        val templateBitmap: Bitmap = LabelEnergy.template.getBitmap(this)!!
-        val (energyTextLocation, sourceBitmap) = LabelEnergy.find(this)
-        if (energyTextLocation == null) {
-            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the text location of the energy bar.")
-            return null
-        }
-
-        // Get top right of energyText.
-        var x: Int = relX(energyTextLocation.x, templateBitmap.width / 2)
-        var y: Int = relY(energyTextLocation.y, -(templateBitmap.height / 2))
-        var w: Int = relWidth(700)
-        var h: Int = relHeight(75)
-
-        // Crop just the energy bar in the image.
-        // This crop extends to the right beyond the energy bar a bit since the bar is able to grow.
-        var croppedBitmap = createSafeBitmap(sourceBitmap, x, y, w, h, "analyzeEnergyBar:: Crop energy bar.")
-        if (croppedBitmap == null) {
-            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to crop the bitmap of the energy bar.")
-            return null
-        }
-
-        // Now find the left and right brackets of the energy bar to refine our cropped region.
-        val energyBarLeftPartTemplateBitmap: Bitmap? = IconEnergyBarLeftPart.template.getBitmap(this)
-        if (energyBarLeftPartTemplateBitmap == null) {
-            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the template bitmap for the left part of the energy bar.")
-            return null
-        }
-
-        val leftPartLocation: Point? = IconEnergyBarLeftPart.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
-        if (leftPartLocation == null) {
-            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the location of the left part of the energy bar.")
-            return null
-        }
-
-        // The right side of the energy bar looks very different depending on whether the max energy has been increased. Thus, we need to look for one of two bitmaps.
-        var energyBarRightPartTemplateBitmap: Bitmap? = IconEnergyBarRightPart0.template.getBitmap(this)
-        var rightPartLocation: Point?
-        if (energyBarRightPartTemplateBitmap == null) {
-            energyBarRightPartTemplateBitmap = IconEnergyBarRightPart1.template.getBitmap(this)
-            if (energyBarRightPartTemplateBitmap == null) {
-                MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the template bitmap for the right part of the energy bar.")
-                return null
-            }
-            rightPartLocation = IconEnergyBarRightPart1.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
-        } else {
-            rightPartLocation = IconEnergyBarRightPart0.findImageWithBitmap(this, sourceBitmap = croppedBitmap, region = intArrayOf(0, 0, 0, 0))
-        }
-
-        if (rightPartLocation == null) {
-            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to find the location of the right part of the energy bar.")
-            return null
-        }
-
-        // Crop the energy bar further to refine the cropped region so that we can measure the length of the bar.
-        // This crop is just a single pixel high line at the center of the bounding region.
-        val left: Int = relX(leftPartLocation.x, energyBarLeftPartTemplateBitmap.width / 2)
-        val right: Int = relX(rightPartLocation.x, -(energyBarRightPartTemplateBitmap.width / 2))
-        x = left
-        y = relHeight(croppedBitmap.height / 2)
-        w = relWidth(right - left)
-        h = 1
-
-        croppedBitmap = createSafeBitmap(croppedBitmap, x, y, w, h, "analyzeEnergyBar:: Refine cropped energy bar.")
-        if (croppedBitmap == null) {
-            MessageLog.e(TAG, "[ERROR] analyzeEnergyBar:: Failed to refine the cropped bitmap region of the energy bar.")
-            return null
-        }
-
-        // HSV color range for gray portion of energy bar.
-        val grayLower = Scalar(0.0, 0.0, 116.0)
-        val grayUpper = Scalar(180.0, 255.0, 118.0)
-        val colorLower = Scalar(5.0, 0.0, 120.0)
-        val colorUpper = Scalar(180.0, 255.0, 255.0)
-
-        // Convert the cropped region to HSV
-        val barMat = Mat()
-        Utils.bitmapToMat(croppedBitmap, barMat)
-        val hsvMat = Mat()
-        Imgproc.cvtColor(barMat, hsvMat, Imgproc.COLOR_BGR2HSV)
-
-        // Create masks for the gray and color portions of the image.
-        val grayMask = Mat()
-        val colorMask = Mat()
-        Core.inRange(hsvMat, grayLower, grayUpper, grayMask)
-        Core.inRange(hsvMat, colorLower, colorUpper, colorMask)
-
-        // Calculate ratio of color and gray pixels.
-        val grayPixels = Core.countNonZero(grayMask)
-        val colorPixels = Core.countNonZero(colorMask)
-        val totalPixels = grayPixels + colorPixels
-
-        var fillPercent = 0.0
-        if (totalPixels > 0) {
-            fillPercent = (colorPixels.toDouble() / totalPixels.toDouble()) * 100.0
-        }
-        val result: Int = fillPercent.toInt().coerceIn(0, 100)
-
-        barMat.release()
-        hsvMat.release()
-        grayMask.release()
-        colorMask.release()
-
-        Log.d(TAG, "[DEBUG] analyzeEnergyBar:: Results of energy bar analysis: Gray pixels=$grayPixels, Color pixels=$colorPixels, Energy=$result")
-        return result
-    }
-
-	/** Detects the current scenario goal text using OCR.
-	 *
-	 * @return The detected goal text, or an empty string if detection fails.
-	 */
-	fun getGoalText(): String {
-        val bbox = BoundingBox(
-            x = relX(0.0, 365),
-            y = relY(0.0, 110),
-            w = relWidth(550),
-            h = relHeight(40),
-        )
-        val sourceBitmap = getSourceBitmap()
-
-		// Perform OCR with 2x scaling and no thresholding.
-		val result = performOCROnRegion(
-            sourceBitmap,
-			bbox.x,
-            bbox.y,
-            bbox.w,
-            bbox.h,
-			useThreshold = false,
-			useGrayscale = true,
-			scale = 1.0,
-			ocrEngine = "mlkit",
-			debugName = "GoalText",
-		)
-
-		if (debugMode) {
-			MessageLog.d(TAG, "[DEBUG] getGoalText:: Detected text: $result")
-		} else {
-			Log.d(TAG, "[DEBUG] getGoalText:: Detected text: $result")
-		}
-
-		return result
-    }
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Misc Helper Functions
 
 	/** Saves a bitmap for debugging purposes.
 	 *
@@ -2377,7 +2398,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 	 * @param filename The output filename.
 	 * @param bbox The region to crop.
 	 */
-    fun saveBitmap(bitmap: Bitmap? = null, filename: String, bbox: BoundingBox) {
+    fun saveBitmapWithBbox(bitmap: Bitmap? = null, filename: String, bbox: BoundingBox) {
         val bitmap = bitmap ?: getSourceBitmap()
         val croppedBitmap = createSafeBitmap(
             bitmap,
@@ -2385,7 +2406,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
             bbox.y,
             bbox.w,
             bbox.h,
-            "saveBitmap(filename=$filename, bbox=$bbox)",
+            "saveBitmapWithBbox(filename=$filename, bbox=$bbox)",
         )
         saveBitmap(bitmap = croppedBitmap, filename = filename)
     }

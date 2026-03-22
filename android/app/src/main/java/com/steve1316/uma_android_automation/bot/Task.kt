@@ -61,19 +61,26 @@ sealed interface TaskResult {
 abstract class Task(game: Game) : DialogHandler(game) {
 	val TAG: String = "[${MainActivity.loggerTag}]${this::class.simpleName}"
 
-	/** Process a single iteration of the task's main loop.
-	 *
-	 * @return A [TaskResult] if the main loop should stop, or null to continue iterating.
-	 */
-	abstract fun process(): TaskResult?
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
 
-	/** Run all tests for this task.
+    /** Run all tests for this task.
 	 *
 	 * @return Whether any tests were executed.
 	 */
 	open fun startTests(): Boolean {
 		return false
 	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /** Process a single iteration of the task's main loop.
+	 *
+	 * @return A [TaskResult] if the main loop should stop, or null to continue iterating.
+	 */
+	abstract fun process(): TaskResult?
 
 	/** Attempt to handle all active dialog boxes.
 	 *
@@ -131,6 +138,9 @@ abstract class Task(game: Game) : DialogHandler(game) {
 			game.wait(1.0, skipWaitingForLoading = true)
 		}
 	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/** Run the task's main loop until completion or timeout.
 	 *

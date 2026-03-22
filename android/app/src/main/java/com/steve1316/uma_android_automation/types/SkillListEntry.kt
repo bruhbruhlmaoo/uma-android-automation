@@ -168,7 +168,6 @@ class SkillListEntry(
     /** The base price of this skill without any discounts applied from [SkillData]. */
     val baseCost: Int = skillData.cost
 
-
     init {
         // Update linked list pointers if they were passed in.
         val prev: SkillListEntry? = prev
@@ -181,6 +180,9 @@ class SkillListEntry(
             next.prev = this
         }
     }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     /** Rounds a discount value to the nearest predetermined valid value.
      *
@@ -431,53 +433,6 @@ class SkillListEntry(
         next?.onDowngradeSold(this)
     }
 
-    /** Purchases this skill and triggers updates for related versions.
-     *
-     * Upon purchasing a skill, all other versions in the same upgrade chain
-     * are updated to reflect the new state:
-     * - Downregulated versions are marked as [bIsObtained].
-     * - In-place upgrades are swapped (current becomes virtual, next becomes available).
-     * - Multi-entry upgrades have their [screenPrice] adjusted.
-     *
-     * @param skillUpLocation The screen location ([Point]) of the Skill Up (+) button.
-     * If provided, the bot will physically tap the button.
-     */
-    fun buy(skillUpLocation: Point? = null) {
-        if (skillUpLocation != null) {
-            game.tap(
-                skillUpLocation.x,
-                skillUpLocation.y,
-                ButtonSkillUp.template.path,
-            )
-        }
-
-        bIsObtained = true
-
-        // Update all related versions in the upgrade chain.
-        val prev: SkillListEntry? = prev
-        prev?.onUpgradePurchased(this)
-
-        val next: SkillListEntry? = next
-        next?.onDowngradePurchased(this)
-    }
-
-    /** Reverts the purchase state of this skill and propagates the change forward.
-     *
-     * NOTE: This method is used for internal simulations or resetting state; 
-     * players cannot literally sell skills back in the game.
-     */
-    fun sell() {
-        if (!bIsObtained) {
-            return
-        }
-
-        bIsObtained = false
-
-        // Propagate the state change forward to update prices of higher versions.
-        val next: SkillListEntry? = next
-        next?.onDowngradeSold(this)
-    }
-
     /** Returns the lowest available "real" version of this skill.
      *
      * This is useful when the bot wants a specific upgrade (like ◎) but it isn't
@@ -664,5 +619,55 @@ class SkillListEntry(
             "discount: ${(discount * 100).roundToInt()}%, " +
             "evalPt: $evaluationPoints ($evaluationPointRatioString / pt)" +
             "}"
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /** Purchases this skill and triggers updates for related versions.
+     *
+     * Upon purchasing a skill, all other versions in the same upgrade chain
+     * are updated to reflect the new state:
+     * - Downregulated versions are marked as [bIsObtained].
+     * - In-place upgrades are swapped (current becomes virtual, next becomes available).
+     * - Multi-entry upgrades have their [screenPrice] adjusted.
+     *
+     * @param skillUpLocation The screen location ([Point]) of the Skill Up (+) button.
+     * If provided, the bot will physically tap the button.
+     */
+    fun buy(skillUpLocation: Point? = null) {
+        if (skillUpLocation != null) {
+            game.tap(
+                skillUpLocation.x,
+                skillUpLocation.y,
+                ButtonSkillUp.template.path,
+            )
+        }
+
+        bIsObtained = true
+
+        // Update all related versions in the upgrade chain.
+        val prev: SkillListEntry? = prev
+        prev?.onUpgradePurchased(this)
+
+        val next: SkillListEntry? = next
+        next?.onDowngradePurchased(this)
+    }
+
+    /** Reverts the purchase state of this skill and propagates the change forward.
+     *
+     * NOTE: This method is used for internal simulations or resetting state; 
+     * players cannot literally sell skills back in the game.
+     */
+    fun sell() {
+        if (!bIsObtained) {
+            return
+        }
+
+        bIsObtained = false
+
+        // Propagate the state change forward to update prices of higher versions.
+        val next: SkillListEntry? = next
+        next?.onDowngradeSold(this)
     }
 }

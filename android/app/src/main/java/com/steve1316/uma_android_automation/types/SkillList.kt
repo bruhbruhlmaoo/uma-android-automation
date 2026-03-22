@@ -64,7 +64,85 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
     var skillPoints: Int = 0
         private set
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
 
+    /**
+     * Populates the skill list with mock data for testing and debugging.
+     *
+     * This data mimics a real skill list state, including obtained status and prices.
+     *
+     * @return A mapping of skill names to [SkillListEntry] objects.
+     */
+    fun parseMockSkillListEntries(): Map<String, SkillListEntry> {
+        val mockSkills: Map<String, Int> = mapOf(
+            "Warning Shot!" to -1,
+            "Triumphant Pulse" to 120,
+            "Kyoto Racecourse ○" to 63,
+            "Standard Distance ○" to 63,
+            "Summer Runner ○" to 81,
+            "Cloudy Days ○" to 81,
+            "Professor of Curvature" to 279,
+            "Corner Adept ○" to 117,
+            "Swinging Maestro" to 323,
+            "Corner Recovery ○" to 170,
+            "Straightaway Acceleration" to 119,
+            "Calm in a Crowd" to 153,
+            "Nimble Navigator" to 135,
+            "Homestretch Haste" to 153,
+            "Up-Tempo" to 104,
+            "Steadfast" to 144,
+            "Extra Tank" to 96,
+            "Frenzied Pace Chasers" to 104,
+            "Medium Straightaways ○" to 60,
+            "Keeping the Lead" to 128,
+            "Pressure" to 128,
+            "Pace Chaser Corners ○" to 91,
+            "Straight Descent" to 78,
+            "Hydrate" to 144,
+            "Late Surger Straightaways ○" to 84,
+            "Fighter" to 84,
+            "I Can See Right Through You" to 110,
+            "Highlander" to 128,
+            "Uma Stan" to 160,
+            "Ignited Spirit SPD" to 180,
+        )
+
+        // Validate mock names against the database.
+        val fixedSkills: MutableMap<String, Int> = mutableMapOf()
+        for ((name, price) in mockSkills) {
+            val fixedName: String? = game.skillDatabase.checkSkillName(name, fuzzySearch = true)
+            if (fixedName == null) {
+                Log.e(TAG, "[ERROR] parseMockSkillListEntries:: Skill \"$name\" not found in database.")
+                return emptyMap()
+            }
+            // Ensure the entry exists in our current map.
+            val entry: SkillListEntry? = entries[fixedName]
+            if (entry == null) {
+                Log.e(TAG, "[ERROR] parseMockSkillListEntries:: Skill \"$name\" not found in initialized entries.")
+                return emptyMap()
+            }
+            fixedSkills[fixedName] = price
+        }
+
+        // Build the result map with updated entry states.
+        val result: MutableMap<String, SkillListEntry> = mutableMapOf()
+        for ((name, price) in fixedSkills) {
+            val entry = entries[name]!!
+            // Update the entry's availability.
+            entry.bIsObtained = price <= 0
+            entry.bIsVirtual = false
+            // Update price based on mock data.
+            entry.updateScreenPrice(price)
+            result[name] = entry
+        }
+
+        return result.toMap()
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Creates a mapping of all possible skill names to their corresponding [SkillListEntry] objects.
@@ -139,7 +217,7 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
 
         if (game.debugMode) {
             val debugBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
-            game.imageUtils.saveBitmap(debugBitmap, "skillUpRegion_$debugString", bbox)
+            game.imageUtils.saveBitmapWithBbox(debugBitmap, "skillUpRegion_$debugString", bbox)
         }
 
         return bbox
@@ -170,7 +248,7 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
 
         if (game.debugMode) {
             val debugBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
-            game.imageUtils.saveBitmap(debugBitmap, "obtainedPillRegion_$debugString", bbox)
+            game.imageUtils.saveBitmapWithBbox(debugBitmap, "obtainedPillRegion_$debugString", bbox)
         }
 
         return bbox
@@ -684,79 +762,6 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
     }
 
     /**
-     * Populates the skill list with mock data for testing and debugging.
-     *
-     * This data mimics a real skill list state, including obtained status and prices.
-     *
-     * @return A mapping of skill names to [SkillListEntry] objects.
-     */
-    fun parseMockSkillListEntries(): Map<String, SkillListEntry> {
-        val mockSkills: Map<String, Int> = mapOf(
-            "Warning Shot!" to -1,
-            "Triumphant Pulse" to 120,
-            "Kyoto Racecourse ○" to 63,
-            "Standard Distance ○" to 63,
-            "Summer Runner ○" to 81,
-            "Cloudy Days ○" to 81,
-            "Professor of Curvature" to 279,
-            "Corner Adept ○" to 117,
-            "Swinging Maestro" to 323,
-            "Corner Recovery ○" to 170,
-            "Straightaway Acceleration" to 119,
-            "Calm in a Crowd" to 153,
-            "Nimble Navigator" to 135,
-            "Homestretch Haste" to 153,
-            "Up-Tempo" to 104,
-            "Steadfast" to 144,
-            "Extra Tank" to 96,
-            "Frenzied Pace Chasers" to 104,
-            "Medium Straightaways ○" to 60,
-            "Keeping the Lead" to 128,
-            "Pressure" to 128,
-            "Pace Chaser Corners ○" to 91,
-            "Straight Descent" to 78,
-            "Hydrate" to 144,
-            "Late Surger Straightaways ○" to 84,
-            "Fighter" to 84,
-            "I Can See Right Through You" to 110,
-            "Highlander" to 128,
-            "Uma Stan" to 160,
-            "Ignited Spirit SPD" to 180,
-        )
-
-        // Validate mock names against the database.
-        val fixedSkills: MutableMap<String, Int> = mutableMapOf()
-        for ((name, price) in mockSkills) {
-            val fixedName: String? = game.skillDatabase.checkSkillName(name, fuzzySearch = true)
-            if (fixedName == null) {
-                Log.e(TAG, "[ERROR] parseMockSkillListEntries:: Skill \"$name\" not found in database.")
-                return emptyMap()
-            }
-            // Ensure the entry exists in our current map.
-            val entry: SkillListEntry? = entries[fixedName]
-            if (entry == null) {
-                Log.e(TAG, "[ERROR] parseMockSkillListEntries:: Skill \"$name\" not found in initialized entries.")
-                return emptyMap()
-            }
-            fixedSkills[fixedName] = price
-        }
-
-        // Build the result map with updated entry states.
-        val result: MutableMap<String, SkillListEntry> = mutableMapOf()
-        for ((name, price) in fixedSkills) {
-            val entry = entries[name]!!
-            // Update the entry's availability.
-            entry.bIsObtained = price <= 0
-            entry.bIsVirtual = false
-            // Update price based on mock data.
-            entry.updateScreenPrice(price)
-            result[name] = entry
-        }
-
-        return result.toMap()
-    }
-
-    /**
      * Checks whether the current screen is the [SkillList] screen.
      *
      * @param bitmap Optional [Bitmap] used for detection. If null, a screenshot is taken.
@@ -799,30 +804,6 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
             !ButtonLog.check(game.imageUtils, sourceBitmap = srcBitmap) &&
             checkSkillListScreen(srcBitmap)
         )
-    }
-
-    /**
-     * Prints the details of all skills currently in the list to the [MessageLog].
-     *
-     * @param skillListEntries Optional custom mapping to print. If null, defaults to available skills.
-     * @param verbose If True, prints comprehensive entry details. Otherwise, only names and prices.
-     */
-    fun printSkillListEntries(
-        skillListEntries: Map<String, SkillListEntry>? = null,
-        verbose: Boolean = false,
-    ) {
-        val entriesToPrint: Map<String, SkillListEntry> = skillListEntries ?: getAvailableSkills()
-        MessageLog.v(TAG, "================= Skill List Entries =================")
-        for ((name, entry) in entriesToPrint) {
-            val entryString: String = if (verbose) {
-                "$entry"
-            } else {
-                val virtualFlag: String = if (entry.bIsVirtual) " (virtual)" else ""
-                "${entry.price}$virtualFlag"
-            }
-            MessageLog.v(TAG, "\t${name}: $entryString")
-        }
-        MessageLog.v(TAG, "======================================================")
     }
 
     /**
@@ -1076,5 +1057,29 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
             MessageLog.w(TAG, "[WARN] getEntry:: No entry found for \"$name\".")
         }
         return result
+    }
+
+    /**
+     * Prints the details of all skills currently in the list to the [MessageLog].
+     *
+     * @param skillListEntries Optional custom mapping to print. If null, defaults to available skills.
+     * @param verbose If True, prints comprehensive entry details. Otherwise, only names and prices.
+     */
+    fun printSkillListEntries(
+        skillListEntries: Map<String, SkillListEntry>? = null,
+        verbose: Boolean = false,
+    ) {
+        val entriesToPrint: Map<String, SkillListEntry> = skillListEntries ?: getAvailableSkills()
+        MessageLog.v(TAG, "================= Skill List Entries =================")
+        for ((name, entry) in entriesToPrint) {
+            val entryString: String = if (verbose) {
+                "$entry"
+            } else {
+                val virtualFlag: String = if (entry.bIsVirtual) " (virtual)" else ""
+                "${entry.price}$virtualFlag"
+            }
+            MessageLog.v(TAG, "\t${name}: $entryString")
+        }
+        MessageLog.v(TAG, "======================================================")
     }
 }

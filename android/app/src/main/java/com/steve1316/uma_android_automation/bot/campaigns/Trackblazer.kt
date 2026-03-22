@@ -101,6 +101,123 @@ class Trackblazer(game: Game) : Campaign(game) {
 	/** Threshold for energy level to use energy items. */
 	private var energyThresholdToUseEnergyItems: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerEnergyThreshold", 40)
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
+
+    /**
+	 * Starts debug tests for the Trackblazer campaign.
+	 *
+	 * @return True if any tests were run, false otherwise.
+	 */
+	override fun startTests(): Boolean {
+		var bDidAnyTestsRun = super.startTests()
+
+		val fnMap: Map<String, () -> Unit> = mapOf(
+			"debugMode_startTrackblazerRaceSelectionTest" to ::startTrackblazerRaceSelectionTest,
+			"debugMode_startTrackblazerInventorySyncTest" to ::startTrackblazerInventorySyncTest,
+			"debugMode_startTrackblazerBuyItemsTest" to ::startTrackblazerBuyItemsTest,
+		)
+
+		for ((settingName, fn) in fnMap) {
+			if (SettingsHelper.getBooleanSetting("debug", settingName)) {
+				fn()
+				bDidAnyTestsRun = true
+			}
+		}
+
+		return bDidAnyTestsRun
+	}
+
+	/**
+	 * Debug test for Trackblazer's race selection logic.
+	 */
+	fun startTrackblazerRaceSelectionTest() {
+		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer race selection test.")
+
+		val sourceBitmap = game.imageUtils.getSourceBitmap()
+
+		// If on Main Screen, navigate to the Race List screen first.
+		if (checkMainScreen()) {
+			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Navigating to Race List...")
+			if (!ButtonRaces.click(game.imageUtils, sourceBitmap = sourceBitmap) && !ButtonRaceDayRace.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
+				MessageLog.e(TAG, "[ERROR] startTrackblazerRaceSelectionTest:: Failed to click Races button.")
+				return
+			}
+			game.wait(1.0)
+			
+			// Handle any consecutive race warning dialogs that might pop up.
+			handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
+		}
+
+		// Now check if we are on the Race List screen.
+		if (ButtonRaceListFullStats.check(game.imageUtils)) {
+			// Update the date first for racing logic.
+			updateDate(isOnMainScreen = false)
+
+			MessageLog.i(TAG, "[TEST] Currently on Race List screen. Calling findSuitableTrackblazerRace($consecutiveRaceCount)...")
+			val result = racing.findSuitableTrackblazerRace(consecutiveRaceCount)
+
+			if (result != null) {
+				val (point, raceData) = result
+				MessageLog.i(TAG, "[TEST] Selection Finalized: ${raceData.name} (${raceData.grade}) at (${point.x}, ${point.y}).")
+			} else {
+				MessageLog.i(TAG, "[TEST] findSuitableTrackblazerRace returned null. No suitable races found.")
+			}
+		} else {
+			MessageLog.e(TAG, "[ERROR] startTrackblazerRaceSelectionTest:: Not on Main Screen or Race List screen. Ending test.")
+		}
+	}
+
+	/**
+	 * Debug test for Trackblazer's inventory sync logic.
+	 */
+	fun startTrackblazerInventorySyncTest() {
+		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer inventory sync test.")
+
+		// If on Main Screen, open Training Items.
+		if (checkMainScreen()) {
+			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Opening Training Items...")
+			if (shopList.openTrainingItemsDialog()) {
+				MessageLog.i(TAG, "[TEST] Training Items dialog opened. Calling manageInventoryItems with bDryRun = true and bQuickUseOnly = true...")
+				manageInventoryItems(bQuickUseOnly = true, bDryRun = true)
+			} else {
+				MessageLog.e(TAG, "[ERROR] startTrackblazerInventorySyncTest:: Failed to open Training Items dialog.")
+			}
+		} else if (ButtonClose.check(game.imageUtils)) {
+			// Assume we are already in some dialog, possibly training items.
+			MessageLog.i(TAG, "[TEST] Close button detected. Assuming Training Items dialog is open. Calling manageInventoryItems...")
+			manageInventoryItems(bQuickUseOnly = true, bDryRun = true)
+		} else {
+			MessageLog.e(TAG, "[ERROR] startTrackblazerInventorySyncTest:: Not on Main Screen or in a dialog. Ending test.")
+		}
+	}
+
+	/**
+	 * Debug test for Trackblazer's buying process logic.
+	 */
+	fun startTrackblazerBuyItemsTest() {
+		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer buy items test.")
+
+		// If on Main Screen, open the Shop.
+		if (checkMainScreen()) {
+			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Opening Shop...")
+			openShop()
+			game.wait(1.0)
+		}
+
+		// Check if we are in the Shop.
+		if (ButtonTrainingItems.check(game.imageUtils)) {
+			MessageLog.i(TAG, "[TEST] Shop detected. Calling buyItems with bDryRun = true...")
+			buyItems(bDryRun = true)
+		} else {
+			MessageLog.e(TAG, "[ERROR] startTrackblazerBuyItemsTest:: Shop not detected. Ending test.")
+		}
+	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
 	override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
         val result: DialogHandlerResult = super.handleDialogs(dialog, args + mapOf("dialogNameToDefer" to "consecutive_race_warning"))
 
@@ -480,6 +597,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 		MessageLog.i(TAG, "[TRACKBLAZER] Rival Race win detected via post-race popup.")
 		bShouldCheckShop = true
 	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Opens the Shop UI.
@@ -1220,116 +1340,6 @@ class Trackblazer(game: Game) : Campaign(game) {
 			}
 		} else {
 			MessageLog.i(TAG, "[TRACKBLAZER] Skipping Training Items dialog as no relevant items are in the cached inventory or all relevant items are disabled.")
-		}
-	}
-
-	/**
-	 * Starts debug tests for the Trackblazer campaign.
-	 *
-	 * @return True if any tests were run, false otherwise.
-	 */
-	override fun startTests(): Boolean {
-		var bDidAnyTestsRun = super.startTests()
-
-		val fnMap: Map<String, () -> Unit> = mapOf(
-			"debugMode_startTrackblazerRaceSelectionTest" to ::startTrackblazerRaceSelectionTest,
-			"debugMode_startTrackblazerInventorySyncTest" to ::startTrackblazerInventorySyncTest,
-			"debugMode_startTrackblazerBuyItemsTest" to ::startTrackblazerBuyItemsTest,
-		)
-
-		for ((settingName, fn) in fnMap) {
-			if (SettingsHelper.getBooleanSetting("debug", settingName)) {
-				fn()
-				bDidAnyTestsRun = true
-			}
-		}
-
-		return bDidAnyTestsRun
-	}
-
-	/**
-	 * Debug test for Trackblazer's race selection logic.
-	 */
-	fun startTrackblazerRaceSelectionTest() {
-		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer race selection test.")
-
-		val sourceBitmap = game.imageUtils.getSourceBitmap()
-
-		// If on Main Screen, navigate to the Race List screen first.
-		if (checkMainScreen()) {
-			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Navigating to Race List...")
-			if (!ButtonRaces.click(game.imageUtils, sourceBitmap = sourceBitmap) && !ButtonRaceDayRace.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
-				MessageLog.e(TAG, "[ERROR] startTrackblazerRaceSelectionTest:: Failed to click Races button.")
-				return
-			}
-			game.wait(1.0)
-			
-			// Handle any consecutive race warning dialogs that might pop up.
-			handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
-		}
-
-		// Now check if we are on the Race List screen.
-		if (ButtonRaceListFullStats.check(game.imageUtils)) {
-			// Update the date first for racing logic.
-			updateDate(isOnMainScreen = false)
-
-			MessageLog.i(TAG, "[TEST] Currently on Race List screen. Calling findSuitableTrackblazerRace($consecutiveRaceCount)...")
-			val result = racing.findSuitableTrackblazerRace(consecutiveRaceCount)
-
-			if (result != null) {
-				val (point, raceData) = result
-				MessageLog.i(TAG, "[TEST] Selection Finalized: ${raceData.name} (${raceData.grade}) at (${point.x}, ${point.y}).")
-			} else {
-				MessageLog.i(TAG, "[TEST] findSuitableTrackblazerRace returned null. No suitable races found.")
-			}
-		} else {
-			MessageLog.e(TAG, "[ERROR] startTrackblazerRaceSelectionTest:: Not on Main Screen or Race List screen. Ending test.")
-		}
-	}
-
-	/**
-	 * Debug test for Trackblazer's inventory sync logic.
-	 */
-	fun startTrackblazerInventorySyncTest() {
-		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer inventory sync test.")
-
-		// If on Main Screen, open Training Items.
-		if (checkMainScreen()) {
-			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Opening Training Items...")
-			if (shopList.openTrainingItemsDialog()) {
-				MessageLog.i(TAG, "[TEST] Training Items dialog opened. Calling manageInventoryItems with bDryRun = true and bQuickUseOnly = true...")
-				manageInventoryItems(bQuickUseOnly = true, bDryRun = true)
-			} else {
-				MessageLog.e(TAG, "[ERROR] startTrackblazerInventorySyncTest:: Failed to open Training Items dialog.")
-			}
-		} else if (ButtonClose.check(game.imageUtils)) {
-			// Assume we are already in some dialog, possibly training items.
-			MessageLog.i(TAG, "[TEST] Close button detected. Assuming Training Items dialog is open. Calling manageInventoryItems...")
-			manageInventoryItems(bQuickUseOnly = true, bDryRun = true)
-		} else {
-			MessageLog.e(TAG, "[ERROR] startTrackblazerInventorySyncTest:: Not on Main Screen or in a dialog. Ending test.")
-		}
-	}
-
-	/**
-	 * Debug test for Trackblazer's buying process logic.
-	 */
-	fun startTrackblazerBuyItemsTest() {
-		MessageLog.i(TAG, "\n[TEST] Now beginning Trackblazer buy items test.")
-
-		// If on Main Screen, open the Shop.
-		if (checkMainScreen()) {
-			MessageLog.i(TAG, "[TEST] Currently on Main Screen. Opening Shop...")
-			openShop()
-			game.wait(1.0)
-		}
-
-		// Check if we are in the Shop.
-		if (ButtonTrainingItems.check(game.imageUtils)) {
-			MessageLog.i(TAG, "[TEST] Shop detected. Calling buyItems with bDryRun = true...")
-			buyItems(bDryRun = true)
-		} else {
-			MessageLog.e(TAG, "[ERROR] startTrackblazerBuyItemsTest:: Shop not detected. Ending test.")
 		}
 	}
 

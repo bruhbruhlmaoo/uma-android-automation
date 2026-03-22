@@ -678,8 +678,9 @@ class Training(private val game: Game, private val campaign: Campaign) {
 		}
 	}
 
-	////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
 
 	/**
 	 * Start a single training OCR test for debugging.
@@ -726,82 +727,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
 		MessageLog.i(TAG, "[TEST] Comprehensive OCR Results: $result")
 	}
 
-	/**
-	 * Handle the training process for the current turn.
-	 *
-	 * This method orchestrates the identifying, analyzing, recommending, and executing of training.
-	 *
-	 * @return The name of the training that was executed, or null if none.
-	 */
-	fun handleTraining(): StatName? {
-		MessageLog.i(TAG, "\n********************")
-		MessageLog.i(TAG, "[TRAINING] Starting Training process on ${campaign.date}.")
-        val startTime = System.currentTimeMillis()
-        var trainingSelected: StatName? = null
-
-		// Enter the Training screen.
-		if (ButtonTraining.click(game.imageUtils)) {
-            // Upon going to the training screen, there is a short animation
-            // on the training header icon. We need to make sure this is finished
-            // before we can properly begin analyzing the screen.
-			game.wait(0.5)
-            // Acquire the percentages and stat gains for each training.
-			analyzeTrainings()
-			trainingSelected = recommendTraining()
-
-			if (trainingMap.isEmpty()) {
-				// Check if we should force Wit training during the Finale instead of recovering energy.
-				// Always force Wit on turn 75 since recovering energy on the very last turn is completely useless.
-				if ((trainWitDuringFinale && campaign.date.day > 72) || campaign.date.day == 75) {
-					if (campaign.date.day == 75) {
-						MessageLog.i(TAG, "[TRAINING] It is the final turn. Forcing Wit training instead of recovering energy since resting provides zero benefit now.")
-					} else {
-						MessageLog.i(TAG, "[TRAINING] There is not enough energy for training to be done but the setting to train Wit during the Finale is enabled. Forcing Wit training...")
-					}
-					// Directly attempt to tap Wit training.
-					if (ButtonTrainingWit.click(game.imageUtils, taps = 3)) {
-                        game.waitForLoading()
-						MessageLog.i(TAG, "[TRAINING] Successfully forced Wit training during the Finale instead of recovering energy.")
-						firstTrainingCheck = false
-					} else {
-						MessageLog.w(TAG, "[WARN] handleTraining:: Could not find Wit training button. Falling back to recovering energy...")
-						ButtonBack.click(game.imageUtils)
-						game.wait(1.0)
-						if (campaign.checkMainScreen()) {
-							campaign.recoverEnergy()
-						} else {
-							MessageLog.w(TAG, "[WARN] handleTraining:: Could not head back to the Main screen in order to recover energy.")
-						}
-					}
-				} else {
-					MessageLog.i(TAG, "[TRAINING] Backing out of Training and returning on the Main screen.")
-					ButtonBack.click(game.imageUtils)
-					game.wait(1.0)
-
-					if (campaign.checkMainScreen()) {
-						if (restrictedTrainingNames.size == StatName.entries.size || (restrictedTrainingNames.size + blacklist.size) >= StatName.entries.size) {
-							MessageLog.i(TAG, "[TRAINING] Will recover energy due to all available trainings being restricted or blacklisted.")
-						} else {
-							MessageLog.i(TAG, "[TRAINING] Will recover energy due to either failure chance was high enough to do so or no failure chances were detected via OCR.")
-						}
-						campaign.recoverEnergy()
-					} else {
-						MessageLog.w(TAG, "[WARN] handleTraining:: Could not head back to the Main screen in order to recover energy.")
-					}
-				}
-			} else {
-				// Now select the training option with the highest weight.
-				executeTraining(trainingSelected)
-				firstTrainingCheck = false
-			}
-
-			MessageLog.i(TAG, "[TRAINING] Training process completed. Total time: ${System.currentTimeMillis() - startTime}ms")
-		} else {
-			MessageLog.e(TAG, "[ERROR] handleTraining:: Cannot start the Training process. Moving on...")
-		}
-		MessageLog.i(TAG, "********************")
-		return trainingSelected
-	}
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	 * Analyze all available training options to determine their stat gains, relationship progress, and other details.
@@ -1373,6 +1300,163 @@ class Training(private val game: Game, private val campaign: Campaign) {
         }
 	}
 
+    /**
+	 * Apply secondary stat gain boosts based on the current scenario and context.
+	 *
+	 * This method adjusts detected stat gains for specific scenarios like Trackblazer, 
+	 * where certain events or conditions provide predictable bonuses.
+	 *
+	 * @param result The [TrainingAnalysisResult] to update.
+	 */
+	private fun applyContextualStatGainBoost(result: TrainingAnalysisResult) {
+		val currentStat = campaign.trainee.stats.asMap()[result.name] ?: 0
+		val effectiveStatCap = getCurrentStatCap(result.name) - 20
+		
+		val newStatGains = result.statGains.toMutableMap()
+		val sideEffectStats = newStatGains.keys.filter { it != result.name }
+		val maxSideEffectGain = sideEffectStats.maxOfOrNull { newStatGains[it] ?: 0 } ?: 0
+		val mainStatGain = newStatGains[result.name] ?: 0
+
+		var boosted = false
+
+		// Edge case: Specific manual correction for GUTS training where POWER gain should be greater than SPEED gain.
+		if (result.name == StatName.GUTS) {
+			val speedGain = newStatGains[StatName.SPEED] ?: 0
+			var powerGain = newStatGains[StatName.POWER] ?: 0
+			
+			if (powerGain < speedGain) {
+				val originalPowerGain = powerGain
+				while (powerGain <= speedGain) {
+					powerGain += 10
+				}
+				newStatGains[StatName.POWER] = powerGain
+				
+				val newCorrectedStats = result.correctedStats.toMutableList()
+				if (!newCorrectedStats.contains(StatName.POWER)) {
+					newCorrectedStats.add(StatName.POWER)
+					result.correctedStats = newCorrectedStats
+				}
+				
+				if (game.imageUtils.debugMode) {
+					MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased POWER stat gain for GUTS training from $originalPowerGain to $powerGain to be greater than SPEED gain ($speedGain).")
+				} else {
+					Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased POWER stat gain for GUTS training from $originalPowerGain to $powerGain to be greater than SPEED gain ($speedGain).")
+				}
+				boosted = true
+			}
+		}
+
+		// Expected side effects mapping.
+		val affectedStatsMap = mapOf(
+			StatName.SPEED to listOf(StatName.POWER),
+			StatName.STAMINA to listOf(StatName.GUTS),
+			StatName.POWER to listOf(StatName.STAMINA),
+			StatName.GUTS to listOf(StatName.SPEED, StatName.POWER),
+			StatName.WIT to listOf(StatName.SPEED)
+		)
+		val expectedSideEffects = affectedStatsMap[result.name] ?: emptyList()
+
+		// Check if any expected side-effect stat has a higher or equal gain than the main stat.
+        // This check only runs if the main stat gain is greater than zero to avoid overlapping with other edge cases.
+		if (mainStatGain > 0 && mainStatGain in 1..maxSideEffectGain) {
+			val originalGain = mainStatGain
+			newStatGains[result.name] = maxSideEffectGain + 10
+			
+			val newCorrectedStats = result.correctedStats.toMutableList()
+			if (!newCorrectedStats.contains(result.name)) {
+				newCorrectedStats.add(result.name)
+				result.correctedStats = newCorrectedStats
+			}
+			
+			MessageLog.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $originalGain to ${newStatGains[result.name]} due to possible OCR failure. Side-effect stats had higher or equal gains: $sideEffectStats")
+			boosted = true
+		}
+
+		// If the expected side-effect stat gains were zeroes, boost them to half of the main stat gain.
+		val boostedMainStatGain = newStatGains[result.name] ?: 0
+		for (statName in expectedSideEffects) {
+			if ((newStatGains[statName] ?: 0) == 0 && boostedMainStatGain > 0) {
+				newStatGains[statName] = boostedMainStatGain / 2
+				
+				val newCorrectedStats = result.correctedStats.toMutableList()
+				if (!newCorrectedStats.contains(statName)) {
+					newCorrectedStats.add(statName)
+					result.correctedStats = newCorrectedStats
+				}
+				
+				MessageLog.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased $statName side-effect stat gain to ${newStatGains[statName]} because it was 0 due to possible OCR failure. Based on half of boosted ${result.name} = $boostedMainStatGain.")
+				boosted = true
+			}
+		}
+
+		// Edge case: Main stat is 0 but side effect is > 0, and not near stat cap.
+		if (mainStatGain == 0 && maxSideEffectGain > 0 && currentStat < effectiveStatCap) {
+			var newMainGain = mainStatGain
+			while (newMainGain <= maxSideEffectGain) {
+				newMainGain += 10
+			}
+			newStatGains[result.name] = newMainGain
+			
+			val newCorrectedStats = result.correctedStats.toMutableList()
+			if (!newCorrectedStats.contains(result.name)) {
+				newCorrectedStats.add(result.name)
+				result.correctedStats = newCorrectedStats
+			}
+			
+			if (game.imageUtils.debugMode) {
+				MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $mainStatGain to $newMainGain because it was 0, max side effect was $maxSideEffectGain, and current stat $currentStat is not near cap.")
+			} else {
+				Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $mainStatGain to $newMainGain because it was 0, max side effect was $maxSideEffectGain, and current stat $currentStat is not near cap.")
+			}
+			boosted = true
+		}
+
+		// Edge case: Low stat gains with relationship bars in Senior Year.
+		val currentMainStatGain = newStatGains[result.name] ?: 0
+		if (campaign.date.year == DateYear.SENIOR && currentMainStatGain <= 9 && result.relationshipBars.isNotEmpty()) {
+			val boostAmount = result.relationshipBars.size * 5
+			newStatGains[result.name] = currentMainStatGain + boostAmount
+			
+			val newCorrectedStats = result.correctedStats.toMutableList()
+			if (!newCorrectedStats.contains(result.name)) {
+				newCorrectedStats.add(result.name)
+				result.correctedStats = newCorrectedStats
+			}
+			
+			if (game.imageUtils.debugMode) {
+				MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $currentMainStatGain to ${newStatGains[result.name]} due to having ${result.relationshipBars.size} relationship bars in Senior Year.")
+			} else {
+				Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $currentMainStatGain to ${newStatGains[result.name]} due to having ${result.relationshipBars.size} relationship bars in Senior Year.")
+			}
+			boosted = true
+		}
+
+		// Edge case: Side effect is less than 9 and the difference with the main effect is greater than 20.
+		for (sideEffect in expectedSideEffects) {
+			val sideGain = newStatGains[sideEffect] ?: 0
+			if (sideGain < 9 && (mainStatGain - sideGain) > 20) {
+				newStatGains[sideEffect] = sideGain + 10
+				
+				val newCorrectedStats = result.correctedStats.toMutableList()
+				if (!newCorrectedStats.contains(sideEffect)) {
+					newCorrectedStats.add(sideEffect)
+					result.correctedStats = newCorrectedStats
+				}
+				
+				if (game.imageUtils.debugMode) {
+					MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased $sideEffect side-effect stat gain from $sideGain to ${newStatGains[sideEffect]} due to being less than 9 and having >20 difference with main stat gain of $mainStatGain.")
+				} else {
+					Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased $sideEffect side-effect stat gain from $sideGain to ${newStatGains[sideEffect]} due to being less than 9 and having >20 difference with main stat gain of $mainStatGain.")
+				}
+				boosted = true
+			}
+		}
+
+		if (boosted) {
+			result.statGains = newStatGains
+		}
+	}
+
 	/**
 	 * Recommend the best training option based on the current scoring mode and game state.
 	 *
@@ -1434,59 +1518,6 @@ class Training(private val game: Game, private val campaign: Campaign) {
 		logSelectionReasoning(trainingConfig, scoringMode, trainingScores, skippedScores, best)
 
 		return best?.name ?: trainingMap.keys.firstOrNull { it !in blacklist }
-	}
-
-	/**
-	 * Execute the selected training by clicking the corresponding button and handling popups.
-	 * 
-	 * @param trainingSelected The name of the training to execute.
-	 */
-	fun executeTraining(trainingSelected: StatName?) {
-		MessageLog.i(TAG, "[TRAINING] Now starting process to execute training...")
-
-		if (trainingSelected != null) {
-			MessageLog.i(TAG, "[TRAINING] Executing the $trainingSelected Training.")
-			
-			// Check if this training is a rainbow training that exceeds the stat cap buffer.
-			val training = trainingMap[trainingSelected]
-			if (training != null && training.numRainbow > 0) {
-				val currentStat = campaign.trainee.stats.asMap()[trainingSelected] ?: 0
-				val potentialStat = currentStat + (training.statGains[trainingSelected] ?: 0)
-				val statCap = getCurrentStatCap(trainingSelected)
-				val effectiveStatCap = statCap - 100
-				
-				if ((currentStat >= effectiveStatCap || potentialStat >= effectiveStatCap) && trainingSelected !in statsTrainedOverBuffer) {
-					MessageLog.i(TAG, "[TRAINING] [${trainingSelected}] One-time stat cap buffer allowance used for this stat.")
-					statsTrainedOverBuffer.add(trainingSelected)
-				}
-			}
-
-            val trainingButtons: Map<StatName, ComponentInterface> = mapOf(
-                StatName.SPEED to ButtonTrainingSpeed,
-                StatName.STAMINA to ButtonTrainingStamina,
-                StatName.POWER to ButtonTrainingPower,
-                StatName.GUTS to ButtonTrainingGuts,
-                StatName.WIT to ButtonTrainingWit,
-            )
-
-            // These values are hardcoded and exhaustive. A KeyError would be a programmer error.
-            val trainingButton: ComponentInterface = trainingButtons[trainingSelected]!!
-            trainingButton.click(game.imageUtils, taps = 3)
-            game.wait(game.dialogWaitDelay)
-
-            // Dismiss any popup warning about a scheduled race.
-            ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
-            game.waitForLoading()
-
-			MessageLog.i(TAG, "[TRAINING] Process to execute training completed.")
-		} else {
-			MessageLog.i(TAG, "[TRAINING] Conditions have not been met so training will not be done.")
-		}
-
-		// Now reset the Training maps.
-		trainingMap.clear()
-		skippedTrainingMap.clear()
-		restrictedTrainingNames.clear()
 	}
 
 	/**
@@ -1788,160 +1819,136 @@ class Training(private val game: Game, private val campaign: Campaign) {
 		MessageLog.v(TAG, "======================================================")
 	}
 
-	/**
-	 * Apply secondary stat gain boosts based on the current scenario and context.
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+	 * Handle the training process for the current turn.
 	 *
-	 * This method adjusts detected stat gains for specific scenarios like Trackblazer, 
-	 * where certain events or conditions provide predictable bonuses.
+	 * This method orchestrates the identifying, analyzing, recommending, and executing of training.
 	 *
-	 * @param result The [TrainingAnalysisResult] to update.
+	 * @return The name of the training that was executed, or null if none.
 	 */
-	private fun applyContextualStatGainBoost(result: TrainingAnalysisResult) {
-		val currentStat = campaign.trainee.stats.asMap()[result.name] ?: 0
-		val effectiveStatCap = getCurrentStatCap(result.name) - 20
-		
-		val newStatGains = result.statGains.toMutableMap()
-		val sideEffectStats = newStatGains.keys.filter { it != result.name }
-		val maxSideEffectGain = sideEffectStats.maxOfOrNull { newStatGains[it] ?: 0 } ?: 0
-		val mainStatGain = newStatGains[result.name] ?: 0
+	fun handleTraining(): StatName? {
+		MessageLog.i(TAG, "\n********************")
+		MessageLog.i(TAG, "[TRAINING] Starting Training process on ${campaign.date}.")
+        val startTime = System.currentTimeMillis()
+        var trainingSelected: StatName? = null
 
-		var boosted = false
+		// Enter the Training screen.
+		if (ButtonTraining.click(game.imageUtils)) {
+            // Upon going to the training screen, there is a short animation
+            // on the training header icon. We need to make sure this is finished
+            // before we can properly begin analyzing the screen.
+			game.wait(0.5)
+            // Acquire the percentages and stat gains for each training.
+			analyzeTrainings()
+			trainingSelected = recommendTraining()
 
-		// Edge case: Specific manual correction for GUTS training where POWER gain should be greater than SPEED gain.
-		if (result.name == StatName.GUTS) {
-			val speedGain = newStatGains[StatName.SPEED] ?: 0
-			var powerGain = newStatGains[StatName.POWER] ?: 0
-			
-			if (powerGain < speedGain) {
-				val originalPowerGain = powerGain
-				while (powerGain <= speedGain) {
-					powerGain += 10
-				}
-				newStatGains[StatName.POWER] = powerGain
-				
-				val newCorrectedStats = result.correctedStats.toMutableList()
-				if (!newCorrectedStats.contains(StatName.POWER)) {
-					newCorrectedStats.add(StatName.POWER)
-					result.correctedStats = newCorrectedStats
-				}
-				
-				if (game.imageUtils.debugMode) {
-					MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased POWER stat gain for GUTS training from $originalPowerGain to $powerGain to be greater than SPEED gain ($speedGain).")
+			if (trainingMap.isEmpty()) {
+				// Check if we should force Wit training during the Finale instead of recovering energy.
+				// Always force Wit on turn 75 since recovering energy on the very last turn is completely useless.
+				if ((trainWitDuringFinale && campaign.date.day > 72) || campaign.date.day == 75) {
+					if (campaign.date.day == 75) {
+						MessageLog.i(TAG, "[TRAINING] It is the final turn. Forcing Wit training instead of recovering energy since resting provides zero benefit now.")
+					} else {
+						MessageLog.i(TAG, "[TRAINING] There is not enough energy for training to be done but the setting to train Wit during the Finale is enabled. Forcing Wit training...")
+					}
+					// Directly attempt to tap Wit training.
+					if (ButtonTrainingWit.click(game.imageUtils, taps = 3)) {
+                        game.waitForLoading()
+						MessageLog.i(TAG, "[TRAINING] Successfully forced Wit training during the Finale instead of recovering energy.")
+						firstTrainingCheck = false
+					} else {
+						MessageLog.w(TAG, "[WARN] handleTraining:: Could not find Wit training button. Falling back to recovering energy...")
+						ButtonBack.click(game.imageUtils)
+						game.wait(1.0)
+						if (campaign.checkMainScreen()) {
+							campaign.recoverEnergy()
+						} else {
+							MessageLog.w(TAG, "[WARN] handleTraining:: Could not head back to the Main screen in order to recover energy.")
+						}
+					}
 				} else {
-					Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased POWER stat gain for GUTS training from $originalPowerGain to $powerGain to be greater than SPEED gain ($speedGain).")
+					MessageLog.i(TAG, "[TRAINING] Backing out of Training and returning on the Main screen.")
+					ButtonBack.click(game.imageUtils)
+					game.wait(1.0)
+
+					if (campaign.checkMainScreen()) {
+						if (restrictedTrainingNames.size == StatName.entries.size || (restrictedTrainingNames.size + blacklist.size) >= StatName.entries.size) {
+							MessageLog.i(TAG, "[TRAINING] Will recover energy due to all available trainings being restricted or blacklisted.")
+						} else {
+							MessageLog.i(TAG, "[TRAINING] Will recover energy due to either failure chance was high enough to do so or no failure chances were detected via OCR.")
+						}
+						campaign.recoverEnergy()
+					} else {
+						MessageLog.w(TAG, "[WARN] handleTraining:: Could not head back to the Main screen in order to recover energy.")
+					}
 				}
-				boosted = true
-			}
-		}
-
-		// Expected side effects mapping.
-		val affectedStatsMap = mapOf(
-			StatName.SPEED to listOf(StatName.POWER),
-			StatName.STAMINA to listOf(StatName.GUTS),
-			StatName.POWER to listOf(StatName.STAMINA),
-			StatName.GUTS to listOf(StatName.SPEED, StatName.POWER),
-			StatName.WIT to listOf(StatName.SPEED)
-		)
-		val expectedSideEffects = affectedStatsMap[result.name] ?: emptyList()
-
-		// Check if any expected side-effect stat has a higher or equal gain than the main stat.
-        // This check only runs if the main stat gain is greater than zero to avoid overlapping with other edge cases.
-		if (mainStatGain > 0 && mainStatGain in 1..maxSideEffectGain) {
-			val originalGain = mainStatGain
-			newStatGains[result.name] = maxSideEffectGain + 10
-			
-			val newCorrectedStats = result.correctedStats.toMutableList()
-			if (!newCorrectedStats.contains(result.name)) {
-				newCorrectedStats.add(result.name)
-				result.correctedStats = newCorrectedStats
-			}
-			
-			MessageLog.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $originalGain to ${newStatGains[result.name]} due to possible OCR failure. Side-effect stats had higher or equal gains: $sideEffectStats")
-			boosted = true
-		}
-
-		// If the expected side-effect stat gains were zeroes, boost them to half of the main stat gain.
-		val boostedMainStatGain = newStatGains[result.name] ?: 0
-		for (statName in expectedSideEffects) {
-			if ((newStatGains[statName] ?: 0) == 0 && boostedMainStatGain > 0) {
-				newStatGains[statName] = boostedMainStatGain / 2
-				
-				val newCorrectedStats = result.correctedStats.toMutableList()
-				if (!newCorrectedStats.contains(statName)) {
-					newCorrectedStats.add(statName)
-					result.correctedStats = newCorrectedStats
-				}
-				
-				MessageLog.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased $statName side-effect stat gain to ${newStatGains[statName]} because it was 0 due to possible OCR failure. Based on half of boosted ${result.name} = $boostedMainStatGain.")
-				boosted = true
-			}
-		}
-
-		// Edge case: Main stat is 0 but side effect is > 0, and not near stat cap.
-		if (mainStatGain == 0 && maxSideEffectGain > 0 && currentStat < effectiveStatCap) {
-			var newMainGain = mainStatGain
-			while (newMainGain <= maxSideEffectGain) {
-				newMainGain += 10
-			}
-			newStatGains[result.name] = newMainGain
-			
-			val newCorrectedStats = result.correctedStats.toMutableList()
-			if (!newCorrectedStats.contains(result.name)) {
-				newCorrectedStats.add(result.name)
-				result.correctedStats = newCorrectedStats
-			}
-			
-			if (game.imageUtils.debugMode) {
-				MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $mainStatGain to $newMainGain because it was 0, max side effect was $maxSideEffectGain, and current stat $currentStat is not near cap.")
 			} else {
-				Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $mainStatGain to $newMainGain because it was 0, max side effect was $maxSideEffectGain, and current stat $currentStat is not near cap.")
+				// Now select the training option with the highest weight.
+				executeTraining(trainingSelected)
+				firstTrainingCheck = false
 			}
-			boosted = true
-		}
 
-		// Edge case: Low stat gains with relationship bars in Senior Year.
-		val currentMainStatGain = newStatGains[result.name] ?: 0
-		if (campaign.date.year == DateYear.SENIOR && currentMainStatGain <= 9 && result.relationshipBars.isNotEmpty()) {
-			val boostAmount = result.relationshipBars.size * 5
-			newStatGains[result.name] = currentMainStatGain + boostAmount
+			MessageLog.i(TAG, "[TRAINING] Training process completed. Total time: ${System.currentTimeMillis() - startTime}ms")
+		} else {
+			MessageLog.e(TAG, "[ERROR] handleTraining:: Cannot start the Training process. Moving on...")
+		}
+		MessageLog.i(TAG, "********************")
+		return trainingSelected
+	}
+
+    /**
+	 * Execute the selected training by clicking the corresponding button and handling popups.
+	 * 
+	 * @param trainingSelected The name of the training to execute.
+	 */
+	fun executeTraining(trainingSelected: StatName?) {
+		MessageLog.i(TAG, "[TRAINING] Now starting process to execute training...")
+
+		if (trainingSelected != null) {
+			MessageLog.i(TAG, "[TRAINING] Executing the $trainingSelected Training.")
 			
-			val newCorrectedStats = result.correctedStats.toMutableList()
-			if (!newCorrectedStats.contains(result.name)) {
-				newCorrectedStats.add(result.name)
-				result.correctedStats = newCorrectedStats
+			// Check if this training is a rainbow training that exceeds the stat cap buffer.
+			val training = trainingMap[trainingSelected]
+			if (training != null && training.numRainbow > 0) {
+				val currentStat = campaign.trainee.stats.asMap()[trainingSelected] ?: 0
+				val potentialStat = currentStat + (training.statGains[trainingSelected] ?: 0)
+				val statCap = getCurrentStatCap(trainingSelected)
+				val effectiveStatCap = statCap - 100
+				
+				if ((currentStat >= effectiveStatCap || potentialStat >= effectiveStatCap) && trainingSelected !in statsTrainedOverBuffer) {
+					MessageLog.i(TAG, "[TRAINING] [${trainingSelected}] One-time stat cap buffer allowance used for this stat.")
+					statsTrainedOverBuffer.add(trainingSelected)
+				}
 			}
-			
-			if (game.imageUtils.debugMode) {
-				MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $currentMainStatGain to ${newStatGains[result.name]} due to having ${result.relationshipBars.size} relationship bars in Senior Year.")
-			} else {
-				Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased ${result.name} stat gain from $currentMainStatGain to ${newStatGains[result.name]} due to having ${result.relationshipBars.size} relationship bars in Senior Year.")
-			}
-			boosted = true
+
+            val trainingButtons: Map<StatName, ComponentInterface> = mapOf(
+                StatName.SPEED to ButtonTrainingSpeed,
+                StatName.STAMINA to ButtonTrainingStamina,
+                StatName.POWER to ButtonTrainingPower,
+                StatName.GUTS to ButtonTrainingGuts,
+                StatName.WIT to ButtonTrainingWit,
+            )
+
+            // These values are hardcoded and exhaustive. A KeyError would be a programmer error.
+            val trainingButton: ComponentInterface = trainingButtons[trainingSelected]!!
+            trainingButton.click(game.imageUtils, taps = 3)
+            game.wait(game.dialogWaitDelay)
+
+            // Dismiss any popup warning about a scheduled race.
+            ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
+            game.waitForLoading()
+
+			MessageLog.i(TAG, "[TRAINING] Process to execute training completed.")
+		} else {
+			MessageLog.i(TAG, "[TRAINING] Conditions have not been met so training will not be done.")
 		}
 
-		// Edge case: Side effect is less than 9 and the difference with the main effect is greater than 20.
-		for (sideEffect in expectedSideEffects) {
-			val sideGain = newStatGains[sideEffect] ?: 0
-			if (sideGain < 9 && (mainStatGain - sideGain) > 20) {
-				newStatGains[sideEffect] = sideGain + 10
-				
-				val newCorrectedStats = result.correctedStats.toMutableList()
-				if (!newCorrectedStats.contains(sideEffect)) {
-					newCorrectedStats.add(sideEffect)
-					result.correctedStats = newCorrectedStats
-				}
-				
-				if (game.imageUtils.debugMode) {
-					MessageLog.i(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased $sideEffect side-effect stat gain from $sideGain to ${newStatGains[sideEffect]} due to being less than 9 and having >20 difference with main stat gain of $mainStatGain.")
-				} else {
-					Log.d(TAG, "[DEBUG] applyContextualStatGainBoost:: Artificially increased $sideEffect side-effect stat gain from $sideGain to ${newStatGains[sideEffect]} due to being less than 9 and having >20 difference with main stat gain of $mainStatGain.")
-				}
-				boosted = true
-			}
-		}
-
-		if (boosted) {
-			result.statGains = newStatGains
-		}
+		// Now reset the Training maps.
+		trainingMap.clear()
+		skippedTrainingMap.clear()
+		restrictedTrainingNames.clear()
 	}
 }

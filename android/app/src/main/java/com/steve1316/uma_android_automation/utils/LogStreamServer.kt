@@ -113,6 +113,9 @@ object LogStreamServer {
 	/** Regex pattern to detect race day during extra racing. */
 	private val turnsRemainingRaceDayPattern = Pattern.compile("Detected Race Day for extra racing:", Pattern.CASE_INSENSITIVE)
 
+    /** Channel for serializing log actions to be processed by the background worker. */
+	private var actionChannel: Channel<LogAction>? = null
+
 	/**
 	 * Represents a parsed log entry for structured transmission.
 	 *
@@ -167,8 +170,8 @@ object LogStreamServer {
 		object Clear : LogAction()
 	}
 
-	/** Channel for serializing log actions to be processed by the background worker. */
-	private var actionChannel: Channel<LogAction>? = null
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/** Resets the mute flag and clears the buffer to allow log broadcasting for a new run. */
 	fun resetMute() {
@@ -176,157 +179,6 @@ object LogStreamServer {
 		serverScope?.launch {
 			actionChannel?.send(LogAction.Clear)
 		}
-	}
-
-	/** Starts the log streaming server on the specified port and registers with EventBus.
-	 *
-	 * @param context The application context used for accessing assets and system services.
-	 * @param port The network port number to listen on.
-	 */
-	fun start(context: Context, port: Int) {
-		// Prevent starting multiple instances of the server.
-		if (isRunning) {
-			Log.i(TAG, "[LogStreamServer] Server is already running.")
-			return
-		}
-
-		try {
-			applicationContext = context.applicationContext
-			serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-			actionChannel = Channel(Channel.UNLIMITED)
-
-			// Start the core log worker that serializes all history syncs and live broadcasts.
-			serverScope?.launch {
-				actionChannel?.let { channel ->
-					for (action in channel) {
-						when (action) {
-							is LogAction.NewClient -> {
-								handleNewClientAction(action.session)
-							}
-							is LogAction.Broadcast -> {
-								handleBroadcastAction(action.message)
-							}
-							is LogAction.Clear -> {
-								handleClearAction()
-							}
-						}
-					}
-				}
-			}
-
-			// Bind to all interfaces so devices on the local network can connect.
-			server = embeddedServer(CIO, host = "0.0.0.0", port = port) {
-				// Install the WebSockets plugin with default configuration.
-				install(WebSockets)
-
-				routing {
-					// Serve the main log viewer HTML application.
-					get("/") {
-						serveLogViewerHtml(call, context)
-					}
-					get("/index.html") {
-						serveLogViewerHtml(call, context)
-					}
-
-					// Provide a health check endpoint for monitoring the server status.
-					get("/health") {
-						call.respondText("""{"status":"ok"}""", ContentType.Application.Json)
-					}
-
-					// Serve the full message log for download.
-					get("/logs/download") {
-						try {
-							val fullLogs = MessageLog.getMessageLogCopy().joinToString("\n")
-
-							// Set headers to trigger a file download in the browser.
-							val datePart = SimpleDateFormat(
-								"yyyy-MM-dd-HH-mm-ss",
-								Locale.getDefault()
-							).format(Date())
-
-							call.response.header(
-								HttpHeaders.ContentDisposition,
-								"attachment; filename=\"uaa_logs_$datePart.txt\""
-							)
-							call.respondText(fullLogs, ContentType.Text.Plain)
-						} catch (e: Exception) {
-							Log.e(TAG, "[ERROR] /logs/download:: Failed to generate log download: ${e.message}")
-							call.respondText(
-								"Failed to generate log download.",
-								ContentType.Text.Plain,
-								HttpStatusCode.InternalServerError
-							)
-						}
-					}
-
-					// Handle WebSocket connections on root path (matches the HTML client).
-					webSocket("/") {
-						handleWebSocketSession(this)
-					}
-				}
-			}
-
-			// Start the server without blocking the calling thread.
-			server?.start(wait = false)
-			isRunning = true
-
-			// Register with EventBus to receive real-time log messages.
-			if (!EventBus.getDefault().isRegistered(this)) {
-				EventBus.getDefault().register(this)
-			}
-
-			// Determine and log the device IP address for easy access.
-			val ip = getDeviceIpAddress(context)
-			Log.i(TAG, "[LogStreamServer] Log stream server started on http://$ip:$port")
-
-			// Populate the initial buffer from existing logs so late-joining clients see the history.
-			populateBuffer(MessageLog.getMessageLogCopy())
-
-			Log.d(TAG, "[DEBUG] start:: LogStreamServer registered with EventBus: ${EventBus.getDefault().isRegistered(this)}")
-			MessageLog.i(TAG, "[INFO] Remote Log Viewer started at http://$ip:$port")
-		} catch (e: Exception) {
-			// Handle cases where the server fails to start.
-			MessageLog.e(TAG, "[ERROR] start:: Failed to start Remote Log Viewer: ${e.message}")
-			isRunning = false
-			serverScope?.cancel()
-			serverScope = null
-			actionChannel?.close()
-			actionChannel = null
-		}
-	}
-
-	/** Stops the log streaming server, clears the buffer, and unregisters from EventBus. */
-	fun stop() {
-		if (!isRunning) return
-
-		try {
-			// Unregister to stop receiving log events.
-			EventBus.getDefault().unregister(this)
-		} catch (_: Exception) {
-			// Ignore exceptions if the server was not registered.
-		}
-
-		// Shutdown the Ktor server instance with a brief grace period.
-		server?.stop(500, 1000)
-		server = null
-		applicationContext = null
-
-		// Cancel the coroutine scope to clean up background tasks.
-		serverScope?.cancel()
-		serverScope = null
-
-		// Close the action channel.
-		actionChannel?.close()
-		actionChannel = null
-
-		// Clear the message buffer to free up memory.
-		clearBuffer()
-
-		// Disconnect all tracked clients.
-		clients.clear()
-
-		isRunning = false
-		Log.i(TAG, "[LogStreamServer] Log stream server stopped.")
 	}
 
 	/** Subscriber for MessageLog events via EventBus.
@@ -830,5 +682,159 @@ object LogStreamServer {
 				clients.remove(client)
 			}
 		}
+	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/** Starts the log streaming server on the specified port and registers with EventBus.
+	 *
+	 * @param context The application context used for accessing assets and system services.
+	 * @param port The network port number to listen on.
+	 */
+	fun start(context: Context, port: Int) {
+		// Prevent starting multiple instances of the server.
+		if (isRunning) {
+			Log.i(TAG, "[LogStreamServer] Server is already running.")
+			return
+		}
+
+		try {
+			applicationContext = context.applicationContext
+			serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+			actionChannel = Channel(Channel.UNLIMITED)
+
+			// Start the core log worker that serializes all history syncs and live broadcasts.
+			serverScope?.launch {
+				actionChannel?.let { channel ->
+					for (action in channel) {
+						when (action) {
+							is LogAction.NewClient -> {
+								handleNewClientAction(action.session)
+							}
+							is LogAction.Broadcast -> {
+								handleBroadcastAction(action.message)
+							}
+							is LogAction.Clear -> {
+								handleClearAction()
+							}
+						}
+					}
+				}
+			}
+
+			// Bind to all interfaces so devices on the local network can connect.
+			server = embeddedServer(CIO, host = "0.0.0.0", port = port) {
+				// Install the WebSockets plugin with default configuration.
+				install(WebSockets)
+
+				routing {
+					// Serve the main log viewer HTML application.
+					get("/") {
+						serveLogViewerHtml(call, context)
+					}
+					get("/index.html") {
+						serveLogViewerHtml(call, context)
+					}
+
+					// Provide a health check endpoint for monitoring the server status.
+					get("/health") {
+						call.respondText("""{"status":"ok"}""", ContentType.Application.Json)
+					}
+
+					// Serve the full message log for download.
+					get("/logs/download") {
+						try {
+							val fullLogs = MessageLog.getMessageLogCopy().joinToString("\n")
+
+							// Set headers to trigger a file download in the browser.
+							val datePart = SimpleDateFormat(
+								"yyyy-MM-dd-HH-mm-ss",
+								Locale.getDefault()
+							).format(Date())
+
+							call.response.header(
+								HttpHeaders.ContentDisposition,
+								"attachment; filename=\"uaa_logs_$datePart.txt\""
+							)
+							call.respondText(fullLogs, ContentType.Text.Plain)
+						} catch (e: Exception) {
+							Log.e(TAG, "[ERROR] /logs/download:: Failed to generate log download: ${e.message}")
+							call.respondText(
+								"Failed to generate log download.",
+								ContentType.Text.Plain,
+								HttpStatusCode.InternalServerError
+							)
+						}
+					}
+
+					// Handle WebSocket connections on root path (matches the HTML client).
+					webSocket("/") {
+						handleWebSocketSession(this)
+					}
+				}
+			}
+
+			// Start the server without blocking the calling thread.
+			server?.start(wait = false)
+			isRunning = true
+
+			// Register with EventBus to receive real-time log messages.
+			if (!EventBus.getDefault().isRegistered(this)) {
+				EventBus.getDefault().register(this)
+			}
+
+			// Determine and log the device IP address for easy access.
+			val ip = getDeviceIpAddress(context)
+			Log.i(TAG, "[LogStreamServer] Log stream server started on http://$ip:$port")
+
+			// Populate the initial buffer from existing logs so late-joining clients see the history.
+			populateBuffer(MessageLog.getMessageLogCopy())
+
+			Log.d(TAG, "[DEBUG] start:: LogStreamServer registered with EventBus: ${EventBus.getDefault().isRegistered(this)}")
+			MessageLog.i(TAG, "[INFO] Remote Log Viewer started at http://$ip:$port")
+		} catch (e: Exception) {
+			// Handle cases where the server fails to start.
+			MessageLog.e(TAG, "[ERROR] start:: Failed to start Remote Log Viewer: ${e.message}")
+			isRunning = false
+			serverScope?.cancel()
+			serverScope = null
+			actionChannel?.close()
+			actionChannel = null
+		}
+	}
+
+	/** Stops the log streaming server, clears the buffer, and unregisters from EventBus. */
+	fun stop() {
+		if (!isRunning) return
+
+		try {
+			// Unregister to stop receiving log events.
+			EventBus.getDefault().unregister(this)
+		} catch (_: Exception) {
+			// Ignore exceptions if the server was not registered.
+		}
+
+		// Shutdown the Ktor server instance with a brief grace period.
+		server?.stop(500, 1000)
+		server = null
+		applicationContext = null
+
+		// Cancel the coroutine scope to clean up background tasks.
+		serverScope?.cancel()
+		serverScope = null
+
+		// Close the action channel.
+		actionChannel?.close()
+		actionChannel = null
+
+		// Clear the message buffer to free up memory.
+		clearBuffer()
+
+		// Disconnect all tracked clients.
+		clients.clear()
+
+		isRunning = false
+		Log.i(TAG, "[LogStreamServer] Log stream server stopped.")
 	}
 }

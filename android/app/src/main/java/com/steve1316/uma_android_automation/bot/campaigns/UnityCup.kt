@@ -45,6 +45,9 @@ class UnityCup(game: Game) : Campaign(game) {
 	/** Flag indicating if the opponent selection should be overridden. */
 	private var bOverrideOpponentSelection: Boolean = false
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
 	override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
         val result: DialogHandlerResult = super.handleDialogs(dialog, args)
         if (result !is DialogHandlerResult.Unhandled) {
@@ -80,22 +83,6 @@ class UnityCup(game: Game) : Campaign(game) {
 		return DialogHandlerResult.Handled(result.dialog)
 	}
 
-	/**
-	 * Analyzes the opponent race prediction images to determine if they are favorable.
-	 *
-	 * @return True if there are sufficient double circle predictions, false otherwise.
-	 */
-	private fun analyzeOpponentRacePrediction(): Boolean {
-        val doubleCircles = IconDoubleCircle.findAll(game.imageUtils, region = game.imageUtils.regionMiddle, confidence = 0.0)
-        if (doubleCircles.size >= 3) {
-            MessageLog.i(TAG, "[UNITY_CUP] Race #${selectedOpponentIndex + 1} has sufficient double circle predictions. Selecting it now...")
-            return true
-        } else {
-            MessageLog.i(TAG, "[UNITY_CUP] Race #${selectedOpponentIndex + 1} only had ${doubleCircles.size} double predictions and falls short. Skipping this opponent.")
-            return false
-        }
-    }
-
 	override fun handleTrainingEvent() {
 		if (!tutorialDisabled) {
 			tutorialDisabled = if (IconUnityCupTutorialHeader.check(game.imageUtils)) {
@@ -129,7 +116,23 @@ class UnityCup(game: Game) : Campaign(game) {
 	override fun checkCampaignSpecificConditions(): Boolean {
         return handleRaceEventsUnityCup()
 	}
-	
+
+    /**
+	 * Analyzes the opponent race prediction images to determine if they are favorable.
+	 *
+	 * @return True if there are sufficient double circle predictions, false otherwise.
+	 */
+	private fun analyzeOpponentRacePrediction(): Boolean {
+        val doubleCircles = IconDoubleCircle.findAll(game.imageUtils, region = game.imageUtils.regionMiddle, confidence = 0.0)
+        if (doubleCircles.size >= 3) {
+            MessageLog.i(TAG, "[UNITY_CUP] Race #${selectedOpponentIndex + 1} has sufficient double circle predictions. Selecting it now...")
+            return true
+        } else {
+            MessageLog.i(TAG, "[UNITY_CUP] Race #${selectedOpponentIndex + 1} only had ${doubleCircles.size} double predictions and falls short. Skipping this opponent.")
+            return false
+        }
+    }
+
 	/**
 	 * Handles the scenario-specific process for Unity Cup races.
 	 *

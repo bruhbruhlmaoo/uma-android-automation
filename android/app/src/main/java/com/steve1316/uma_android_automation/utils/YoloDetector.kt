@@ -22,7 +22,33 @@ import com.steve1316.automation_library.data.SharedData
  * @property context The application context for accessing assets.
  */
 class YoloDetector(private val context: Context) {
-	companion object {
+	/** The ONNX Runtime environment instance. */
+	private var ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
+
+	/** The active ONNX Runtime session for model inference. */
+	private var ortSession: OrtSession? = null
+
+    /** Data class representing a single detected object in the image.
+	 *
+	 * @property x Top-left X coordinate in the original image space.
+	 * @property y Top-left Y coordinate in the original image space.
+	 * @property w Width of the bounding box in the original image space.
+	 * @property h Height of the bounding box in the original image space.
+	 * @property label The detected class label.
+	 * @property confidence The detection confidence score (0.0 to 1.0).
+	 */
+	data class Detection(val x: Float, val y: Float, val w: Float, val h: Float, val label: String, val confidence: Float)
+
+	/** Internal helper to store letterbox transformation parameters.
+	 *
+	 * @property bitmap The resized and padded bitmap for model input.
+	 * @property ratio The scaling ratio applied to the original image.
+	 * @property padX Horizontal padding applied to maintain aspect ratio.
+	 * @property padY Vertical padding applied to maintain aspect ratio.
+	 */
+	private data class LetterboxInfo(val bitmap: Bitmap, val ratio: Float, val padX: Float, val padY: Float)
+
+    companion object {
 		private const val TAG = "${SharedData.loggerTag}YoloDetector"
 		
 		/** Path to the ONNX model file in the assets directory. */
@@ -44,15 +70,12 @@ class YoloDetector(private val context: Context) {
 		private const val BATCH_INDEX = 0
 	}
 
-	/** The ONNX Runtime environment instance. */
-	private var ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
-
-	/** The active ONNX Runtime session for model inference. */
-	private var ortSession: OrtSession? = null
-
 	init {
 		loadModel()
 	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/** Loads the ONNX model from the application assets. */
 	private fun loadModel() {
@@ -66,26 +89,6 @@ class YoloDetector(private val context: Context) {
 			e.printStackTrace()
 		}
 	}
-
-	/** Data class representing a single detected object in the image.
-	 *
-	 * @property x Top-left X coordinate in the original image space.
-	 * @property y Top-left Y coordinate in the original image space.
-	 * @property w Width of the bounding box in the original image space.
-	 * @property h Height of the bounding box in the original image space.
-	 * @property label The detected class label.
-	 * @property confidence The detection confidence score (0.0 to 1.0).
-	 */
-	data class Detection(val x: Float, val y: Float, val w: Float, val h: Float, val label: String, val confidence: Float)
-
-	/** Internal helper to store letterbox transformation parameters.
-	 *
-	 * @property bitmap The resized and padded bitmap for model input.
-	 * @property ratio The scaling ratio applied to the original image.
-	 * @property padX Horizontal padding applied to maintain aspect ratio.
-	 * @property padY Vertical padding applied to maintain aspect ratio.
-	 */
-	private data class LetterboxInfo(val bitmap: Bitmap, val ratio: Float, val padX: Float, val padY: Float)
 
 	/** Performs letterbox resizing to prepare the image for YOLO input while maintaining aspect ratio.
 	 *
@@ -114,53 +117,6 @@ class YoloDetector(private val context: Context) {
 		canvas.drawBitmap(scaledBitmap, padX, padY, Paint(Paint.FILTER_BITMAP_FLAG))
 
 		return LetterboxInfo(letterboxBitmap, ratio, padX, padY)
-	}
-
-	/** Runs object detection inference on the provided bitmap region.
-	 *
-	 * @param bitmap The input image crop to analyze.
-	 * @return A list of [Detection] objects scaled back to the original bitmap's coordinate system.
-	 */
-	fun detect(bitmap: Bitmap): List<Detection> {
-		if (ortSession == null) {
-			Log.e(TAG, "[ERROR] detect:: OrtSession is null. Cannot run detection. Check if loadModel() failed.")
-			return emptyList()
-		}
-
-		val startTime = System.currentTimeMillis()
-
-		// Pre-process image with letterboxing.
-		val letterboxInfo = letterbox(bitmap)
-		val floatBuffer = bitmapToFloatBuffer(letterboxInfo.bitmap)
-		val inputName = ortSession?.inputNames?.iterator()?.next() ?: "images"
-
-		try {
-			// Create input tensor and run inference.
-			val inputTensor = OnnxTensor.createTensor(ortEnv, floatBuffer, longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong()))
-			val results = ortSession?.run(Collections.singletonMap(inputName, inputTensor))
-
-			results?.use {
-				val outputValue = it.get(0).value
-
-				// Standard YOLOv8 output format is float[1][attributes][anchors] (e.g., [1][15][336]).
-				if (outputValue is Array<*> && outputValue[BATCH_INDEX] is Array<*>) {
-					val batchOutput = outputValue[BATCH_INDEX] as Array<FloatArray>
-
-					// Parse detections and scale coordinates back.
-					val detections = parseOutput(batchOutput, letterboxInfo)
-					val duration = System.currentTimeMillis() - startTime
-					Log.d(TAG, "[DEBUG] detect:: Inference completed in ${duration}ms. Found ${detections.size} detections.")
-					return detections
-				} else {
-					Log.e(TAG, "[ERROR] detect:: Unexpected output tensor structure: ${outputValue?.javaClass?.simpleName}")
-				}
-			}
-		} catch (e: Exception) {
-			Log.e(TAG, "[ERROR] detect:: Error during inference: ${e.message}")
-			e.printStackTrace()
-		}
-
-		return emptyList()
 	}
 
 	/** Converts a bitmap into a normalized FloatBuffer suitable for ONNX input.
@@ -287,5 +243,55 @@ class YoloDetector(private val context: Context) {
 	fun close() {
 		ortSession?.close()
 		ortEnv.close()
+	}
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /** Runs object detection inference on the provided bitmap region.
+	 *
+	 * @param bitmap The input image crop to analyze.
+	 * @return A list of [Detection] objects scaled back to the original bitmap's coordinate system.
+	 */
+	fun detect(bitmap: Bitmap): List<Detection> {
+		if (ortSession == null) {
+			Log.e(TAG, "[ERROR] detect:: OrtSession is null. Cannot run detection. Check if loadModel() failed.")
+			return emptyList()
+		}
+
+		val startTime = System.currentTimeMillis()
+
+		// Pre-process image with letterboxing.
+		val letterboxInfo = letterbox(bitmap)
+		val floatBuffer = bitmapToFloatBuffer(letterboxInfo.bitmap)
+		val inputName = ortSession?.inputNames?.iterator()?.next() ?: "images"
+
+		try {
+			// Create input tensor and run inference.
+			val inputTensor = OnnxTensor.createTensor(ortEnv, floatBuffer, longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong()))
+			val results = ortSession?.run(Collections.singletonMap(inputName, inputTensor))
+
+			results?.use {
+				val outputValue = it.get(0).value
+
+				// Standard YOLOv8 output format is float[1][attributes][anchors] (e.g., [1][15][336]).
+				if (outputValue is Array<*> && outputValue[BATCH_INDEX] is Array<*>) {
+					val batchOutput = outputValue[BATCH_INDEX] as Array<FloatArray>
+
+					// Parse detections and scale coordinates back.
+					val detections = parseOutput(batchOutput, letterboxInfo)
+					val duration = System.currentTimeMillis() - startTime
+					Log.d(TAG, "[DEBUG] detect:: Inference completed in ${duration}ms. Found ${detections.size} detections.")
+					return detections
+				} else {
+					Log.e(TAG, "[ERROR] detect:: Unexpected output tensor structure: ${outputValue?.javaClass?.simpleName}")
+				}
+			}
+		} catch (e: Exception) {
+			Log.e(TAG, "[ERROR] detect:: Error during inference: ${e.message}")
+			e.printStackTrace()
+		}
+
+		return emptyList()
 	}
 }
