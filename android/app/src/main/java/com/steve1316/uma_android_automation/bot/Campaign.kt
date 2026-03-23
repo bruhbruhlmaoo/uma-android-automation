@@ -731,9 +731,6 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
 
                 result.dialog.close(game.imageUtils)
-
-                // Print the trainee info with the updated fan count.
-                trainee.logInfo()
             }
 
             "umamusume_details" -> {
@@ -1570,6 +1567,23 @@ abstract class Campaign(game: Game) : Task(game) {
                 onAfterTurnStartUpdates()
             }
 
+            // Since we're at the main screen, we don't need to worry about this
+            // flag anymore since we will update our aptitudes here if needed.
+            trainee.bTemporaryRunningStyleAptitudesUpdated = false
+
+            if (!trainee.bHasUpdatedAptitudes) {
+                openAptitudesDialog()
+                tryHandleAllDialogs()
+            }
+
+            val bIsScheduledRaceDayInitial = LabelScheduledRace.check(game.imageUtils, sourceBitmap = sourceBitmap)
+            val bIsMandatoryRaceDayInitial = IconRaceDayRibbon.check(game.imageUtils, sourceBitmap = sourceBitmap)
+
+            if (!date.bIsFinaleSeason && !bIsMandatoryRaceDayInitial && !bIsScheduledRaceDayInitial && bNeedToCheckFans && !bHasTriedCheckingFansToday) {
+                openFansDialog()
+                tryHandleAllDialogs()
+            }
+
             // Mark that we've checked the date this turn.
             bHasCheckedDateThisTurn = true
         }
@@ -1580,35 +1594,15 @@ abstract class Campaign(game: Game) : Task(game) {
             return true
         }
 
-        // Since we're at the main screen, we don't need to worry about this
-        // flag anymore since we will update our aptitudes here if needed.
-        trainee.bTemporaryRunningStyleAptitudesUpdated = false
-
-        if (!trainee.bHasUpdatedAptitudes) {
-            openAptitudesDialog()
-            tryHandleAllDialogs()
-        }
-
-        val bIsScheduledRaceDay = LabelScheduledRace.check(game.imageUtils, sourceBitmap = sourceBitmap)
-        val bIsMandatoryRaceDay = IconRaceDayRibbon.check(game.imageUtils, sourceBitmap = sourceBitmap)
-
-        // Check for fans if needed.
-        if (
-            !date.bIsFinaleSeason &&
-            !bIsMandatoryRaceDay &&
-            !bIsScheduledRaceDay &&
-            bNeedToCheckFans &&
-            !bHasTriedCheckingFansToday
-        ) {
-            openFansDialog()
-            tryHandleAllDialogs()
-        }
+        // Print the trainee info after all turn-start updates and potential fan count updates.
+        trainee.logInfo()
 
         // Scenario-specific main screen entry hook (e.g. for item usage).
         onMainScreenEntry()
 
         // Decision-making process.
         val action = decideNextAction()
+        val bIsScheduledRaceDay = LabelScheduledRace.check(game.imageUtils)
         return executeAction(action, bIsScheduledRaceDay)
     }
 
@@ -1693,8 +1687,6 @@ abstract class Campaign(game: Game) : Task(game) {
         } finally {
             MessageLog.disableOutput = false
         }
-
-        trainee.logInfo()
     }
 
     /**
