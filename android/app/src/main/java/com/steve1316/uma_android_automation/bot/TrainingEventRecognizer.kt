@@ -1,89 +1,108 @@
 package com.steve1316.uma_android_automation.bot
 
 import android.util.Log
+import com.steve1316.automation_library.utils.MessageLog
+import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.utils.CustomImageUtils
-import com.steve1316.automation_library.utils.SettingsHelper
-import com.steve1316.automation_library.utils.MessageLog
 import net.ricecode.similarity.JaroWinklerStrategy
 import net.ricecode.similarity.StringSimilarityServiceImpl
 import org.json.JSONObject
+import kotlin.math.roundToInt
 
 /**
- * Recognizes training events by performing OCR on event titles and matching them against
- * known character and support card event data using string similarity algorithms.
+ * Recognizes training events by performing OCR on event titles and matching them against known character and support card event data using string similarity algorithms.
+ *
+ * @property game The [Game] instance for interacting with the game state.
+ * @property imageUtils The [CustomImageUtils] instance for image processing and OCR.
  */
 class TrainingEventRecognizer(private val game: Game, private val imageUtils: CustomImageUtils) {
-	private val TAG: String = "[${MainActivity.loggerTag}]TrainingEventRecognizer"
-	
-	// Define event matching patterns to filter false positives during detection.
-	val eventPatterns = mapOf(
-		"New Year's Resolutions" to listOf("New Year's Resolutions", "Resolutions"),
-		"New Year's Shrine Visit" to listOf("New Year's Shrine Visit", "Shrine Visit"),
-		"Victory!" to listOf("Victory!"),
-		"Solid Showing" to listOf("Solid Showing"),
-		"Defeat" to listOf("Defeat"),
-		"Get Well Soon!" to listOf("Get Well Soon"),
-		"Don't Overdo It!" to listOf("Don't Overdo It"),
-		"Extra Training" to listOf("Extra Training"),
-		"Acupuncture (Just an Acupuncturist, No Worries! ☆)" to listOf("Acupuncture", "Just an Acupuncturist"),
-		"Etsuko's Exhaustive Coverage" to listOf("Etsuko", "Exhaustive Coverage"),
-        "Tutorial" to listOf("Tutorial"),
-		"A Team at Last" to listOf("A Team at Last", "Team at Last")
-	)
-	
-	// The full character event data should be stored in SQLite and will be loaded here.
-	private val characterEventData: JSONObject? = try {
-		val characterDataString = SettingsHelper.getStringSetting("trainingEvent", "characterEventData")
-		if (characterDataString != null && characterDataString.isNotEmpty()) {
-			val jsonObject = JSONObject(characterDataString)
-			if (game.debugMode) MessageLog.d(TAG, "Character event data length: ${jsonObject.length()}.")
-			jsonObject
-		} else {
-			null
-		}
-	} catch (e: Exception) {
-		if (game.debugMode) MessageLog.d(TAG, "[DEBUG] Failed to load character event data from SQLite: ${e.message}")
-		null
-	}
-	
-	// The full support event data should be stored in SQLite and will be loaded here.
-	private val supportEventData: JSONObject? = try {
-		val supportDataString = SettingsHelper.getStringSetting("trainingEvent", "supportEventData")
-		if (supportDataString != null && supportDataString.isNotEmpty()) {
-			val jsonObject = JSONObject(supportDataString)
-			if (game.debugMode) MessageLog.d(TAG, "Support event data length: ${jsonObject.length()}.")
-			jsonObject
-		} else {
-			null
-		}
-	} catch (e: Exception) {
-		if (game.debugMode) MessageLog.d(TAG, "[DEBUG] Failed to load support event data from SQLite: ${e.message}")
-		null
-	}
-	
-	private val hideComparisonResults: Boolean = SettingsHelper.getBooleanSetting("debug", "enableHideOCRComparisonResults")
-	private val minimumConfidence = SettingsHelper.getIntSetting("ocr", "ocrConfidence").toDouble() / 100.0
-	private val threshold = SettingsHelper.getIntSetting("ocr", "ocrThreshold").toDouble()
-	private val enableAutomaticRetry = SettingsHelper.getBooleanSetting("ocr", "enableAutomaticOCRRetry")
+    /** Map of special event matching patterns used to filter false positives during detection. */
+    val eventPatterns =
+        mapOf(
+            "New Year's Resolutions" to listOf("New Year's Resolutions", "Resolutions"),
+            "New Year's Shrine Visit" to listOf("New Year's Shrine Visit", "Shrine Visit"),
+            "Victory!" to listOf("Victory!"),
+            "Solid Showing" to listOf("Solid Showing"),
+            "Defeat" to listOf("Defeat"),
+            "Get Well Soon!" to listOf("Get Well Soon"),
+            "Don't Overdo It!" to listOf("Don't Overdo It"),
+            "Extra Training" to listOf("Extra Training"),
+            "Acupuncture (Just an Acupuncturist, No Worries! ☆)" to listOf("Acupuncture", "Just an Acupuncturist"),
+            "Etsuko's Exhaustive Coverage" to listOf("Etsuko", "Exhaustive Coverage"),
+            "Tutorial" to listOf("Tutorial"),
+            "A Team at Last" to listOf("A Team at Last", "Team at Last"),
+        )
 
-	private val stringSimilarityService = StringSimilarityServiceImpl(JaroWinklerStrategy())
+    /** Character event data loaded from SQLite settings. This contains the mapping of character events to their options and rewards. */
+    private val characterEventData: JSONObject? =
+        try {
+            val characterDataString = SettingsHelper.getStringSetting("trainingEvent", "characterEventData")
+            if (characterDataString.isNotEmpty()) {
+                val jsonObject = JSONObject(characterDataString)
+                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] characterEventData:: Data length from SQLite: ${jsonObject.length()}.")
+                jsonObject
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            if (game.debugMode) MessageLog.d(TAG, "[DEBUG] characterEventData:: Failed to load character event data from SQLite: ${e.message}")
+            null
+        }
 
-	// Cache OCR matching results to avoid redundant string comparisons.
-	private val ocrMatchingCache = mutableMapOf<String, MatchingResult>()
+    /** Support event data loaded from SQLite settings. This contains the mapping of support card events to their options and rewards. */
+    private val supportEventData: JSONObject? =
+        try {
+            val supportDataString = SettingsHelper.getStringSetting("trainingEvent", "supportEventData")
+            if (supportDataString.isNotEmpty()) {
+                val jsonObject = JSONObject(supportDataString)
+                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] supportEventData:: Data length from SQLite: ${jsonObject.length()}.")
+                jsonObject
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            if (game.debugMode) MessageLog.d(TAG, "[DEBUG] supportEventData:: Failed to load support event data from SQLite: ${e.message}")
+            null
+        }
+
+    /** Whether to hide OCR comparison results in the log output. */
+    private val hideComparisonResults: Boolean = SettingsHelper.getBooleanSetting("debug", "enableHideOCRComparisonResults")
+
+    /** The minimum confidence score required for an OCR match to be accepted immediately. */
+    private val minimumConfidence = SettingsHelper.getIntSetting("ocr", "ocrConfidence").toDouble() / 100.0
+
+    /** The grayscale threshold used for OCR pre-processing. */
+    private val threshold = SettingsHelper.getIntSetting("ocr", "ocrThreshold").toDouble()
+
+    /** Whether to automatically retry OCR detection with different thresholds if confidence is low. */
+    private val enableAutomaticRetry = SettingsHelper.getBooleanSetting("ocr", "enableAutomaticOCRRetry")
+
+    /** Service for calculating string similarity using the Jaro-Winkler algorithm. */
+    private val stringSimilarityService = StringSimilarityServiceImpl(JaroWinklerStrategy())
+
+    /** Cache used to store OCR matching results and avoid redundant string comparisons. */
+    private val ocrMatchingCache = mutableMapOf<String, MatchingResult>()
 
     /**
-    * Data class to hold a quadruple of values.
-    */
-    data class Quadruple<out A, out B, out C, out D>(
-        val first: A,
-        val second: B,
-        val third: C,
-        val fourth: D
-    )
+     * Store a quadruple of values for training event results.
+     *
+     * @property first The list of event option rewards.
+     * @property second The confidence score of the match.
+     * @property third The title of the matched event.
+     * @property fourth The name of the character or support card.
+     */
+    data class Quadruple<out A, out B, out C, out D>(val first: A, val second: B, val third: C, val fourth: D)
 
     /**
-     * Data class to hold the result of finding the most similar string.
+     * Store the result of finding the most similar string in the event data.
+     *
+     * @property confidence The similarity score between the OCR result and the event title.
+     * @property category The category of the event (either "character" or "support").
+     * @property eventTitle The title of the matched event.
+     * @property supportCardTitle The name of the support card if it is a support event.
+     * @property eventOptionRewards The list of rewards for each option in the event.
+     * @property character The name of the character if it is a character event.
      */
     private data class MatchingResult(
         val confidence: Double,
@@ -91,214 +110,236 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
         val eventTitle: String,
         val supportCardTitle: String,
         val eventOptionRewards: ArrayList<String>,
-        val character: String
+        val character: String,
     )
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
+    companion object {
+        private val TAG: String = "[${MainActivity.loggerTag}]TrainingEventRecognizer"
+    }
 
-	/**
-	 * Attempt to find the most similar string from data compared to the string returned by OCR.
-	 *
-	 * @param ocrResult The string result from OCR detection.
-	 * @return A MatchingResult containing the best match found, or default values if no match is found.
-	 */
-	private fun findMostSimilarString(ocrResult: String): MatchingResult {
-		MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Now starting process to find most similar string to: $ocrResult")
-		
-		// Check cache first to avoid redundant comparisons.
-		ocrMatchingCache[ocrResult]?.let {
-			MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Using cached result for: $ocrResult")
-			return it
-		}
-		
-		// Initialize result with default values.
-		var confidence = 0.0
-		var category = ""
-		var eventTitle = ""
-		var supportCardTitle = ""
-		var eventOptionRewards: ArrayList<String> = arrayListOf()
-		var character = ""
-		
-		// Check if this matches any special event patterns first to filter false positives.
-		var matchedSpecialEvent: String? = null
-		for ((eventName, patterns) in eventPatterns) {
-			if (patterns.any { pattern -> ocrResult.contains(pattern) }) {
-				matchedSpecialEvent = eventName
-				break
-			}
-		}
-		val isSpecialEvent = matchedSpecialEvent != null
-		if (isSpecialEvent) {
-			MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Detected special event pattern: $matchedSpecialEvent. Will restrict search to this event.")
-			eventTitle = matchedSpecialEvent
-		}
-		
-		// Remove any detected whitespaces.
-		val processedResult = ocrResult.replace(" ", "")
-		
-		// Attempt to find the most similar string inside the character event data.
-		if (characterEventData != null) {
-			characterEventData.keys().forEach { characterKey ->
-				val characterEvents = characterEventData.getJSONObject(characterKey)
-				characterEvents.keys().forEach { eventName ->
-					// Skip if this is a special event and the event name doesn't match our detected pattern.
-					if (isSpecialEvent && eventName != matchedSpecialEvent) {
-						return@forEach
-					}
-					
-					val eventOptionsArray = characterEvents.getJSONArray(eventName)
-					val eventOptions = ArrayList<String>()
-					for (i in 0 until eventOptionsArray.length()) {
-						eventOptions.add(eventOptionsArray.getString(i))
-					}
-					
-					val score = stringSimilarityService.score(processedResult, eventName)
-					if (!hideComparisonResults) {
-						MessageLog.i(TAG, "[CHARA] $characterKey \"${processedResult}\" vs. \"${eventName}\" confidence: ${game.decimalFormat.format(score)}")
-					}
-					
-					if (score >= confidence) {
-						confidence = score
-						eventTitle = eventName
-						eventOptionRewards = eventOptions
-						category = "character"
-						character = characterKey
-						
-						// Early exit when we've found a match that meets the minimum confidence.
-						if (score >= minimumConfidence) {
-							val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
-							ocrMatchingCache[ocrResult] = result
-							return result
-						}
-					}
-				}
-			}
-		}
-		
-		// Finally, do the same with all Support Cards.
-		if (supportEventData != null) {
-			supportEventData.keys().forEach { supportName ->
-				val supportEvents = supportEventData.getJSONObject(supportName)
-				supportEvents.keys().forEach { eventName ->
-					// Skip if this is a special event and the event name doesn't match our detected pattern.
-					if (isSpecialEvent && eventName != matchedSpecialEvent) {
-						return@forEach
-					}
-					
-					val eventOptionsArray = supportEvents.getJSONArray(eventName)
-					val eventOptions = ArrayList<String>()
-					for (i in 0 until eventOptionsArray.length()) {
-						eventOptions.add(eventOptionsArray.getString(i))
-					}
-					
-					val score = stringSimilarityService.score(processedResult, eventName)
-					if (!hideComparisonResults) {
-						MessageLog.i(TAG, "[SUPPORT] $supportName \"${processedResult}\" vs. \"${eventName}\" confidence: $score")
-					}
-					
-					if (score >= confidence) {
-						confidence = score
-						eventTitle = eventName
-						supportCardTitle = supportName
-						eventOptionRewards = eventOptions
-						category = "support"
-						
-						// Early exit when we've found a match that meets the minimum confidence.
-						if (score >= minimumConfidence) {
-							val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
-							ocrMatchingCache[ocrResult] = result
-							return result
-						}
-					}
-				}
-			}
-		}
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
 
-		MessageLog.i(TAG, "${if (!hideComparisonResults) "\n" else ""}[TRAINING_EVENT_RECOGNIZER] Finished process to find similar string.")
-		MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Event data fetched for \"${eventTitle}\".")
-		
-		// Cache result before returning.
-		val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
-		ocrMatchingCache[ocrResult] = result
-		return result
-	}
+    /**
+     * Find the most similar string from the event data compared to the OCR result.
+     *
+     * @param ocrResult The string results from OCR detection.
+     * @return A [MatchingResult] containing the best match found, or default values if no match is found.
+     */
+    private fun findMostSimilarString(ocrResult: String): MatchingResult {
+        MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Now starting process to find most similar string to: $ocrResult")
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Check the cache first to avoid redundant similarity calculations.
+        ocrMatchingCache[ocrResult]?.let {
+            MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Using cached result for: $ocrResult")
+            return it
+        }
 
-	/**
-	 * Starts the training event recognition process by performing OCR on the event title
-	 * and matching it against known event data.
-	 *
-	 * @return A quadruple containing the event option rewards, confidence score, event title, and character/support name.
-	 */
-	fun start(): Quadruple<ArrayList<String>, Double, String, String> {
-		MessageLog.i(TAG, "\n********************")
+        // Initialize result variables with default values.
+        var confidence = 0.0
+        var category = ""
+        var eventTitle = ""
+        var supportCardTitle = ""
+        var eventOptionRewards: ArrayList<String> = arrayListOf()
+        var character = ""
 
-		// Initialize best result with default values.
-		var bestResult = MatchingResult(0.0, "", "", "", arrayListOf(), "")
-		
-		var increment = 0.0
-		
-		val startTime: Long = System.currentTimeMillis()
-		while (true) {
-			// Perform Tesseract OCR detection.
-			val ocrResult: String = if ((255.0 - threshold - increment) > 0.0) {
-				imageUtils.findEventTitle(increment)
-			} else {
-				break
-			}
-			
-			if (ocrResult.isNotEmpty() && ocrResult != "") {
-				// Now attempt to find the most similar string compared to the one from OCR.
-				val matchingResult = findMostSimilarString(ocrResult)
-				if (matchingResult.eventTitle.isNotEmpty() && eventPatterns.containsKey(matchingResult.eventTitle)) {
-					MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Special event \"${matchingResult.eventTitle}\" detected.")
-					bestResult = matchingResult
-					break
-				}
-				
-				// Update best result if this one is better.
-				if (matchingResult.confidence >= bestResult.confidence) {
-					bestResult = matchingResult
-				}
-				
-				when (matchingResult.category) {
-					"character" -> {
-						MessageLog.i(TAG, "\n[RESULT] Character ${matchingResult.character} Event Name = ${matchingResult.eventTitle} with confidence = ${game.decimalFormat.format(matchingResult.confidence)}")
-					}
-					"support" -> {
-						MessageLog.i(TAG, "\n[RESULT] Support ${matchingResult.supportCardTitle} Event Name = ${matchingResult.eventTitle} with confidence = ${game.decimalFormat.format(matchingResult.confidence)}")
-					}
-				}
-				
-				if (enableAutomaticRetry && !hideComparisonResults) {
-					MessageLog.i(TAG, "\n[RESULT] Threshold incremented by $increment")
-				}
-				
-				// Round confidence to 2 decimal places to match display precision and avoid floating point issues.
-				val roundedConfidence = Math.round(matchingResult.confidence * 100.0) / 100.0
-				if (roundedConfidence < minimumConfidence && enableAutomaticRetry) {
-					increment += 5.0
-				} else {
-					break
-				}
-			} else {
-				increment += 5.0
-			}
-		}
-		
-		val endTime: Long = System.currentTimeMillis()
-		Log.d(TAG, "Total Runtime for recognizing training event: ${endTime - startTime}ms")
-		MessageLog.i(TAG, "********************")
-		
-		val characterOrSupportName = when (bestResult.category) {
-			"character" -> bestResult.character
-			"support" -> bestResult.supportCardTitle
-			else -> ""
-		}
-		
-		return Quadruple(bestResult.eventOptionRewards, bestResult.confidence, bestResult.eventTitle, characterOrSupportName)
-	}
+        // Filter false positives by checking against special event patterns first.
+        var matchedSpecialEvent: String? = null
+        for ((eventName, patterns) in eventPatterns) {
+            if (patterns.any { pattern -> ocrResult.contains(pattern) }) {
+                matchedSpecialEvent = eventName
+                break
+            }
+        }
+        val isSpecialEvent = matchedSpecialEvent != null
+        if (isSpecialEvent) {
+            MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Detected special event pattern: $matchedSpecialEvent. Will restrict search to this event.")
+            eventTitle = matchedSpecialEvent
+        }
+
+        // Remove whitespaces to standardize the result for comparison.
+        val processedResult = ocrResult.replace(" ", "")
+
+        // Search for the most similar string within the character event data.
+        characterEventData?.keys()?.forEach { characterKey ->
+            val characterEvents = characterEventData.getJSONObject(characterKey)
+            characterEvents.keys().forEach { eventName ->
+                // Skip if this is a special event and the name does not match the detected pattern.
+                if (isSpecialEvent && eventName != matchedSpecialEvent) {
+                    return@forEach
+                }
+
+                val eventOptionsArray = characterEvents.getJSONArray(eventName)
+                val eventOptions = ArrayList<String>()
+                for (i in 0 until eventOptionsArray.length()) {
+                    eventOptions.add(eventOptionsArray.getString(i))
+                }
+
+                // Calculate similarity score between processed OCR result and known event name.
+                val score = stringSimilarityService.score(processedResult, eventName)
+                if (!hideComparisonResults) {
+                    MessageLog.i(TAG, "[CHARACTER] $characterKey \"${processedResult}\" vs. \"${eventName}\" confidence: ${game.decimalFormat.format(score)}")
+                }
+
+                if (score >= confidence) {
+                    confidence = score
+                    eventTitle = eventName
+                    eventOptionRewards = eventOptions
+                    category = "character"
+                    character = characterKey
+
+                    // Return early if we find a match that meets the minimum confidence criteria.
+                    if (score >= minimumConfidence) {
+                        val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
+                        ocrMatchingCache[ocrResult] = result
+                        return result
+                    }
+                }
+            }
+        }
+
+        // Search for the most similar string within the support card event data.
+        supportEventData?.keys()?.forEach { supportName ->
+            val supportEvents = supportEventData.getJSONObject(supportName)
+            supportEvents.keys().forEach { eventName ->
+                // Skip if this is a special event and the name does not match the detected pattern.
+                if (isSpecialEvent && eventName != matchedSpecialEvent) {
+                    return@forEach
+                }
+
+                val eventOptionsArray = supportEvents.getJSONArray(eventName)
+                val eventOptions = ArrayList<String>()
+                for (i in 0 until eventOptionsArray.length()) {
+                    eventOptions.add(eventOptionsArray.getString(i))
+                }
+
+                // Calculate similarity score between processed OCR result and known event name.
+                val score = stringSimilarityService.score(processedResult, eventName)
+                if (!hideComparisonResults) {
+                    MessageLog.i(TAG, "[SUPPORT] $supportName \"${processedResult}\" vs. \"${eventName}\" confidence: $score")
+                }
+
+                if (score >= confidence) {
+                    confidence = score
+                    eventTitle = eventName
+                    supportCardTitle = supportName
+                    eventOptionRewards = eventOptions
+                    category = "support"
+
+                    // Return early if we find a match that meets the minimum confidence criteria.
+                    if (score >= minimumConfidence) {
+                        val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
+                        ocrMatchingCache[ocrResult] = result
+                        return result
+                    }
+                }
+            }
+        }
+
+        MessageLog.i(TAG, "${if (!hideComparisonResults) "\n" else ""}[TRAINING_EVENT_RECOGNIZER] Finished process to find similar string.")
+        MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Event data fetched for \"${eventTitle}\".")
+
+        // Cache the result before returning.
+        val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
+        ocrMatchingCache[ocrResult] = result
+        return result
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Start the training event recognition process.
+     *
+     * This method performs OCR on the event title and matches it against known event data. If the confidence is low and automatic retry is enabled, it increments the threshold and retries.
+     *
+     * @return A [Quadruple] containing the event option rewards, confidence score, event title, and character/support name.
+     */
+    fun start(): Quadruple<ArrayList<String>, Double, String, String> {
+        MessageLog.i(TAG, "\n********************")
+
+        // Initialize the best result found with default values.
+        var bestResult = MatchingResult(0.0, "", "", "", arrayListOf(), "")
+
+        var increment = 0.0
+
+        val startTime: Long = System.currentTimeMillis()
+        while (true) {
+            // Perform Tesseract OCR detection on the event title region.
+            val ocrResult: String =
+                if ((255.0 - threshold - increment) > 0.0) {
+                    imageUtils.findEventTitle(increment)
+                } else {
+                    break
+                }
+
+            if (ocrResult.isNotEmpty() && ocrResult != "") {
+                // Attempt to find the most similar string compared to the OCR result.
+                val matchingResult = findMostSimilarString(ocrResult)
+                if (matchingResult.eventTitle.isNotEmpty() && eventPatterns.containsKey(matchingResult.eventTitle)) {
+                    MessageLog.i(TAG, "[TRAINING_EVENT_RECOGNIZER] Special event \"${matchingResult.eventTitle}\" detected.")
+                    bestResult = matchingResult
+                    break
+                }
+
+                // Update the best result if the current matching result has higher confidence.
+                if (matchingResult.confidence >= bestResult.confidence) {
+                    bestResult = matchingResult
+                }
+
+                // Log the result of the recognition attempt.
+                when (matchingResult.category) {
+                    "character" -> {
+                        MessageLog.i(
+                            TAG,
+                            "\n[TRAINING_EVENT_RECOGNIZER] Character ${matchingResult.character} Event Name = ${matchingResult.eventTitle} with confidence = ${
+                                game.decimalFormat.format(
+                                    matchingResult.confidence,
+                                )
+                            }",
+                        )
+                    }
+
+                    "support" -> {
+                        MessageLog.i(
+                            TAG,
+                            "\n[TRAINING_EVENT_RECOGNIZER] Support ${matchingResult.supportCardTitle} Event Name = ${matchingResult.eventTitle} with confidence = ${
+                                game.decimalFormat.format(matchingResult.confidence)
+                            }",
+                        )
+                    }
+                }
+
+                if (enableAutomaticRetry && !hideComparisonResults) {
+                    MessageLog.i(TAG, "\n[TRAINING_EVENT_RECOGNIZER] Threshold incremented by $increment")
+                }
+
+                // Round the confidence score to two decimal places for comparison.
+                val roundedConfidence = (matchingResult.confidence * 100.0).roundToInt() / 100.0
+                if (roundedConfidence < minimumConfidence && enableAutomaticRetry) {
+                    // Increment the threshold and retry detection if confidence is below the minimum.
+                    increment += 5.0
+                } else {
+                    break
+                }
+            } else {
+                // Increment the threshold and retry detection if no OCR result was found.
+                increment += 5.0
+            }
+        }
+
+        val endTime: Long = System.currentTimeMillis()
+        Log.d(TAG, "[DEBUG] recognizeTrainingEvent:: Total Runtime for recognizing training event: ${endTime - startTime}ms")
+        MessageLog.i(TAG, "********************")
+
+        // Determine the name of the character or support card associated with the best result.
+        val characterOrSupportName =
+            when (bestResult.category) {
+                "character" -> bestResult.character
+                "support" -> bestResult.supportCardTitle
+                else -> ""
+            }
+
+        return Quadruple(bestResult.eventOptionRewards, bestResult.confidence, bestResult.eventTitle, characterOrSupportName)
+    }
 }

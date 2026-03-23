@@ -1,6 +1,9 @@
-apply plugin: "com.android.application"
-apply plugin: "org.jetbrains.kotlin.android"
-apply plugin: "com.facebook.react"
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "com.facebook.react"
+    alias(libs.plugins.ktlint)
+}
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -61,6 +64,15 @@ react {
 
     /* Autolinking */
     autolinkLibrariesWithApp()
+}
+
+ktlint {
+    android = true
+    ignoreFailures = true
+    reporters {
+        reporter "plain"
+        reporter "checkstyle"
+    }
 }
 
 /**

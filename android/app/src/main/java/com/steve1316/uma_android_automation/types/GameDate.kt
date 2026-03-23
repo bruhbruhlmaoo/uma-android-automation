@@ -2,60 +2,77 @@ package com.steve1316.uma_android_automation.types
 
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.TextUtils
-
 import com.steve1316.uma_android_automation.MainActivity
-import com.steve1316.uma_android_automation.utils.CustomImageUtils
-import com.steve1316.uma_android_automation.types.DateYear
+import com.steve1316.uma_android_automation.components.LabelEnergy
 import com.steve1316.uma_android_automation.types.DateMonth
 import com.steve1316.uma_android_automation.types.DatePhase
-import com.steve1316.uma_android_automation.components.LabelEnergy
+import com.steve1316.uma_android_automation.types.DateYear
+import com.steve1316.uma_android_automation.utils.CustomImageUtils
 
 /**
- * Represents the Game's date.
+ * Represents the Game's date in the training scenario.
  *
- * This class stores the game's date representation and contains functions
- * used to convert and detect the current on screen date.
+ * This class stores the game's date representation (Year, Month, Phase) and the corresponding turn number (Day). It provides functions to convert between these formats and to detect the current date
+ * from the screen using OCR.
  *
- * @property year The date's year (junior, classic, senior).
- * @property month The date's month.
- * @property phase The date's phase (early, late).
- * @property day The current day (turn number).
- * @property bIsPreDebut Whether the game is in the Pre-Debut phase.
- * @property bIsFinaleSeason Whether the game is in the finale season.
+ * The game is structured into three years: Junior, Classic, and Senior. Each year has 12 months, and each month is split into two phases: Early and Late. Total turns: 3 years * 12 months * 2 phases =
+ * 72 turns. The Finale season starts after turn 72.
  */
 class GameDate {
+    /** The date's year (Junior, Classic, Senior). */
     var year: DateYear = DateYear.JUNIOR
+
+    /** The date's month (January to December). */
     var month: DateMonth = DateMonth.JANUARY
+
+    /** The date's phase (Early, Late). */
     var phase: DatePhase = DatePhase.EARLY
+
+    /** The current turn number (1 to 72, with 73-75 for the Finale). */
     var day: Int = 1
+
+    /** Whether the game is in the Pre-Debut phase (Turns 1-11). */
     var bIsPreDebut: Boolean = false
+
+    /** Whether the game is in the Finale season (Turns 73-75). */
     var bIsFinaleSeason: Boolean = false
 
-    /** Constructor that takes year/month/phase arguments to calculate the day. */
-    constructor(
-        year: DateYear,
-        month: DateMonth,
-        phase: DatePhase,
-    ) {
+    /**
+     * Constructor that takes year/month/phase arguments to calculate the day.
+     *
+     * @param year The date's year.
+     * @param month The date's month.
+     * @param phase The date's phase.
+     */
+    constructor(year: DateYear, month: DateMonth, phase: DatePhase) {
+        // Calculate the turn number based on the components.
         val day = toDay(year, month, phase)
-        
+
         this.year = year
         this.month = month
         this.phase = phase
         this.day = day
 
+        // Update season flags. Pre-Debut is the first 11 turns (Junior Year Early Jan to Late June).
         bIsPreDebut = this.day < 12
+        // Finale season starts after turn 72 (Senior Year Late Dec).
         bIsFinaleSeason = this.day > 72
     }
 
-    /** Constructor that takes a day argument to calculate the year/month/phase. */
+    /**
+     * Constructor that takes a day argument (turn number) to calculate the year/month/phase.
+     *
+     * @param day The turn number to convert.
+     */
     constructor(day: Int) {
+        // Calculate the components based on the turn number.
         val tmpDate = fromDay(day)
         this.year = tmpDate.year
         this.month = tmpDate.month
         this.phase = tmpDate.phase
         this.day = day
 
+        // Update season flags.
         bIsPreDebut = this.day < 12
         bIsFinaleSeason = this.day > 72
     }
@@ -63,26 +80,29 @@ class GameDate {
     companion object {
         const val TAG: String = "[${MainActivity.loggerTag}]GameDate"
 
-        /** Converts a year/month/phase to a day number.
+        /**
+         * Converts a year/month/phase to a day number (turn number).
+         *
+         * The formula calculates the offset from the start of the Junior year. There are 24 turns (2 per month * 12 months) per year.
          *
          * @param year The date's year.
          * @param month The date's month.
          * @param phase The date's phase.
-         * @return The calculated day number.
+         * @return The calculated day number (1-indexed).
          */
         fun toDay(year: DateYear, month: DateMonth, phase: DatePhase): Int {
+            // formula: (YearIndex * 24) + ((MonthIndex + 1) * 2) + PhaseIndex - 1.
             return ((year.ordinal * (DateMonth.entries.size * 2)) + (((month.ordinal + 1) * 2) + phase.ordinal)) - 1
         }
 
         /**
-         * Converts a day (or turn number) into a GameDate object.
+         * Converts a day (or turn number) into a [GameDate] object.
          *
-         * @param day The day number to convert.
-         *
-         * @return The GameDate object generated from the day number or NULL if conversion failed.
+         * @param day The day number (turn number) to convert.
+         * @return The [GameDate] object generated from the day number.
          */
         fun fromDay(day: Int): GameDate {
-            // Clamp minimum day to 1.
+            // Clamp minimum day to 1 (Junior Year Early Jan).
             if (day < 1) {
                 return GameDate(
                     year = DateYear.JUNIOR,
@@ -91,28 +111,23 @@ class GameDate {
                 )
             }
 
-            // No maximum day number but values over 72 will break the
-            // formulae below, so we just use the alternative secondary
-            // constructor and return that object.
+            // Values over 72 will break the division-based formula below, so we return a capped Senior Year Late Dec object.
             if (day > 72) {
-                val tmpDate = GameDate(
-                    year = DateYear.SENIOR,
-                    month = DateMonth.DECEMBER,
-                    phase = DatePhase.LATE,
-                )
+                val tmpDate = GameDate(year = DateYear.SENIOR, month = DateMonth.DECEMBER, phase = DatePhase.LATE)
                 tmpDate.day = day
                 return tmpDate
             }
 
-            // Day starts at 1, not 0, so we need to decrement for the following
-            // formulae to work properly.
+            // Day starts at 1, not 0, so we need to decrement for the following formula to work properly.
             val day = day - 1
             val y = day.floorDiv(24)
             val m = (day % 24).floorDiv(2)
             val p = day % 2
+
             val year: DateYear = DateYear.fromOrdinal(y)!!
             val month: DateMonth = DateMonth.fromOrdinal(m)!!
             val phase: DatePhase = DatePhase.fromOrdinal(p)!!
+
             return GameDate(
                 year = year,
                 month = month,
@@ -125,130 +140,130 @@ class GameDate {
          *
          * This is just a simple wrapper around [fromDateString].
          *
-         * @param imageUtils A reference to a CustomImageUtils instance.
+         * @param imageUtils A reference to a [CustomImageUtils] instance.
          * @param scenario The scenario name for special handling.
-         * @return The detected GameDate object, or NULL if nothing could be detected.
+         * @return The detected [GameDate] object, or null if nothing could be detected.
          */
         fun detectDate(imageUtils: CustomImageUtils, scenario: String? = null): GameDate? {
             return fromDateString(imageUtils = imageUtils, scenario = scenario)
         }
 
         /**
-         * Converts a date string to a GameDate object.
+         * Converts a date string recognized via OCR to a [GameDate] object.
          *
-         * @param s The date string to convert from.
-         *          If NULL, then imageUtils will be used to detect this value.
-         * @param turnsLeft The number turns left until the next goal.
-         *          If NULL, then imageUtils will be used to detect this value.
-         * @param imageUtils The CustomImageUtils instance used to detect
-         * the date string and turnsLeft if either are NULL.
-         * @param scenario The scenario name for special handling.
-         *
-         * @return The GameDate object generated from the date string and turns left,
-         * or NULL if conversion failed.
+         * @param s The date string to convert from. If null, [imageUtils] will detect it.
+         * @param turnsLeft The number turns left until the next goal. If null, [imageUtils] will detect it.
+         * @param imageUtils The [CustomImageUtils] instance used for OCR detection.
+         * @param scenario The current scenario name for special handling.
+         * @return The [GameDate] object, or null if conversion failed.
          */
         fun fromDateString(s: String? = null, turnsLeft: Int? = null, imageUtils: CustomImageUtils, scenario: String? = null): GameDate? {
-            val s: String? = s ?: imageUtils.determineDayString()
-            if (s == null || s == "") {
-                MessageLog.d(TAG, "fromDateString:: Passed string is NULL or empty.")
+            // Determine the date string from the screen if it wasn't provided.
+            val dayString: String = s ?: imageUtils.determineDayString()
+            if (dayString == null || dayString == "") {
+                MessageLog.d(TAG, "[DEBUG] fromDateString:: Passed string is null or empty.")
                 return null
             }
 
-            if (s.lowercase().contains("debut")) {
-                val turnsLeft: Int? = turnsLeft ?: imageUtils.determineTurnsRemainingBeforeNextGoal()
-                if (turnsLeft == null) {
-                    MessageLog.e(TAG, "fromDateString:: In pre-debut but received turnsLeft=NULL. Cannot calculate date without turnsLeft.")
+            // Special case for Pre-Debut where year/month aren't explicitly shown.
+            if (dayString.lowercase().contains("debut")) {
+                val remainingTurns: Int = turnsLeft ?: imageUtils.determineTurnsRemainingBeforeNextGoal()
+                if (remainingTurns == null) {
+                    MessageLog.e(TAG, "[ERROR] fromDateString:: In Pre-Debut but received turnsLeft=null. Cannot calculate date without turnsLeft.")
                     return null
                 }
 
-                if (turnsLeft <= 0) {
-                    MessageLog.d(TAG, "fromDateString:: Debut race day.")
+                if (remainingTurns <= 0) {
+                    // Turn 12 is the Debut race (Junior Year Late June).
                     return GameDate(DateYear.JUNIOR, DateMonth.JUNE, DatePhase.LATE)
                 }
 
-                // Calculate the day number in pre-debut.
+                // Calculate the day number in Pre-Debut (Turns 1-11).
                 val turnsInPreDebut = 12
-                val currTurn = (turnsInPreDebut - turnsLeft).coerceIn(0, 12)
+                val currTurn = (turnsInPreDebut - remainingTurns).coerceIn(1, 11)
                 return fromDay(currTurn)
             }
 
-            if (s.lowercase().contains("finale") || (scenario == "Trackblazer" && s.lowercase().contains("climax races underway"))) {
-                MessageLog.d(TAG, "fromDateString:: Finale season.")
+            // Special case for Finale season (Turns 73-75) and for date strings that indicate it is the Finale season.
+            if (dayString.lowercase().contains("finale") || (scenario == "Trackblazer" && dayString.lowercase().contains("climax races underway"))) {
                 // Pass the cached day string to avoid redundant OCR operations.
-                val (finalsDay, _) = getFinalsDay(imageUtils = imageUtils, cachedDayString = s, scenario = scenario)
+                val (finalsDay, _) = getFinalsDay(imageUtils = imageUtils, cachedDayString = dayString, scenario = scenario)
                 if (finalsDay == null) {
-                    MessageLog.w(TAG, "fromDateString:: Could not determine day in finale season. Defaulting to first day of finale.")
+                    MessageLog.w(TAG, "[WARN] fromDateString:: Could not determine day in finale season. Defaulting to first day of finale (Turn 73).")
                     return GameDate(day = 73)
                 }
                 return GameDate(day = finalsDay)
             }
 
+            // Gather possible names for fuzzy matching.
             val years: List<String> = DateYear.entries.map { it.name }
             val months: List<String> = DateMonth.entries.map { it.shortName }
             val phases: List<String> = DatePhase.entries.map { it.name }
 
-            // Split the input string by whitespace.
-            val parts = s.trim().split(" ")
+            // Split the input string by whitespace (e.g., "Classic Year Early Feb").
+            val parts = dayString.trim().split(" ")
             if (parts.size < 3) {
-                MessageLog.w(TAG, "fromDateString:: Invalid date string format: $s")
+                MessageLog.w(TAG, "[WARN] fromDateString:: Invalid date string format: $dayString")
                 return null
             }
-    
-            // Extract the parts with safe indexing using default values.
+
+            // Extract the parts with safe indexing. Junior/Classic/Senior is usually at index 0.
+            // Month is usually at the end of the common string format.
             val yearPart: String = parts.getOrNull(0) ?: DateYear.SENIOR.name
             val phasePart: String = parts.getOrNull(2) ?: DatePhase.EARLY.name
             val monthPart: String = parts.getOrNull(3) ?: DateMonth.JANUARY.shortName
 
-            // Find the best match for the strings using Jaro Winkler if not found in mapping.
+            // Find the best match for the strings using Jaro Winkler fuzzy matching.
             val yearString: String? = TextUtils.matchStringInList(yearPart, years)
             if (yearString == null) {
-                MessageLog.w(TAG, "fromDateString:: Invalid date format. Could not detect YEAR from $yearPart.")
+                MessageLog.w(TAG, "[WARN] fromDateString:: Invalid date format. Could not detect YEAR from $yearPart.")
                 return null
             }
 
             val monthString: String? = TextUtils.matchStringInList(monthPart, months)
             if (monthString == null) {
-                MessageLog.w(TAG, "fromDateString:: Invalid date format. Could not detect MONTH from $monthPart.")
+                MessageLog.w(TAG, "[WARN] fromDateString:: Invalid date format. Could not detect MONTH from $monthPart.")
                 return null
             }
 
             val phaseString: String? = TextUtils.matchStringInList(phasePart, phases)
             if (phaseString == null) {
-                MessageLog.w(TAG, "fromDateString:: Invalid date format. Could not detect PHASE from $phasePart.")
+                MessageLog.w(TAG, "[WARN] fromDateString:: Invalid date format. Could not detect PHASE from $phasePart.")
                 return null
             }
 
-            // Now try to convert the strings to their respective enums.
-            val year: DateYear? = DateYear.fromName(yearString)
-            if (year == null) {
-                MessageLog.w(TAG, "fromDateString:: Invalid yearString: $yearString")
+            // Convert the matched strings to their respective enums.
+            val yearEnum: DateYear? = DateYear.fromName(yearString)
+            if (yearEnum == null) {
+                MessageLog.w(TAG, "[WARN] fromDateString:: Invalid yearString: $yearString")
                 return null
             }
-            val month: DateMonth? = DateMonth.fromShortName(monthString)
-            if (month == null) {
-                MessageLog.w(TAG, "fromDateString:: Invalid monthString: $monthString")
+            val monthEnum: DateMonth? = DateMonth.fromShortName(monthString)
+            if (monthEnum == null) {
+                MessageLog.w(TAG, "[WARN] fromDateString:: Invalid monthString: $monthString")
                 return null
             }
-            val phase: DatePhase? = DatePhase.fromName(phaseString)
-            if (phase == null) {
-                MessageLog.w(TAG, "fromDateString:: Invalid phaseString: $phaseString")
+            val phaseEnum: DatePhase? = DatePhase.fromName(phaseString)
+            if (phaseEnum == null) {
+                MessageLog.w(TAG, "[WARN] fromDateString:: Invalid phaseString: $phaseString")
                 return null
             }
 
-            val result = GameDate(year, month, phase)
-            MessageLog.d(TAG, "fromDateString:: Detected $result")
+            val result = GameDate(yearEnum, monthEnum, phaseEnum)
+            MessageLog.i(TAG, "[DATE] Detected $result")
             return result
         }
 
         /**
-         * Determines whether a day number falls within the Summer dates.
+         * Determines whether a specific day number falls within the Summer training dates.
          *
-         * @param dayToCheck The day number to check.
+         * Summer takes place during July and August in the Classic and Senior years. (Turns 37-40 and 61-64).
          *
-         * @return Boolean whether the day number falls within summer.
+         * @param dayToCheck The day number (turn number) to check.
+         * @return True if the turn falls within Summer, false otherwise.
          */
         fun isSummer(dayToCheck: Int): Boolean {
-            // Summer only takes place in classic and senior years.
+            // Summer only takes place in Classic and Senior years.
             for (year in listOf(DateYear.CLASSIC, DateYear.SENIOR)) {
                 if (
                     dayToCheck >= GameDate(year, DateMonth.JULY, DatePhase.EARLY).day &&
@@ -261,135 +276,142 @@ class GameDate {
             return false
         }
 
-        /** Determines the day number in the finale season.
+        /**
+         * Determines the day number in the Finale season (Turns 73-75).
          *
-         * @param imageUtils A reference to a CustomImageUtils instance.
+         * Since the Finale season doesn't show standard date strings like "Junior Year Early Jan", we must use other on-screen cues like the goal text or scenario-specific indicators.
+         *
+         * @param imageUtils A reference to a [CustomImageUtils] instance.
          * @param cachedDayString Optional cached day string to avoid redundant OCR.
-         * @param isOnMainScreen If true, skip the check in [determineDayString].
-         * @param scenario The scenario name for special handling.
-         * @return A Pair containing the day number and day string.
+         * @param isOnMainScreen If true, skip the check for the training/race button in OCR.
+         * @param scenario The current scenario name for special handling.
+         * @return A Pair containing the detected day number (73-75) and the day string.
          */
         fun getFinalsDay(imageUtils: CustomImageUtils, cachedDayString: String? = null, isOnMainScreen: Boolean = false, scenario: String? = null): Pair<Int?, String?> {
             // Get the day string first to check if we're in finals before doing expensive OCR operations.
-            val dayString: String? = cachedDayString ?: imageUtils.determineDayString(isOnMainScreen)
+            val dayString: String = cachedDayString ?: imageUtils.determineDayString(isOnMainScreen)
             if (dayString == null) {
-                MessageLog.w(TAG, "[DATE] Could not detect day string.")
+                MessageLog.w(TAG, "[WARN] getFinalsDay:: Could not detect day string.")
                 return Pair(null, null)
             }
 
-            // Early exit if not in finale season.
-            if (!dayString.lowercase().contains("finale") && !(scenario == "Trackblazer" && dayString.lowercase().contains("climax races underway"))) {
-                MessageLog.w(TAG, "[DATE] getFinalsDay:: Not in finale season. Day string: $dayString")
+            // Early exit if the string doesn't indicate we are in the Finale season.
+            val isFinale = dayString.lowercase().contains("finale") || (scenario == "Trackblazer" && dayString.lowercase().contains("climax races underway"))
+            if (!isFinale) {
                 return Pair(null, dayString)
             }
 
+            // The Trackblazer scenario shows "X / 3" turns remaining for the Climax finals.
             if (scenario == "Trackblazer") {
-                // If it's Trackblazer, we check the specific OCR region for the finale stage.
+                // If it's Trackblazer, we check a specific OCR region below the energy label for the finale stage turn.
                 val (energyLocation, sourceBitmap) = LabelEnergy.find(imageUtils)
                 if (energyLocation != null) {
-                    val detectedText = imageUtils.performOCROnRegion(
-                        sourceBitmap,
-                        imageUtils.relX(energyLocation.x, -245),
-                        imageUtils.relY(energyLocation.y, 280),
-                        imageUtils.relWidth(145),
-                        imageUtils.relHeight(35),
-                        useThreshold = true,
-                        useGrayscale = true,
-                        scale = 2.0,
-                        ocrEngine = "mlkit",
-                        debugName = "TrackblazerFinaleDay"
-                    ).lowercase()
+                    val detectedText =
+                        imageUtils.performOCROnRegion(
+                            sourceBitmap,
+                            imageUtils.relX(energyLocation.x, -245),
+                            imageUtils.relY(energyLocation.y, 280),
+                            imageUtils.relWidth(145),
+                            imageUtils.relHeight(35),
+                            useThreshold = true,
+                            useGrayscale = true,
+                            scale = 2.0,
+                            ocrEngine = "mlkit",
+                            debugName = "TrackblazerFinaleDay",
+                        ).lowercase()
 
                     return when {
                         detectedText.contains("0/3") -> {
-                            MessageLog.d(TAG, "[DATE] Trackblazer Finale Qualifier (Turn 73).")
+                            MessageLog.i(TAG, "[DATE] Trackblazer Finale Qualifier (Turn 73).")
                             Pair(73, dayString)
                         }
+
                         detectedText.contains("1/3") -> {
-                            MessageLog.d(TAG, "[DATE] Trackblazer Finale Semi-Final (Turn 74).")
+                            MessageLog.i(TAG, "[DATE] Trackblazer Finale Semi-Final (Turn 74).")
                             Pair(74, dayString)
                         }
+
                         detectedText.contains("2/3") -> {
-                            MessageLog.d(TAG, "[DATE] Trackblazer Finale Finals (Turn 75).")
+                            MessageLog.i(TAG, "[DATE] Trackblazer Finale Finals (Turn 75).")
                             Pair(75, dayString)
                         }
+
                         else -> {
-                            MessageLog.w(TAG, "[DATE] Could not determine Trackblazer Finale date from text: \"$detectedText\". Defaulting to turn 73.")
+                            MessageLog.w(TAG, "[WARN] getFinalsDay:: Could not determine Trackblazer Finale date from text: \"$detectedText\". Defaulting to turn 73.")
                             Pair(73, dayString)
                         }
                     }
                 } else {
-                    MessageLog.w(TAG, "[DATE] Could not find energy asset for Trackblazer finale detection. Defaulting to turn 73.")
+                    MessageLog.w(TAG, "[WARN] getFinalsDay:: Could not find energy asset for Trackblazer finale detection. Defaulting to turn 73.")
                     return Pair(73, dayString)
                 }
             }
 
+            // For other scenarios, we check the goal text for "Qualifier", "Semi-Final", or "Finals".
             val goalText = imageUtils.getGoalText().lowercase()
 
+            // Helper to match goal text substrings.
             fun goalTextMatch(target: String, query: String, threshold: Double = 0.9): Boolean {
                 return TextUtils.findMostSimilarSubstring(target, query, threshold) != null
             }
 
-            val finalsDay = when {
-                goalTextMatch(goalText, "qualifier") -> {
-                    MessageLog.d(TAG, "[DATE] Finale Qualifier (Turn 73).")
-                    73
+            val finalsDay =
+                when {
+                    goalTextMatch(goalText, "qualifier") -> {
+                        MessageLog.i(TAG, "[DATE] Finale Qualifier (Turn 73).")
+                        73
+                    }
+
+                    goalTextMatch(goalText, "semifinal") -> {
+                        MessageLog.i(TAG, "[DATE] Finale Semi-Final (Turn 74).")
+                        74
+                    }
+
+                    goalTextMatch(goalText, "finals") -> {
+                        MessageLog.i(TAG, "[DATE] Finale Finals (Turn 75).")
+                        75
+                    }
+
+                    else -> {
+                        MessageLog.w(TAG, "[WARN] getFinalsDay:: Could not determine Finals date. Defaulting to turn 73.")
+                        73
+                    }
                 }
-                goalTextMatch(goalText, "semifinal") -> {
-                    MessageLog.d(TAG, "[DATE] Finale Semi-Final (Turn 74).")
-                    74
-                }
-                goalTextMatch(goalText, "finals") -> {
-                    MessageLog.d(TAG, "[DATE] Finale Finals (Turn 75).")
-                    75
-                }
-                else -> {
-                    MessageLog.w(TAG, "Could not determine Finals date. Defaulting to turn 73.")
-                    73
-                }
-            }
             return Pair(finalsDay, dayString)
         }
     }
 
-    /** Converts the current date to a day number.
-     * This is a wrapper around the GameDate.toDay function that just passes
-     * our current year/month/phase as the arguments.
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Converts the current date to its corresponding turn number.
      *
-     * @return The current day number.
+     * This is an instance wrapper around the static [GameDate.toDay] function.
+     *
+     * @return The current turn number.
      */
     fun toDay(): Int {
         return toDay(this.year, this.month, this.phase)
     }
 
     /**
-     * Checks whether the current day is in the summer date range.
+     * Checks whether the current day falls within the Summer date range.
      *
-     * This is a wrapper around the GameDate.isSummer function that just passes
-     * our current date as the dayToCheck argument.
+     * This is an instance wrapper around the static [GameDate.isSummer] function.
      *
-     * @return Boolean whether the current date is in the summer date range.
+     * @return True if the current date is in the Summer date range.
      */
     fun isSummer(): Boolean {
         return isSummer(this.day)
     }
 
-    /** Returns a string representation of the current date. */
-    override fun toString(): String {
-        if (bIsFinaleSeason) {
-            return when (this.day) {
-                73 -> "Finale Qualifier (Turn ${this.day})"
-                74 -> "Finale Semi-Final (Turn ${this.day})"
-                75 -> "Finale Finals (Turn ${this.day})"
-                else -> "INVALID DAY (> 75): ${this.day}"
-            }
-        }
-        return "${this.year.longName} ${this.phase} ${this.month} (Turn ${this.day})"
-    }
-
-    /** Updates class members to reflect the current day.
+    /**
+     * Updates all class property members to reflect the provided day (turn number).
      *
-     * @param day The day number to update to.
+     * This will recalculate the year, month, and phase based on the turn number.
+     *
+     * @param day The turn number to update to.
      */
     fun updateDay(day: Int) {
         val tmpDate: GameDate = fromDay(day)
@@ -398,38 +420,66 @@ class GameDate {
         this.phase = tmpDate.phase
         this.day = day
 
+        // Recalculate season flags.
         bIsPreDebut = this.day < 12
         bIsFinaleSeason = this.day > 72
     }
 
     /**
-     * Returns the GameDate object for the next calendar day.
+     * Returns a new [GameDate] object representing the next turn.
      *
-     * @return The next day's GameDate object.
+     * @return The next turn's [GameDate] object.
      */
-    fun getNextDate(): GameDate? {
+    fun getNextDate(): GameDate {
         return fromDay(this.day + 1)
     }
 
     /**
+     * Returns a human-readable string representation of the current date.
+     *
+     * For example: "Junior Year Early Jan (Turn 1)" or "Finale Qualifier (Turn 73)".
+     *
+     * @return The string representation.
+     */
+    override fun toString(): String {
+        // Special strings for the Finale season.
+        if (bIsFinaleSeason) {
+            return when (this.day) {
+                73 -> "Finale Qualifier (Turn ${this.day})"
+                74 -> "Finale Semi-Final (Turn ${this.day})"
+                75 -> "Finale Finals (Turn ${this.day})"
+                else -> "INVALID FINALE DAY (> 75): ${this.day}"
+            }
+        }
+        return "${this.year.longName} ${this.phase} ${this.month} (Turn ${this.day})"
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
      * Updates the current date by detecting it from the screen.
      *
+     * This method first checks if the game is in the Finale season. If not, it falls back to parsing the date string from the screen.
+     *
      * @param imageUtils A reference to a CustomImageUtils instance.
-     * @param scenario The scenario name for special handling.
-     * @param isOnMainScreen If true, skip the check in [determineDayString].
+     * @param scenario The current scenario name for special handling.
+     * @param isOnMainScreen If true, skip the check for the training/race button in OCR.
      * @return True if the date was updated successfully, false otherwise.
      */
     fun update(imageUtils: CustomImageUtils, scenario: String? = null, isOnMainScreen: Boolean = false): Boolean {
+        // First try to detect if we're in the Finale season.
         val (finalsDay, cachedDayString) = getFinalsDay(imageUtils, isOnMainScreen = isOnMainScreen, scenario = scenario)
         if (finalsDay != null) {
             updateDay(finalsDay)
         } else {
-            // Pass the cached day string to avoid doing expensive OCR operations again.
+            // If not in finals, pass the cached day string to avoid doing expensive OCR operations again.
             val tmpDate: GameDate? = fromDateString(s = cachedDayString, imageUtils = imageUtils, scenario = scenario)
             if (tmpDate == null) {
-                MessageLog.e(TAG, "GameDate.fromDateString returned NULL.")
+                MessageLog.e(TAG, "[ERROR] GameDate.update:: fromDateString returned null.")
                 return false
             }
+            // Update our internal turn number and derived components.
             updateDay(tmpDate.day)
         }
         return true

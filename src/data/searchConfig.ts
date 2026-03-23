@@ -657,31 +657,36 @@ const searchConfig: SearchOption[] = [
     {
         id: "debug-skill-list-buy-test",
         title: "Start Skill List Buy Test",
-        description: "Processes the list of skills in the Skills screen, reads all skills in the list, logs a summary and then logs another summary of which skills it will buy to bring down the current Skill Points as close to zero as possible and then it will stop there without actually doing the buying.",
+        description:
+            "Processes the list of skills in the Skills screen, reads all skills in the list, logs a summary and then logs another summary of which skills it will buy to bring down the current Skill Points as close to zero as possible and then it will stop there without actually doing the buying.",
         page: "DebugSettings",
     },
     {
         id: "debug-scrollbar-detection-test",
         title: "Start Scrollbar Detection Test",
-        description: "Disables normal bot operations and starts the Scrollbar detection test. Detects the scrollbar on the current screen and attempts to scroll it up and down to verify functionality.",
+        description:
+            "Disables normal bot operations and starts the Scrollbar detection test. Detects the scrollbar on the current screen and attempts to scroll it up and down to verify functionality.",
         page: "DebugSettings",
     },
     {
         id: "debug-trackblazer-race-selection-test",
         title: "Start Trackblazer Race Selection Test",
-        description: "Disables normal bot operations and starts the Trackblazer race selection test. Navigates to the Race List if on the Main Screen and identifies the best race to run, including Rivals.",
+        description:
+            "Disables normal bot operations and starts the Trackblazer race selection test. Navigates to the Race List if on the Main Screen and identifies the best race to run, including Rivals.",
         page: "DebugSettings",
     },
     {
         id: "debug-trackblazer-inventory-sync-test",
         title: "Start Trackblazer Inventory Sync Test",
-        description: "Disables normal bot operations and starts the Trackblazer inventory sync test. Opens the Training Items dialog if on the Main Screen and logs inventory contents and quick-use intentions.",
+        description:
+            "Disables normal bot operations and starts the Trackblazer inventory sync test. Opens the Training Items dialog if on the Main Screen and logs inventory contents and quick-use intentions.",
         page: "DebugSettings",
     },
     {
         id: "debug-trackblazer-buy-items-test",
         title: "Start Trackblazer Buy Items Test",
-        description: "Disables normal bot operations and starts the Trackblazer buy items test. Opens the Shop if on the Main Screen and logs shop contents and purchase intentions without actually buying anything.",
+        description:
+            "Disables normal bot operations and starts the Trackblazer buy items test. Opens the Shop if on the Main Screen and logs shop contents and purchase intentions without actually buying anything.",
         page: "DebugSettings",
     },
 ]

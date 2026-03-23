@@ -15,6 +15,7 @@
         "build:debug:clean": "cd android && ./gradlew --stop && ./gradlew clean && ./gradlew assembleDebug",
         "lint": "expo lint",
         "format": "prettier --write \"**/*.{ts,tsx}\"",
+        "format:kt": "cd android && ./gradlew ktlintFormat",
         "update": "yarn install && yarn upgrade-interactive --latest"
     },
     "dependencies": {

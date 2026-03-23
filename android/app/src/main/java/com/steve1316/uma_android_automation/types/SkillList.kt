@@ -1,18 +1,14 @@
 package com.steve1316.uma_android_automation.types
 
-import android.util.Log
 import android.graphics.Bitmap
-import org.opencv.core.Point
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
-import com.steve1316.uma_android_automation.MainActivity
-import com.steve1316.automation_library.utils.MessageLog
+import android.util.Log
 import com.steve1316.automation_library.data.SharedData
+import com.steve1316.automation_library.utils.MessageLog
+import com.steve1316.uma_android_automation.MainActivity
+import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
-import com.steve1316.uma_android_automation.bot.Campaign
-
+import com.steve1316.uma_android_automation.components.*
 import com.steve1316.uma_android_automation.types.BoundingBox
 import com.steve1316.uma_android_automation.types.RunningStyle
 import com.steve1316.uma_android_automation.types.SkillData
@@ -21,241 +17,337 @@ import com.steve1316.uma_android_automation.types.TrackDistance
 import com.steve1316.uma_android_automation.types.TrackSurface
 import com.steve1316.uma_android_automation.utils.ScrollList
 import com.steve1316.uma_android_automation.utils.ScrollListEntry
+import org.opencv.core.Point
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
-import com.steve1316.uma_android_automation.components.*
+/** A callback that fires whenever we detect an entry in the skill list. */
+fun interface OnEntryDetectedCallback {
+    /**
+     * Executes when an entry is detected in the skill list.
+     *
+     * @param skillList A reference to the [SkillList] instance which fired this callback.
+     * @param entry The [SkillListEntry] instance which was detected.
+     * @param skillUpButtonLocation The screen location of the [ButtonSkillUp] for this entry.
+     *
+     * @return Early exit flag. A value of True is used to exit from the entry detection
+     * loop early.
+     */
+    fun onEntryDetected(skillList: SkillList, entry: SkillListEntry, skillUpButtonLocation: Point): Boolean
+}
 
-/** A callback that fires whenever we detect an entry in the skill list.
+/**
+ * Handles all interactions with the skill list screen and manages the [Trainee]'s skill data.
  *
- * @param skillList A reference to the SkillList instance which fired this callback.
- * @param entry The SkillListEntry instance which was detected.
- * @param skillUpButtonLocation The screen location of the SkillUpButton for this entry.
+ * This class provides functionality to detect available skills, parse their details (name, price),
+ * purchase skills, and filter the skill list based on various criteria like running style or track aptitude.
  *
- * @return Early exit flag. A value of True is used to exit from the entry detection
- * loop early.
+ * @param game Reference to the bot's core [Game] instance.
+ * @param campaign Reference to the current training scenario [Campaign] instance.
  */
-typealias OnEntryDetectedCallback = (
-    skillList: SkillList,
-    entry: SkillListEntry,
-    skillUpButtonLocation: Point,
-) -> Boolean
+class SkillList(private val game: Game, private val campaign: Campaign) {
+    companion object {
+        private val TAG: String = "[${MainActivity.loggerTag}]SkillList"
+    }
 
-/** Handles interaction with the skill list and manages skill list entries.
- *
- * @param game Reference to the bot's Game instance.
- *
- * @property skillPoints The current remaining skill points.
- * Defaults to NULL if not yet detected.
- * The value is set in the [detectSkillPoints] function.
- */
-class SkillList (private val game: Game, private val campaign: Campaign) {
-    private val TAG: String = "[${MainActivity.loggerTag}]SkillList"
-
+    /** A mapping of skill names to their corresponding [SkillListEntry] objects. */
     private var entries: Map<String, SkillListEntry> = generateSkillListEntries()
+
+    /** The current amount of skill points available to spend. */
     var skillPoints: Int = 0
         private set
 
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
 
+    /**
+     * Populates the skill list with mock data for testing and debugging.
+     *
+     * This data mimics a real skill list state, including obtained status and prices.
+     *
+     * @return A mapping of skill names to [SkillListEntry] objects.
+     */
+    fun parseMockSkillListEntries(): Map<String, SkillListEntry> {
+        val mockSkills: Map<String, Int> =
+            mapOf(
+                "Warning Shot!" to -1,
+                "Triumphant Pulse" to 120,
+                "Kyoto Racecourse ○" to 63,
+                "Standard Distance ○" to 63,
+                "Summer Runner ○" to 81,
+                "Cloudy Days ○" to 81,
+                "Professor of Curvature" to 279,
+                "Corner Adept ○" to 117,
+                "Swinging Maestro" to 323,
+                "Corner Recovery ○" to 170,
+                "Straightaway Acceleration" to 119,
+                "Calm in a Crowd" to 153,
+                "Nimble Navigator" to 135,
+                "Homestretch Haste" to 153,
+                "Up-Tempo" to 104,
+                "Steadfast" to 144,
+                "Extra Tank" to 96,
+                "Frenzied Pace Chasers" to 104,
+                "Medium Straightaways ○" to 60,
+                "Keeping the Lead" to 128,
+                "Pressure" to 128,
+                "Pace Chaser Corners ○" to 91,
+                "Straight Descent" to 78,
+                "Hydrate" to 144,
+                "Late Surger Straightaways ○" to 84,
+                "Fighter" to 84,
+                "I Can See Right Through You" to 110,
+                "Highlander" to 128,
+                "Uma Stan" to 160,
+                "Ignited Spirit SPD" to 180,
+            )
 
-    /** Creates a mapping of skill names to SkillListEntry objects.
+        // Validate mock names against the database.
+        val fixedSkills: MutableMap<String, Int> = mutableMapOf()
+        for ((name, price) in mockSkills) {
+            val fixedName: String? = game.skillDatabase.checkSkillName(name, fuzzySearch = true)
+            if (fixedName == null) {
+                Log.e(TAG, "[ERROR] parseMockSkillListEntries:: Skill \"$name\" not found in database.")
+                return emptyMap()
+            }
+            // Ensure the entry exists in our current map.
+            val entry: SkillListEntry? = entries[fixedName]
+            if (entry == null) {
+                Log.e(TAG, "[ERROR] parseMockSkillListEntries:: Skill \"$name\" not found in initialized entries.")
+                return emptyMap()
+            }
+            fixedSkills[fixedName] = price
+        }
+
+        // Build the result map with updated entry states.
+        val result: MutableMap<String, SkillListEntry> = mutableMapOf()
+        for ((name, price) in fixedSkills) {
+            val entry = entries[name]!!
+            // Update the entry's availability.
+            entry.bIsObtained = price <= 0
+            entry.bIsVirtual = false
+            // Update price based on mock data.
+            entry.updateScreenPrice(price)
+            result[name] = entry
+        }
+
+        return result.toMap()
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Creates a mapping of all possible skill names to their corresponding [SkillListEntry] objects.
      *
-     * This function uses the skill database to populate our [entries] object.
-     * While building the [entries] object, we also make sure to preserve the
-     * structure of skill upgrade chains by linking them together when
-     * instantiating the SkillListEntry object.
+     * This function populates the initial skill mapping using the skill database. It ensures that
+     * skill upgrade chains (e.g., "Hanshin Racecourse ○" -> "Hanshin Racecourse ◎") are correctly linked using
+     * [SkillListEntry.prev] and `next` pointers to facilitate automated upgrade logic.
      *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * All entries created here are initially marked as "virtual" until they are detected on-screen.
+     *
+     * @return A mapping of skill names to [SkillListEntry] objects.
      */
     private fun generateSkillListEntries(): Map<String, SkillListEntry> {
-        // Get list of unique upgrade chains.
-        val upgradeChains: List<List<String>> = game.skillDatabase.skillUpgradeChains
-            .values.toList()
-            .toSet()
-            .toList()
+        // Retrieve the set of unique skill upgrade chains from the database.
+        val upgradeChains: List<List<String>> = game.skillDatabase.skillUpgradeChains.values.toList().toSet().toList()
 
         val result: MutableMap<String, SkillListEntry> = mutableMapOf()
-        
+
         for (chain in upgradeChains) {
             var prevEntry: SkillListEntry? = null
             for (name in chain) {
+                // Skip if this skill name has already been processed in another chain context.
                 if (name in result) {
                     continue
                 }
+
                 val skillData: SkillData? = game.skillDatabase.getSkillData(name)
                 if (skillData == null) {
-                    MessageLog.e(TAG, "Failed to get skill data for \"$name\".")
+                    MessageLog.e(TAG, "[ERROR] generateSkillListEntries:: Failed to get skill data for \"$name\".")
                     continue
                 }
-                // Because we're building this mapping before we've scanned
-                // the skill list, all entries are virtual.
+
+                // Instantiate the entry. Since we haven't scanned the UI yet, it is marked as virtual.
+                // We pass prevEntry to establish the link in the upgrade chain.
                 val entry = SkillListEntry(game, campaign, skillData, bIsVirtual = true, prev = prevEntry)
 
-                // Now add to our mapping.
+                // Add to our mapping for quick lookup by name.
                 result[name] = entry
 
+                // Set this as the previous entry for the next skill in the chain.
                 prevEntry = entry
             }
         }
         return result
     }
 
-    /** Gets the bounding region for all Skill Up (+) buttons in the skill list.
+    /**
+     * Calculates the bounding region for detecting the Skill Up (+) buttons.
      *
-     * @param bitmap Optional bitmap used for debugging.
-     * @param bboxSkillListEntries The bounding region of all skill list entries on screen.
+     * This region is relative to the provided skill list entries' bounding box.
      *
-     * @return On success, the bounding region. On failure, NULL.
+     * @param bitmap Optional [Bitmap] used for debugging snapshots.
+     * @param bboxSkillListEntries The overall [BoundingBox] of all skill entries currently on screen.
+     * @param debugString Identifier string for debugging files.
+     * @return The calculated [BoundingBox] for the Skill Up buttons.
      */
-    private fun getSkillListSkillUpBoundingRegion(
-        bitmap: Bitmap? = null,
-        bboxSkillListEntries: BoundingBox,
-        debugString: String = ""
-    ): BoundingBox {
-        // Smaller region used to detect SkillUp buttons in the list.
-        val bbox = BoundingBox(
-            x = game.imageUtils.relX((bboxSkillListEntries.x + bboxSkillListEntries.w).toDouble(), -125),
-            y = bboxSkillListEntries.y,
-            w = game.imageUtils.relWidth(70),
-            h = bboxSkillListEntries.h,
-        )
+    private fun getSkillListSkillUpBoundingRegion(bitmap: Bitmap? = null, bboxSkillListEntries: BoundingBox, debugString: String = ""): BoundingBox {
+        // Focus on the right-hand side of each entry where the (+) button is located.
+        val bbox =
+            BoundingBox(
+                x = game.imageUtils.relX((bboxSkillListEntries.x + bboxSkillListEntries.w).toDouble(), -125),
+                y = bboxSkillListEntries.y,
+                w = game.imageUtils.relWidth(70),
+                h = bboxSkillListEntries.h,
+            )
+
         if (game.debugMode) {
-            val bitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
-            game.imageUtils.saveBitmap(bitmap, "skillUpRegion_$debugString", bbox)
+            val debugBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+            game.imageUtils.saveBitmapWithBbox(debugBitmap, "skillUpRegion_$debugString", bbox)
         }
 
         return bbox
     }
 
-    /** Gets the bounding region for all Obtained Pill icons in the skill list.
+    /**
+     * Calculates the bounding region for detecting the "Obtained" pill icons.
      *
-     * @param bitmap Optional bitmap used for debugging.
-     * @param bboxSkillListEntries The bounding region of all skill list entries on screen.
+     * This region is relative to the provided skill list entries' bounding box.
      *
-     * @return On success, the bounding region. On failure, NULL.
+     * @param bitmap Optional [Bitmap] used for debugging snapshots.
+     * @param bboxSkillListEntries The overall [BoundingBox] of all skill entries currently on screen.
+     * @param debugString Identifier string for debugging files.
+     * @return The calculated [BoundingBox] for the Obtained pill icons.
      */
-    private fun getSkillListObtainedPillBoundingRegion(
-        bitmap: Bitmap? = null,
-        bboxSkillListEntries: BoundingBox,
-        debugString: String = "",
-    ): BoundingBox {
-        val bbox = BoundingBox(
-            x = game.imageUtils.relX((bboxSkillListEntries.x + bboxSkillListEntries.w).toDouble(), -260),
-            y = bboxSkillListEntries.y,
-            w = game.imageUtils.relWidth(140),
-            h = bboxSkillListEntries.h,
-        )
+    private fun getSkillListObtainedPillBoundingRegion(bitmap: Bitmap? = null, bboxSkillListEntries: BoundingBox, debugString: String = ""): BoundingBox {
+        // Focus on the right-hand side of each entry where the "Obtained" icon is located.
+        val bbox =
+            BoundingBox(
+                x = game.imageUtils.relX((bboxSkillListEntries.x + bboxSkillListEntries.w).toDouble(), -260),
+                y = bboxSkillListEntries.y,
+                w = game.imageUtils.relWidth(140),
+                h = bboxSkillListEntries.h,
+            )
+
         if (game.debugMode) {
-            val bitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
-            game.imageUtils.saveBitmap(bitmap, "obtainedPillRegion_$debugString", bbox)
+            val debugBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+            game.imageUtils.saveBitmapWithBbox(debugBitmap, "obtainedPillRegion_$debugString", bbox)
         }
 
         return bbox
     }
 
-    /** Extracts all text from a bitmap.
+    /**
+     * Extracts text from a specific bitmap region using OCR.
      *
-     * @param bitmap The bitmap to extract text from.
-     *
-     * @return The extracted text as a string.
-     * An empty string is returned if nothing is detected.
+     * @param bitmap The bitmap to perform OCR on.
+     * @return The extracted text string, or an empty string if detection fails.
      */
     private fun extractText(bitmap: Bitmap): String {
         try {
-            val detectedText = game.imageUtils.performOCROnRegion(
-                bitmap,
-                0,
-                0,
-                bitmap.width,
-                bitmap.height,
-                useThreshold = false,
-                useGrayscale = true,
-                scale = 2.0,
-                ocrEngine = "mlKit",
-                debugName = "analyzeSkillListEntry::extractText"
-            )
+            // Perform OCR using the ML Kit engine.
+            val detectedText =
+                game.imageUtils.performOCROnRegion(
+                    bitmap,
+                    0,
+                    0,
+                    bitmap.width,
+                    bitmap.height,
+                    useThreshold = false,
+                    useGrayscale = true,
+                    scale = 2.0,
+                    ocrEngine = "mlKit",
+                    debugName = "analyzeSkillListEntry::extractText",
+                )
             return detectedText
         } catch (e: Exception) {
-            MessageLog.e(TAG, "Exception during text extraction: ${e.message}")
+            MessageLog.e(TAG, "[ERROR] extractText:: Exception during text extraction: ${e.message}")
             return ""
         }
     }
 
-    /** Extracts the skill points from a bitmap.
+    /**
+     * Detects the current skill points from the Skill List screen.
      *
-     * @param bitmap Optional bitmap used to detect the skill points.
-     * If not specified, a screenshot is taken and used instead.
-     *
-     * @return On success, the skill points as an integer. On failure, NULL.
+     * @param bitmap Optional [Bitmap] used for detection. If null, a new screenshot is taken.
+     * @return The detected skill points as an Integer, or null if detection fails.
      */
     fun detectSkillPoints(bitmap: Bitmap? = null): Int? {
-        val bitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+        val srcBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
 
+        // Load the template for the Skill Points label.
         val templateBitmap: Bitmap? = LabelSkillListScreenSkillPoints.template.getBitmap(game.imageUtils)
         if (templateBitmap == null) {
-            MessageLog.e(TAG, "Failed to load template bitmap for LabelSkillListScreenSkillPoints.")
+            MessageLog.e(TAG, "[ERROR] detectSkillPoints:: Failed to load template bitmap for LabelSkillListScreenSkillPoints.")
             return null
         }
 
-        val point: Point? = LabelSkillListScreenSkillPoints.findImageWithBitmap(game.imageUtils, bitmap)
+        // Find the label on the screen.
+        val point: Point? = LabelSkillListScreenSkillPoints.findImageWithBitmap(game.imageUtils, srcBitmap)
         if (point == null) {
-            MessageLog.e(TAG, "Failed to find LabelSkillListScreenSkillPoints.")
+            MessageLog.e(TAG, "[ERROR] detectSkillPoints:: Failed to find LabelSkillListScreenSkillPoints.")
             return null
         }
 
-        val bbox = BoundingBox(
-            x = (point.x + templateBitmap.width).toInt(),
-            y = (point.y - templateBitmap.height).toInt(),
-            w = (templateBitmap.width * 1.5).toInt(),
-            h = (templateBitmap.height * 2).toInt(),
-        )
+        // Define the region containing the points number next to the label.
+        val bbox =
+            BoundingBox(
+                x = (point.x + templateBitmap.width).toInt(),
+                y = (point.y - templateBitmap.height).toInt(),
+                w = (templateBitmap.width * 1.5).toInt(),
+                h = (templateBitmap.height * 2),
+            )
 
-        val skillPointsBitmap: Bitmap? = game.imageUtils.createSafeBitmap(bitmap, bbox, "skillPointsBitmap")
+        // Crop the points region and perform OCR.
+        val skillPointsBitmap: Bitmap? = game.imageUtils.createSafeBitmap(srcBitmap, bbox, "skillPointsBitmap")
         if (skillPointsBitmap == null) {
-            MessageLog.e(TAG, "[SKILLS] detectSkillPoints: Failed to createSafeBitmap for skill points.")
+            MessageLog.e(TAG, "[ERROR] detectSkillPoints:: Failed to createSafeBitmap for skill points.")
             return null
         }
 
         val skillPointsString: String = extractText(skillPointsBitmap)
-        val tmpSkillPoints: Int? = skillPointsString
-            .replace("[^0-9]".toRegex(), "")
-            .toIntOrNull()
+        // Clean up the string to keep only digits and parse to Int.
+        val tmpSkillPoints: Int? = skillPointsString.replace("[^0-9]".toRegex(), "").toIntOrNull()
+
         if (tmpSkillPoints != null) {
             skillPoints = tmpSkillPoints
         }
         return skillPoints
     }
 
-    /** Confirms skill purchases and backs out of the Skill List screen. */
+    /** Confirms all skill purchases and exits the [SkillList] screen back to the training screen. */
     fun confirmAndExit() {
         ButtonConfirm.click(game.imageUtils)
         game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-        // Two dialogs will appear if we purchase any skills.
-        // First is the purchase confirmation.
+
+        // Two dialogs typically appear upon purchase:
+        // 1. Purchase confirmation.
         campaign.handleDialogs()
-        // Second is the Skills Learned dialog.
+        // 2. Skills Learned summary.
         campaign.handleDialogs()
-        // Return to previous screen.
+
+        // Final click to return to the previous screen.
         ButtonBack.click(game.imageUtils)
     }
 
-    /** Aborts spending skill points and backs out of the Skill List screen. */
+    /** Resets all unconfirmed skill purchases and exits the [SkillList] screen. */
     fun cancelAndExit() {
-        // Reset skills to prevent popup.
+        // Reset selections to prevent a popup from appearing when exiting.
         ButtonReset.click(game.imageUtils)
         ButtonBack.click(game.imageUtils)
         game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
-        // As a failsafe, handle dialogs to catch the dialog for
-        // aborting spending skill points.
+
+        // Handle any remaining dialogs as a failsafe.
         campaign.handleDialogs()
     }
 
-    /** Opens the stats dialog and parses it.
+    /**
+     * Opens the full stats dialog and parses it to update [Trainee] aptitudes.
      *
-     * This allows our dialog handler to update aptitudes for the trainee.
-     * This is useful for when we start the bot at the skills list or at
-     * the end of a career when aptitudes are unknown.
-     *
-     * Evaluating skills relies on these aptitudes being known since many
-     * skills are dependent on things such as running style or track distance.
+     * This ensures the bot knows the current running style and track aptitudes, which are
+     * crucial for correctly evaluating the utility of specific skills.
      */
     fun checkStats() {
         ButtonSkillListFullStats.click(game.imageUtils)
@@ -263,24 +355,32 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
         campaign.handleDialogs()
     }
 
-    /** Extracts the title (skill name) from a cropped skill list entry bitmap.
+    /**
+     * Extracts the skill name (title) from a cropped skill list entry [Bitmap].
      *
-     * @param bitmap A bitmap of a single cropped skill list entry.
+     * This function uses OCR to read the skill name and also checks for special icons
+     * ([IconSkillTitleDoubleCircle], [IconSkillTitleCircle], [IconSkillTitleX]) that might be present at the end of the title.
      *
-     * @return On success, the title string. On failure, NULL.
+     * @param bitmap A [Bitmap] containing a single cropped skill list entry.
+     * @param debugString Identifier string for debugging files.
+     * @return The detected skill name, or null if detection fails.
      */
     fun getSkillListEntryTitle(bitmap: Bitmap? = null, debugString: String = ""): String? {
-        val bitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+        val srcBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
 
-        val bbox = BoundingBox(
-            x = (bitmap.width * 0.142).toInt(),
-            y = 0,
-            w = (bitmap.width * 0.57).toInt(),
-            h = (bitmap.height * 0.338).toInt(),
-        )
-        val croppedTitle = game.imageUtils.createSafeBitmap(bitmap, bbox, "bboxTitle_$debugString")
+        // Define the region within the entry where the title is located.
+        val bbox =
+            BoundingBox(
+                x = (srcBitmap.width * 0.142).toInt(),
+                y = 0,
+                w = (srcBitmap.width * 0.57).toInt(),
+                h = (srcBitmap.height * 0.338).toInt(),
+            )
+
+        // Crop the title region and perform OCR.
+        val croppedTitle = game.imageUtils.createSafeBitmap(srcBitmap, bbox, "bboxTitle_$debugString")
         if (croppedTitle == null) {
-            Log.e(TAG, "[SKILLS] getSkillListEntryTitle: createSafeBitmap for croppedTitle returned NULL.")
+            Log.e(TAG, "[ERROR] getSkillListEntryTitle:: createSafeBitmap for croppedTitle returned null.")
             return null
         }
         if (game.debugMode) {
@@ -289,16 +389,17 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
 
         var skillName: String = extractText(croppedTitle)
         if (skillName == "") {
-            Log.e(TAG, "[SKILLS] getSkillListEntryTitle: Failed to extract skill name.")
+            Log.e(TAG, "[ERROR] getSkillListEntryTitle:: Failed to extract skill name string via OCR.")
             return null
         }
 
-        // Check if the skill has a special char (◎, ○, ×) at the end.
-        val componentsToCheck: List<ComponentInterface> = listOf(
-            IconSkillTitleDoubleCircle,
-            IconSkillTitleCircle,
-            IconSkillTitleX,
-        )
+        // Detect special icons (◎, ○, ×) that indicate skill levels or status.
+        val componentsToCheck: List<ComponentInterface> =
+            listOf(
+                IconSkillTitleDoubleCircle,
+                IconSkillTitleCircle,
+                IconSkillTitleX,
+            )
         var match: ComponentInterface? = null
         for (component in componentsToCheck) {
             val point: Point? = component.findImageWithBitmap(game.imageUtils, croppedTitle)
@@ -308,67 +409,65 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
             }
         }
 
-        // Get the appropriate char to append to the search string.
-        // Typically the extracted title will end with "O" or "x"
-        // but we can't just replace that character since some titles
-        // actually end in those letters. So we just append this to the title
-        // since it shouldn't cause fuzzy matching to fail.
-		val iconChar: String = when (match) {
-			IconSkillTitleDoubleCircle -> "◎"
-			IconSkillTitleCircle -> "○"
-			IconSkillTitleX -> "×"
-			else -> ""
-		}
+        // Map the detected icon to its corresponding Unicode character.
+        val iconChar: String =
+            when (match) {
+                IconSkillTitleDoubleCircle -> "◎"
+                IconSkillTitleCircle -> "○"
+                IconSkillTitleX -> "×"
+                else -> ""
+            }
 
-		if (iconChar.isNotEmpty()) {
-			// Clean up any trailing noise characters that OCR might have picked up for the icon.
-			// These symbols are always preceded by a space in the English names in the database.
-			// Example: OCR gets "Kyoto Racecourse O" and we detected the "○" icon.
-			// We want to remove the 'O' and append " ○" to match the database's name.
-			skillName = skillName.trimEnd()
-			if (skillName.isNotEmpty() && skillName.last().isLetterOrDigit()) {
-				// If the last character is a single letter or digit and there is a space before it,
-				// then it is almost certainly a misread of the icon.
-				if (skillName.length == 1 || (skillName.length >= 2 && skillName[skillName.length - 2] == ' ')) {
-					skillName = skillName.dropLast(1).trimEnd()
-				}
-			}
+        if (iconChar.isNotEmpty()) {
+            // Clean up OCR noise. These symbols are always preceded by a space in the skill database.
+            // If OCR misread the icon as a character (like 'O' or 'x'), we strip the last character.
+            skillName = skillName.trimEnd()
+            if (skillName.isNotEmpty() && skillName.last().isLetterOrDigit()) {
+                // If the last character is a single letter/digit with a preceding space, it's likely noise.
+                if (skillName.length == 1 || (skillName.length >= 2 && skillName[skillName.length - 2] == ' ')) {
+                    skillName = skillName.dropLast(1).trimEnd()
+                }
+            }
 
-			// All skills in the database with these symbols have a space before them.
-			skillName += " $iconChar"
-		}
-
-        // Most negative skills have "Remove" in front of their skill
-        // name in the title. The actual skill itself in the database does
-        // not have this prefix. We need to get rid of this prefix as it
-        // causes fuzzy matching to fail.
-        skillName = if (skillName.startsWith("remove", ignoreCase = true)) {
-            skillName.drop("remove".length)
-        } else {
-            skillName
+            // Append the icon character with a preceding space to match database formatting.
+            skillName += " $iconChar"
         }
+
+        // Strip the "Remove" prefix used for negative skill titles in some contexts.
+        // The database stores the base skill name without this prefix.
+        skillName =
+            if (skillName.startsWith("remove", ignoreCase = true)) {
+                skillName.drop("remove".length).trim()
+            } else {
+                skillName
+            }
 
         return skillName
     }
-    
-    /** Extracts the price from a cropped skill list entry bitmap.
+
+    /**
+     * Extracts the skill price from a cropped skill list entry [Bitmap].
      *
-     * @param bitmap A bitmap of a single cropped skill list entry.
-     *
-     * @return On success, the price as an integer. On failure, NULL.
+     * @param bitmap A [Bitmap] containing a single cropped skill list entry.
+     * @param debugString Identifier string for debugging files.
+     * @return The extracted price as an Integer, or null if detection fails.
      */
     fun getSkillListEntryPrice(bitmap: Bitmap? = null, debugString: String = ""): Int? {
-        val bitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+        val srcBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
 
-        val bbox = BoundingBox(
-            x = (bitmap.width * 0.7935).toInt(),
-            y = (bitmap.height * 0.372).toInt(),
-            w = (bitmap.width * 0.1068).toInt(),
-            h = (bitmap.height * 0.251).toInt(),
-        )
-        val croppedPrice = game.imageUtils.createSafeBitmap(bitmap, bbox, "bboxPrice_$debugString")
+        // Define the region within the entry where the price value is located.
+        val bbox =
+            BoundingBox(
+                x = (srcBitmap.width * 0.7935).toInt(),
+                y = (srcBitmap.height * 0.372).toInt(),
+                w = (srcBitmap.width * 0.1068).toInt(),
+                h = (srcBitmap.height * 0.251).toInt(),
+            )
+
+        // Crop the price region and perform OCR.
+        val croppedPrice = game.imageUtils.createSafeBitmap(srcBitmap, bbox, "bboxPrice_$debugString")
         if (croppedPrice == null) {
-            Log.e(TAG, "[SKILLS] getSkillListEntryPrice: createSafeBitmap for croppedPrice returned NULL.")
+            Log.e(TAG, "[ERROR] getSkillListEntryPrice:: createSafeBitmap for croppedPrice returned null.")
             return null
         }
 
@@ -376,48 +475,47 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
             game.imageUtils.saveBitmap(croppedPrice, filename = "bboxPrice_$debugString")
         }
 
+        // Extract text and parse the integer value.
         val price: Int? = extractText(croppedPrice).replace("[^0-9]".toRegex(), "").toIntOrNull()
+
         if (price == null) {
-            Log.e(TAG, "[SKILLS] getSkillListEntryPrice: Failed to extract skill price.")
+            Log.e(TAG, "[ERROR] getSkillListEntryPrice:: Failed to extract skill price from string.")
             return null
         }
 
         return price
     }
 
-    /** Extracts all useful information from a single entry in the skill list.
+    /**
+     * Extracts and processes all information for a single skill list entry.
      *
-     * @param bitmap A bitmap of a single cropped skill list entry.
-     * @param bIsObtained Whether this entry has the Obtained pill icon.
-     * If not obtained, then this entry will have the skill up button.
-     * This is important because it determines how we detect the skill's price.
-     * @param debugString A string used in logging and saved bitmap filenames.
+     * This function uses parallel threads to perform OCR on the skill name and price
+     * simultaneously, using a [CountDownLatch] to synchronize the results.
      *
-     * @return On success, a SkillListEntry with the extracted info. Otherwise, NULL.
+     * @param bitmap A [Bitmap] containing a single cropped skill list entry.
+     * @param bIsObtained Whether the skill has already been purchased.
+     * @param debugString Identifier string for debugging files.
+     * @param cachedTitle Optional pre-detected title to avoid redundant OCR.
+     * @return The updated [SkillListEntry] object, or null if analysis fails.
      */
-    fun analyzeSkillListEntry(
-        bitmap: Bitmap,
-        bIsObtained: Boolean,
-        debugString: String = "",
-        cachedTitle: String? = null
-    ): SkillListEntry? {
+    fun analyzeSkillListEntry(bitmap: Bitmap, bIsObtained: Boolean, debugString: String = "", cachedTitle: String? = null): SkillListEntry? {
         val latch = CountDownLatch(if (cachedTitle == null) 2 else 1)
         var skillPrice: Int? = null
         var skillName: String? = null
 
-        // TITLE
+        // Start thread for title extraction if not cached.
         if (cachedTitle == null) {
             Thread {
                 try {
-                    // Extract the skill name from the bitmap.
                     val tmpSkillName: String? = getSkillListEntryTitle(bitmap, debugString)
                     if (tmpSkillName == null) {
-                        Log.e(TAG, "[SKILLS] getSkillListEntryTitle() returned NULL.")
+                        Log.e(TAG, "[ERROR] analyzeSkillListEntry:: getSkillListEntryTitle() returned null.")
                         return@Thread
                     }
+                    // Validate and potentially fix the name using the database (fuzzy matching).
                     skillName = game.skillDatabase.checkSkillName(tmpSkillName, fuzzySearch = true)
                 } catch (e: Exception) {
-                    Log.e(TAG, "[ERROR] Error processing skill name: ${e.stackTraceToString()}")
+                    Log.e(TAG, "[ERROR] analyzeSkillListEntry:: Error processing skill name: ${e.stackTraceToString()}")
                 } finally {
                     latch.countDown()
                 }
@@ -426,123 +524,116 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
             skillName = cachedTitle
         }
 
-        // PRICE
+        // Start thread for price extraction.
         Thread {
             try {
-                // If the skill is already obtained, don't bother trying to get the price.
+                // If the skill is already obtained, the price is effectively 0 for the purpose of purchase logic.
                 val tmpSkillPrice: Int? = if (bIsObtained) 0 else getSkillListEntryPrice(bitmap, debugString)
                 if (tmpSkillPrice == null) {
-                    Log.e(TAG, "[SKILLS] getSkillListEntryPrice() returned NULL.")
+                    Log.e(TAG, "[ERROR] analyzeSkillListEntry:: getSkillListEntryPrice() returned null.")
                     return@Thread
                 }
                 skillPrice = tmpSkillPrice
             } catch (e: Exception) {
-                Log.e(TAG, "[ERROR] Error processing skill price: ${e.stackTraceToString()}")
+                Log.e(TAG, "[ERROR] analyzeSkillListEntry:: Error processing skill price: ${e.stackTraceToString()}")
             } finally {
                 latch.countDown()
             }
         }.apply { isDaemon = true }.start()
 
+        // Wait for both extraction operations to complete or timeout.
         try {
             latch.await(3, TimeUnit.SECONDS)
         } catch (_: InterruptedException) {
-            Log.e(TAG, "[ERROR] analyzeSkillListEntry: Parallel analysis timed out.")
+            Log.e(TAG, "[ERROR] analyzeSkillListEntry:: Parallel analysis timed out.")
         }
 
+        // Validate results.
         if (skillName == null) {
-            MessageLog.e(TAG, "[SKILLS] analyzeSkillListEntry: Failed to parse skillName.")
+            MessageLog.e(TAG, "[ERROR] analyzeSkillListEntry:: Failed to parse skillName.")
             return null
         }
 
         if (skillPrice == null) {
-            MessageLog.e(TAG, "[SKILLS] analyzeSkillListEntry: Failed to detect skillPrice.")
+            MessageLog.e(TAG, "[ERROR] analyzeSkillListEntry:: Failed to detect skillPrice.")
             return null
         }
 
+        // Lookup the resulting entry in our mapping.
         val entry: SkillListEntry? = entries[skillName]
         if (entry == null) {
-            MessageLog.e(TAG, "analyzeSkillListEntry: Failed to find \"$skillName\" in entries.")
+            MessageLog.e(TAG, "[ERROR] analyzeSkillListEntry:: Failed to find \"$skillName\" in entries mapping.")
             return null
         }
 
-        // Update the entry with our new data.
+        // Update the entry's status and detected price.
         entry.bIsObtained = bIsObtained
         entry.bIsVirtual = false
-        // Very important we call this otherwise prices wont be accurate.
         entry.updateScreenPrice(skillPrice)
 
         return entry
     }
 
-    /** Extracts all useful information from a single entry in the skill list in a thread safe manner.
+    /**
+     * Extracts and processes information for a single skill list entry in a thread-safe (synchronous) manner.
      *
-     * This version performs all operations synchronously so that we can
-     * use it from inside another thread.
+     * This version is used when the caller is already running in a background thread
+     * and requires a synchronous result.
      *
-     * @param bitmap A bitmap of a single cropped skill list entry.
-     * @param bIsObtained Whether this entry has the Obtained pill icon.
-     * If not obtained, then this entry will have the skill up button.
-     * This is important because it determines how we detect the skill's price.
-     * @param debugString A string used in logging and saved bitmap filenames.
-     *
-     * @return On success, a SkillListEntry with the extracted info. Otherwise, NULL.
+     * @param bitmap A [Bitmap] containing a single cropped skill list entry.
+     * @param bIsObtained Whether the skill has already been purchased.
+     * @param debugString Identifier string for debugging files.
+     * @return The updated [SkillListEntry] object, or null if analysis fails.
      */
-    fun analyzeSkillListEntryThreadSafe(
-        bitmap: Bitmap,
-        bIsObtained: Boolean,
-        debugString: String = "",
-    ): SkillListEntry? {
-        // Extract the skill name from the bitmap.
+    fun analyzeSkillListEntryThreadSafe(bitmap: Bitmap, bIsObtained: Boolean, debugString: String = ""): SkillListEntry? {
+        // Synchronously extract the skill name.
         var skillName: String? = getSkillListEntryTitle(bitmap, debugString)
         if (skillName == null) {
-            MessageLog.e(TAG, "analyzeSkillListEntryThreadSafe: getSkillListEntryTitle() returned NULL.")
+            MessageLog.e(TAG, "[ERROR] analyzeSkillListEntryThreadSafe:: getSkillListEntryTitle() returned null.")
             return null
         }
         skillName = game.skillDatabase.checkSkillName(skillName, fuzzySearch = true)
 
-
-        // If the skill is already obtained, don't bother trying to get the price.
+        // Synchronously extract the skill price if not already obtained.
         val skillPrice: Int? = if (bIsObtained) 0 else getSkillListEntryPrice(bitmap, debugString)
         if (skillPrice == null) {
-            MessageLog.e(TAG, "analyzeSkillListEntryThreadSafe: getSkillListEntryPrice() returned NULL.")
+            MessageLog.e(TAG, "[ERROR] analyzeSkillListEntryThreadSafe:: getSkillListEntryPrice() returned null.")
             return null
         }
 
         val entry: SkillListEntry? = entries[skillName]
         if (entry == null) {
-            MessageLog.e(TAG, "analyzeSkillListEntryThreadSafe: Failed to find \"$skillName\" in entries.")
+            MessageLog.e(TAG, "[ERROR] analyzeSkillListEntryThreadSafe:: Failed to find \"$skillName\" in entries mapping.")
             return null
         }
 
-        // Update the entry with our new data.
+        // Update the entry with detected data.
         entry.bIsObtained = bIsObtained
         entry.bIsVirtual = false
-        // Very important we call this otherwise prices wont be accurate.
         entry.updateScreenPrice(skillPrice)
 
         return entry
     }
 
-    /** Handles ScrollList callback events.
+    /**
+     * Processes a single entry detected by the [ScrollList].
      *
-     * @param entry The ScrollListEntry data object that triggered this event.
+     * This function locates the [ButtonSkillUp] or [IconObtainedPill] within the entry's [Bitmap]
+     * to refine the bounding box and extract the skill's details.
      *
-     * @return A pair containing a SkillListEntry and a Point generated
-     * by processing the [entry] detected by the ScrollList.
-     * Returns a single NULL if there are any errors processing the entry.
+     * @param entry The [ScrollListEntry] object containing the detected entry's [Bitmap] and bounding box.
+     * @param cachedTitle Optional pre-detected title to avoid redundant OCR.
+     * @return A Pair containing the processed [SkillListEntry] and its screen-space [Point] location.
      */
     private fun onScrollListEntry(entry: ScrollListEntry, cachedTitle: String? = null): Pair<SkillListEntry, Point>? {
-        val skillUpLoc: Point? = ButtonSkillUp.findImageWithBitmap(
-            game.imageUtils,
-            sourceBitmap = entry.bitmap,
-        )
-        val obtainedPillLoc: Point? = IconObtainedPill.findImageWithBitmap(
-            game.imageUtils,
-            sourceBitmap = entry.bitmap,
-        )
+        // Search for the Skill Up (+) button.
+        val skillUpLoc: Point? = ButtonSkillUp.findImageWithBitmap(game.imageUtils, sourceBitmap = entry.bitmap)
+        // Search for the "Obtained" pill icon.
+        val obtainedPillLoc: Point? = IconObtainedPill.findImageWithBitmap(game.imageUtils, sourceBitmap = entry.bitmap)
 
+        // If neither is found, the entry bitmap is likely invalid or misaligned.
         if (skillUpLoc == null && obtainedPillLoc == null) {
-            MessageLog.e(TAG, "[SKILLS] onScrollListEntry: Could not find SkillUp or ObtainedPill in bitmap for entry #${entry.index}.")
+            MessageLog.e(TAG, "[ERROR] onScrollListEntry:: Could not find SkillUp or ObtainedPill in bitmap for entry #${entry.index}.")
             if (game.debugMode) {
                 game.imageUtils.saveBitmap(entry.bitmap, "SkillList_${entry.index}")
             }
@@ -550,396 +641,267 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
         }
 
         val bIsObtained: Boolean = obtainedPillLoc != null
-        // This location is relative to the entry.bitmap. We will need to translate
-        // it to screen space using the entry.bbox later.
-        val localPoint: Point = skillUpLoc ?:
-            obtainedPillLoc ?:
-            throw IllegalStateException("SkillUp and ObtainedPill locations are null.")
+        // Get the local coordinates relative to the entry's own bitmap.
+        val localPoint: Point = skillUpLoc ?: obtainedPillLoc ?: throw IllegalStateException("onScrollListEntry:: SkillUp and ObtainedPill locations are both null.")
 
-        // Calculate the bounding box for the skill info relative to
-        // the location of the detected SkillUp and ObtainedPill icons.
-        // x/y positions differ for the SkillUp and ObtainedPill images.
-        // This refines our detected entry's bbox by using known
-        // distances from the center of the SkillUp/ObtainedPill icons.
-        // This helps since the auto entry detection from ScrollList
-        // might not be 100% aligned to the entry.
-        val bboxSkillBox = if (bIsObtained) {
-            BoundingBox(
-                x = (localPoint.x - (SharedData.displayWidth * 0.77)).toInt(),
-                y = (localPoint.y - (SharedData.displayHeight * 0.0599)).toInt(),
-                w = (SharedData.displayWidth * 0.91).toInt(),
-                h = (SharedData.displayHeight * 0.12).toInt(),
-            )
-        } else {
-            BoundingBox(
-                x = (localPoint.x - (SharedData.displayWidth * 0.86)).toInt(),
-                y = (localPoint.y - (SharedData.displayHeight * 0.0583)).toInt(),
-                w = (SharedData.displayWidth * 0.91).toInt(),
-                h = (SharedData.displayHeight * 0.12).toInt(),
-            )
-        }
+        // Refine the bounding box for the skill info region.
+        // We use known offsets from the detected button/icon locations to crop precisely.
+        val bboxSkillBox =
+            if (bIsObtained) {
+                BoundingBox(
+                    x = (localPoint.x - (SharedData.displayWidth * 0.77)).toInt(),
+                    y = (localPoint.y - (SharedData.displayHeight * 0.0599)).toInt(),
+                    w = (SharedData.displayWidth * 0.91).toInt(),
+                    h = (SharedData.displayHeight * 0.12).toInt(),
+                )
+            } else {
+                BoundingBox(
+                    x = (localPoint.x - (SharedData.displayWidth * 0.86)).toInt(),
+                    y = (localPoint.y - (SharedData.displayHeight * 0.0583)).toInt(),
+                    w = (SharedData.displayWidth * 0.91).toInt(),
+                    h = (SharedData.displayHeight * 0.12).toInt(),
+                )
+            }
 
+        // Crop the refined skill box for analysis.
         val croppedSkillBox = game.imageUtils.createSafeBitmap(entry.bitmap, bboxSkillBox, "bboxSkillBox_${entry.index}")
         if (croppedSkillBox == null) {
-            MessageLog.e(TAG, "[SKILLS] onScrollListEntry: createSafeBitmap for skillBoxBitmap returned NULL.")
+            MessageLog.e(TAG, "[ERROR] onScrollListEntry:: createSafeBitmap for skillBoxBitmap returned null.")
             return null
         }
         if (game.debugMode) {
-            game.imageUtils.saveBitmap(croppedSkillBox, filename = "bboxSkillBox_$${entry.index}")
+            game.imageUtils.saveBitmap(croppedSkillBox, filename = "bboxSkillBox_${entry.index}")
         }
 
-        // Extract all the information from the entry. In this function, the
-        // [entries] mapping is updated with the extracted information.
+        // Analyze the entry to extract name, price, and status.
         val skillListEntry: SkillListEntry? = analyzeSkillListEntry(croppedSkillBox, bIsObtained, "${entry.index}", cachedTitle)
         if (skillListEntry == null) {
-            MessageLog.e(TAG, "[SKILLS] onScrollListEntry: (${entry.index}) SkillListEntry is NULL.")
+            MessageLog.e(TAG, "[ERROR] onScrollListEntry:: (${entry.index}) analysis returned null SkillListEntry.")
             return null
         }
 
-        // Finally, translate the localPoint to screen space before we return it.
-        val point = Point(
-            localPoint.x + entry.bbox.x,
-            localPoint.y + entry.bbox.y,
-        )
+        // Translate the local bitmap point back to global screen space coordinates.
+        val point = Point(localPoint.x + entry.bbox.x, localPoint.y + entry.bbox.y)
 
         return Pair(skillListEntry, point)
     }
 
-    /** Gets all entries in the skill list.
+    /**
+     * Parses the entire skill list on the screen to detect all available entries.
      *
-     * @param bUseMockData Whether to use fake skill list entry data
-     * for debugging purposes.
-     * @param onEntry A callback function that is called for each
-     * SkillListEntry that we detect. This can be useful if we want to perform
-     * an operation immediately upon detecting an entry.
+     * This function uses a [ScrollList] to iterate through the UI, extracting titles
+     * and prices for each visible skill.
      *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param bUseMockData If True, returns predefined mock skill data instead of scanning the screen.
+     * @param onEntry Optional callback fired for each detected entry during the scan.
+     * @return A mapping of all detected skill names to their [SkillListEntry] objects.
      */
-    fun parseSkillListEntries(
-        bUseMockData: Boolean = false,
-        onEntry: OnEntryDetectedCallback? = null,
-    ): Map<String, SkillListEntry> {
+    fun parseSkillListEntries(bUseMockData: Boolean = false, onEntry: OnEntryDetectedCallback? = null): Map<String, SkillListEntry> {
         if (bUseMockData) {
-            Log.d(TAG, "\n[SKILLS] Using mock skill list entries.")
+            Log.d(TAG, "[DEBUG] parseSkillListEntries:: Using mock skill list entries.")
             return parseMockSkillListEntries()
         }
 
+        // Initialize the ScrollList helper.
         val list: ScrollList? = ScrollList.create(game)
         if (list == null) {
-            MessageLog.e(TAG, "Failed to instantiate ScrollList.")
+            MessageLog.e(TAG, "[ERROR] parseSkillListEntries:: Failed to instantiate ScrollList.")
             return emptyMap()
         }
 
+        // Cache titles during the scan to optimize performance.
         val skillTitleMap = mutableMapOf<Int, String>()
         list.process(
-            keyExtractor = { entry -> 
+            keyExtractor = { entry ->
                 val title = getSkillListEntryTitle(entry.bitmap)
                 if (title != null) skillTitleMap[entry.index] = title
                 title
-            }
+            },
         ) { _, entry: ScrollListEntry ->
+            // Process each entry bitmap found by the ScrollList.
             val res: Pair<SkillListEntry, Point>? = onScrollListEntry(entry, skillTitleMap[entry.index])
-            if (onEntry != null && res != null) onEntry(this, res.first, res.second) else false
+            // Fire the callback if provided.
+            if (onEntry != null && res != null) onEntry.onEntryDetected(this, res.first, res.second) else false
         }
 
         return entries
     }
 
-    /** Gets skill list entries using mocked data.
+    /**
+     * Checks whether the current screen is the [SkillList] screen.
      *
-     * NOTE: This is just useful for debugging purposes.
-     * The data was taken from a real run so these values are all valid.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
-     */
-    fun parseMockSkillListEntries(): Map<String, SkillListEntry> {
-        val mockSkills: Map<String, Int> = mapOf(
-            "Warning Shot!" to -1,
-            "Triumphant Pulse" to 120,
-            "Kyoto Racecourse ○" to 63,
-            "Standard Distance ○" to 63,
-            //"Standard Distance ×" to 35,
-            "Summer Runner ○" to 81,
-            "Cloudy Days ○" to 81,
-            "Professor of Curvature" to 279,
-            "Corner Adept ○" to 117,
-            "Swinging Maestro" to 323,
-            "Corner Recovery ○" to 170,
-            "Straightaway Acceleration" to 119,
-            "Calm in a Crowd" to 153,
-            "Nimble Navigator" to 135,
-            "Homestretch Haste" to 153,
-            "Up-Tempo" to 104,
-            "Steadfast" to 144,
-            "Extra Tank" to 96,
-            "Frenzied Pace Chasers" to 104,
-            "Medium Straightaways ○" to 60,
-            "Keeping the Lead" to 128,
-            "Pressure" to 128,
-            "Pace Chaser Corners ○" to 91,
-            "Straight Descent" to 78,
-            "Hydrate" to 144,
-            "Late Surger Straightaways ○" to 84,
-            "Fighter" to 84,
-            "I Can See Right Through You" to 110,
-            "Highlander" to 128,
-            "Uma Stan" to 160,
-            "Ignited Spirit SPD" to 180,
-        )
-
-        // Fix skill names in case any have been typed incorrectly.
-        val fixedSkills: MutableMap<String, Int> = mutableMapOf()
-        for ((name, price) in mockSkills) {
-            val fixedName: String? = game.skillDatabase.checkSkillName(name, fuzzySearch = true)
-            if (fixedName == null) {
-                MessageLog.e(TAG, "parseMockSkillListEntries: \"$name\" not in database.")
-                return emptyMap()
-            }
-            // In case of error, we don't want to give back partial data so
-            // we just immediately return an empty list.
-            val entry: SkillListEntry? = entries[fixedName]
-            if (entry == null) {
-                MessageLog.e(TAG, "parseMockSkillListEntries: \"$name\" not in entries.")
-                return emptyMap()
-            }
-            fixedSkills[fixedName] = price
-        }
-
-        val result: MutableMap<String, SkillListEntry> = mutableMapOf()
-        for ((name, price) in fixedSkills) {
-            val entry: SkillListEntry? = entries[name]
-            if (entry == null) {
-                MessageLog.e(TAG, "parseMockSkillListEntries: \"$name\" not in entries.")
-                return emptyMap()
-            }
-            // Manually update entries with data.
-            entry.bIsObtained = price <= 0
-            entry.bIsVirtual = false
-            // Very important we call this otherwise prices wont be accurate.
-            entry.updateScreenPrice(price)
-            result[name] = entry
-        }
-
-        return result.toMap()
-    }
-
-    /** Checks whether we are at a skill list screen.
-     *
-     * @param bitmap Optional bitmap to use when detecting whether we are at
-     * the skill list screen. If not specified, a screenshot will be taken
-     * and used instead.
-     *
-     * @return Whether we are at a skill list screen.
+     * @param bitmap Optional [Bitmap] used for detection. If null, a screenshot is taken.
+     * @return True if on the [SkillList] screen, False otherwise.
      */
     fun checkSkillListScreen(bitmap: Bitmap? = null): Boolean {
-        val bitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
-        if (
-            ButtonSkillListFullStats.check(game.imageUtils, sourceBitmap = bitmap) &&
-            LabelSkillListScreenSkillPoints.check(game.imageUtils, sourceBitmap = bitmap)
-        ) {
+        val srcBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+
+        // Verify the presence of key UI elements.
+        if (ButtonSkillListFullStats.check(game.imageUtils, sourceBitmap = srcBitmap) && LabelSkillListScreenSkillPoints.check(game.imageUtils, sourceBitmap = srcBitmap)) {
             return true
         }
 
-        // Try to handle any skill list specific dialogs that may be up.
+        // Try to handle any blocking dialogs that might be active on this screen.
         if (campaign.handleDialogs() !is DialogHandlerResult.Handled) {
             return false
         }
 
-        // Now we can check again if we're at the skill list.
+        // Re-check if we are at the SkillList screen after handling dialogs.
         return (
             ButtonSkillListFullStats.check(game.imageUtils) &&
-            LabelSkillListScreenSkillPoints.check(game.imageUtils)
+                LabelSkillListScreenSkillPoints.check(game.imageUtils)
         )
     }
 
-    /** Checks whether we are at the career completion skill list screen.
+    /**
+     * Checks whether the current screen is the [SkillList] screen at the end of career completion.
      *
-     * @param bitmap Optional bitmap to use when detecting whether we are at
-     * the skill list screen. If not specified, a screenshot will be taken
-     * and used instead.
+     * This screen looks identical but might lack certain UI buttons like the message log.
      *
-     * @return Whether we are at the career completion skill list screen.
+     * @param bitmap Optional [Bitmap] used for detection. If null, a screenshot is taken.
+     * @return True if on the career completion [SkillList] screen, False otherwise.
      */
     fun checkCareerCompleteSkillListScreen(bitmap: Bitmap? = null): Boolean {
-        val bitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
-        return (
-            !ButtonLog.check(game.imageUtils, sourceBitmap = bitmap) &&
-            checkSkillListScreen(bitmap)
-        )
+        val srcBitmap: Bitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+        return (!ButtonLog.check(game.imageUtils, sourceBitmap = srcBitmap) && checkSkillListScreen(srcBitmap))
     }
 
-    /** Prints all skill list entries to the MessageLog.
-     *
-     * @param skillListEntries Optional mapping to use when printing.
-     * If not specified, then this class instance's [entries] map is used instead.
-     * @param verbose Whether to print extra entry information.
-     */
-    fun printSkillListEntries(
-        skillListEntries: Map<String, SkillListEntry>? = null,
-        verbose: Boolean = false,
-    ) {
-        val skillListEntries: Map<String, SkillListEntry> = skillListEntries ?: getAvailableSkills()
-        MessageLog.v(TAG, "================= Skill List Entries =================")
-        for ((name, entry) in skillListEntries) {
-            val entryString: String = if (verbose) {
-                "$entry"
-            } else {
-                val extraString: String = if (entry.bIsVirtual) " (virtual)" else ""
-                "${entry.price}${extraString}"
-            }
-            MessageLog.v(TAG, "\t${name}: $entryString")
-        }
-        MessageLog.v(TAG, "======================================================")
-    }
-
-    /** Purchases a skill.
+    /**
+     * Executes the purchase of a skill.
      *
      * @param name The name of the skill to purchase.
-     * @param skillUpButtonLocation The screen location of the SkillUpButton.
-     *
-     * @return The SkillListEntry for the passed [name] if it was found.
-     * If no matching [name] exists, then NULL is returned.
+     * @param skillUpButtonLocation The screen location where the [ButtonSkillUp] was detected.
+     * @return The updated [SkillListEntry] if successful, or null if name not found or points insufficient.
      */
     fun buySkill(name: String, skillUpButtonLocation: Point): SkillListEntry? {
         val entry: SkillListEntry? = entries[name]
         if (entry == null) {
-            MessageLog.w(TAG, "buySkill: \"$name\" not found.")
+            MessageLog.w(TAG, "[WARN] buySkill:: Skill \"$name\" not found in initialized entries mapping.")
             return null
         }
 
+        // Check if we have enough points to afford the purchase.
         if (entry.screenPrice > skillPoints) {
-            MessageLog.w(TAG, "buySkill: Not enough skill points (${skillPoints}pt) to buy \"$name\" (${entry.screenPrice}pt).")
+            MessageLog.w(TAG, "[WARN] buySkill:: Insufficient skill points (${skillPoints}pt) to buy \"$name\" (${entry.screenPrice}pt).")
             return null
         }
 
+        // Perform the click operation.
         entry.buy(skillUpButtonLocation)
+        // Deduct the price from our local tracking of skill points.
         skillPoints -= entry.screenPrice
 
         return entry
     }
 
-    /** Resets all skills back to their original states prior to purchasing. */
+    /** Resets all skill selections in the UI, effectively "selling" any unconfirmed purchases. */
     fun sellAllSkills() {
-        for ((name, entry) in getObtainedSkills()) {
+        for ((_, entry) in getObtainedSkills()) {
             entry.sell()
         }
     }
 
-    /** Returns all skill list entries.
+    /**
+     * Retrieves all skills known to the bot.
      *
-     * NOTE: This returns ALL entries, including ones that do not exist
-     * in the actual skill list.
+     * This includes skills that are currently available in the UI as well as virtual skills
+     * (not yet detected but known to exist in the database).
      *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @return A mapping of skill names to [SkillListEntry] objects.
      */
     fun getAllSkills(): Map<String, SkillListEntry> {
         return entries
     }
 
-    /** Returns skills that actually exist in the skill list (not virtual).
+    /**
+     * Retrieves all skills that are currently available for purchase in the skill list.
      *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @return A mapping of available skill names to [SkillListEntry] objects.
      */
     fun getAvailableSkills(): Map<String, SkillListEntry> {
         return entries.filterValues { it.bIsAvailable }
     }
 
-    /** Returns skills that do not exist in the skill list.
+    /**
+     * Retrieves all virtual skills (skills not currently present in the UI list).
      *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @return A mapping of virtual skill names to [SkillListEntry] objects.
      */
     fun getVirtualSkills(): Map<String, SkillListEntry> {
-        return getUnobtainedSkills().filterValues { it.bIsVirtual }
+        return getUnobtainedSkills(includeVirtual = true).filterValues { it.bIsVirtual }
     }
 
-    /** Returns all skills that have been purchased.
+    /**
+     * Retrieves all skills that have been successfully purchased.
      *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @return A mapping of obtained skill names to [SkillListEntry] objects.
      */
     fun getObtainedSkills(): Map<String, SkillListEntry> {
         return getAllSkills().filterValues { it.bIsObtained }
     }
 
-    /** Returns all skills that have not been purchased.
+    /**
+     * Retrieves all skills that have not yet been purchased.
      *
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of unobtained skill names to [SkillListEntry] objects.
      */
     fun getUnobtainedSkills(includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
         return src.filterValues { !it.bIsObtained }
     }
 
-    /** Returns all negative skills (purple skills).
+    /**
+     * Retrieves all negative (purple) skills.
      *
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of negative skill names to [SkillListEntry] objects.
      */
     fun getNegativeSkills(includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
         return src.filterValues { it.bIsNegative }
     }
 
-    /** Returns all inherited unique skills.
+    /**
+     * Retrieves all inherited unique skills.
      *
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of inherited unique skill names to [SkillListEntry] objects.
      */
     fun getInheritedUniqueSkills(includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
         return src.filterValues { it.bIsInheritedUnique }
     }
 
-    /** Returns all skills that are not affected by a trainee's aptitudes.
+    /**
+     * Retrieves all skills that are not dependent on specific [Trainee] aptitudes.
      *
-     * These skills are dependent on a running style, track distance, or track surface.
-     * For example, the skill [Front Runner Savvy ○] specifies in its description
-     * that it is for "(Front Runner)".
+     * Aptitude-dependent skills are those that only activate for specific [RunningStyle] choices,
+     * track distances, or track surfaces (e.g., "Front Runner Savvy ○").
      *
-     * This function also filters by skills whose running style is inferred and not
-     * explicitly stated. See [getInferredRunningStyleSkills] for more details.
-     *
-     * @param runningStyle The optional RunningStyle to use when filtering the
-     * inferred running styles. If not specified, then skills with ANY
-     * inferred running styles are included in the results.
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param runningStyle The optional [RunningStyle] to use when filtering out inferred skills.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of aptitude-independent skill names to [SkillListEntry] objects.
      */
-    fun getAptitudeIndependentSkills(
-        runningStyle: RunningStyle? = null,
-        includeVirtual: Boolean = false,
-    ): Map<String, SkillListEntry> {
+    fun getAptitudeIndependentSkills(runningStyle: RunningStyle? = null, includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
         val inferredRunningStyleSkills: Map<String, SkillListEntry> = getInferredRunningStyleSkills(runningStyle, includeVirtual)
         return src.filterValues {
             it.runningStyle == null &&
-            it.trackDistance == null &&
-            it.trackSurface == null &&
-            it.name !in inferredRunningStyleSkills
+                it.trackDistance == null &&
+                it.trackSurface == null &&
+                it.name !in inferredRunningStyleSkills
         }
     }
 
-    /** Returns all skills for a RunningStyle.
+    /**
+     * Retrieves all skills restricted to a specific [RunningStyle].
      *
-     * @param runningStyle The optional RunningStyle to use when filtering.
-     * If not specified, then skills with ANY running style will be returned.
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param runningStyle The optional [RunningStyle] to filter by. If null, returns all skills with ANY running style restricted.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of running style restricted skill names to [SkillListEntry] objects.
      */
-    fun getRunningStyleSkills(
-        runningStyle: RunningStyle? = null,
-        includeVirtual: Boolean = false,
-    ): Map<String, SkillListEntry> {
+    fun getRunningStyleSkills(runningStyle: RunningStyle? = null, includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
         // If null, then we want to return all skills that have any running style.
         if (runningStyle == null) {
@@ -948,19 +910,14 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
         return src.filterValues { it.runningStyle == runningStyle }
     }
 
-    /** Returns all skills for a TrackDistance.
+    /**
+     * Retrieves all skills restricted to a specific [TrackDistance].
      *
-     * @param trackDistance The optional TrackDistance to use when filtering.
-     * If not specified, then skills with ANY track distance will be returned.
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param trackDistance The optional [TrackDistance] to filter by. If null, returns all skills with ANY track distance restricted.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of track distance restricted skill names to [SkillListEntry] objects.
      */
-    fun getTrackDistanceSkills(
-        trackDistance: TrackDistance? = null,
-        includeVirtual: Boolean = false,
-    ): Map<String, SkillListEntry> {
+    fun getTrackDistanceSkills(trackDistance: TrackDistance? = null, includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
         // If null, then we want to return all skills that have any track distance.
         if (trackDistance == null) {
@@ -969,19 +926,14 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
         return src.filterValues { it.trackDistance == trackDistance }
     }
 
-    /** Returns all skills for a TrackSurface.
+    /**
+     * Retrieves all skills restricted to a specific [TrackSurface].
      *
-     * @param trackSurface The optional TrackSurface to use when filtering.
-     * If not specified, then skills with ANY track surface will be returned.
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param trackSurface The optional [TrackSurface] to filter by. If null, returns all skills with ANY track surface restricted.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of track surface restricted skill names to [SkillListEntry] objects.
      */
-    fun getTrackSurfaceSkills(
-        trackSurface: TrackSurface? = null,
-        includeVirtual: Boolean = false,
-    ): Map<String, SkillListEntry> {
+    fun getTrackSurfaceSkills(trackSurface: TrackSurface? = null, includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
         // If null, then we want to return all skills that have any track surface.
         if (trackSurface == null) {
@@ -990,34 +942,20 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
         return src.filterValues { it.trackSurface == trackSurface }
     }
 
-    /** Returns all skills that have an inferred RunningStyle.
+    /**
+     * Retrieves all skills that have an inferred [RunningStyle].
      *
-     * Unlike some skills which can only activate if a specific RunningStyle
-     * is selected, inferred running style skills are skills which can be
-     * activated when using ANY RunningStyle but require the trainee to be
-     * in a specific positioning during the race. We refer to these kinds of
-     * skills as "inferred running style skills". ...or at least I do.
+     * Inferred running style skills are those that activate based on race positioning (e.g., being in the lead).
+     * While technically available to any style, they are primarily useful for specific [RunningStyle] choices.
      *
-     * For example, some skills only activate if the trainee is in the lead or
-     * well-positioned. These skills are typically only useful for specific
-     * running styles however they technically CAN be activated by any style
-     * under hyper-specific circumstances. We don't want to rely on ultra rare cases
-     * so we only include inferred styles that match the passed runningStyle.
-     *
-     * @param runningStyle The optional RunningStyle to use when filtering.
-     * If not specified, then skills with ANY running style will be returned.
-     * @param includeVirtual Whether to include virtual skills in the result.
-     * By default, only available skills will be included.
-     *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @param runningStyle The optional [RunningStyle] to filter by. If null, returns all skills with ANY inferred style.
+     * @param includeVirtual Whether to include virtual skills in the results.
+     * @return A mapping of inferred running style skill names to [SkillListEntry] objects.
      */
-    fun getInferredRunningStyleSkills(
-        runningStyle: RunningStyle? = null,
-        includeVirtual: Boolean = false,
-    ): Map<String, SkillListEntry> {
+    fun getInferredRunningStyleSkills(runningStyle: RunningStyle? = null, includeVirtual: Boolean = false): Map<String, SkillListEntry> {
         val src: Map<String, SkillListEntry> = if (includeVirtual) getAllSkills() else getAvailableSkills()
 
-        // Get normal running style skills so we can filter them out later.
+        // Filter out skills that already have an explicit running style restriction.
         val runningStyleSkills: Map<String, SkillListEntry> = getRunningStyleSkills(runningStyle, includeVirtual)
 
         // If null, then we want to return all skills that have any inferred running style.
@@ -1031,36 +969,60 @@ class SkillList (private val game: Game, private val campaign: Campaign) {
             .filterKeys { it !in runningStyleSkills }
     }
 
-    /** Gets all available skills their virtual upgrades.
+    /**
+     * Retrieves all available skills along with their potential virtual upgrades.
      *
-     * This effectively only adds virtual skills that have an in-place
-     * downgrade in the available skill results.
+     * This expands the available skill list to include virtual entries that represent legitimate
+     * next-steps in the upgrade chain for available skills.
      *
-     * @return A mapping of skill names to SkillListEntry objects.
+     * @return A mapping of skill names to [SkillListEntry] objects.
      */
     fun getAvailableSkillsWithVirtualUpgrades(): Map<String, SkillListEntry> {
-        val result: Map<String, SkillListEntry> = getAvailableSkills().toMap()
+        val result: MutableMap<String, SkillListEntry> = getAvailableSkills().toMutableMap()
         val entriesToAdd: MutableMap<String, SkillListEntry> = mutableMapOf()
-        for ((name, entry) in result) {
+
+        for (entry in result.values) {
             val upgrades: List<SkillListEntry> = entry.getUpgrades()
             for (upgrade in upgrades) {
                 entriesToAdd[upgrade.name] = upgrade
             }
         }
-        return result + entriesToAdd.toMap()
+        return result + entriesToAdd
     }
 
-    /** Returns a SkillListEntry for a given skill name.
+    /**
+     * Retrieves a single [SkillListEntry] by its name.
      *
-     * @param name The name to look up.
-     *
-     * @return If the [name] is found, its SkillListEntry is returned. Otherwise, NULL.
+     * @param name The name of the skill to look up.
+     * @return The [SkillListEntry] if found, otherwise null.
      */
     fun getEntry(name: String): SkillListEntry? {
         val result: SkillListEntry? = entries[name]
         if (result == null) {
-            MessageLog.w(TAG, "getEntry: No entry found for \"$name\".")
+            MessageLog.w(TAG, "[WARN] getEntry:: No entry found for \"$name\".")
         }
         return result
+    }
+
+    /**
+     * Prints the details of all skills currently in the list to the [MessageLog].
+     *
+     * @param skillListEntries Optional custom mapping to print. If null, defaults to available skills.
+     * @param verbose If True, prints comprehensive entry details. Otherwise, only names and prices.
+     */
+    fun printSkillListEntries(skillListEntries: Map<String, SkillListEntry>? = null, verbose: Boolean = false) {
+        val entriesToPrint: Map<String, SkillListEntry> = skillListEntries ?: getAvailableSkills()
+        MessageLog.v(TAG, "================= Skill List Entries =================")
+        for ((name, entry) in entriesToPrint) {
+            val entryString: String =
+                if (verbose) {
+                    "$entry"
+                } else {
+                    val virtualFlag: String = if (entry.bIsVirtual) " (virtual)" else ""
+                    "${entry.price}$virtualFlag"
+                }
+            MessageLog.v(TAG, "\t$name: $entryString")
+        }
+        MessageLog.v(TAG, "======================================================")
     }
 }

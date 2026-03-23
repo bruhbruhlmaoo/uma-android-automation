@@ -1,90 +1,113 @@
 package com.steve1316.uma_android_automation.bot
 
 import android.graphics.Bitmap
-import org.opencv.core.Point
-import org.json.JSONArray
-import org.json.JSONObject
-
-import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.automation_library.utils.MessageLog
-
+import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.bot.Campaign
-
-import com.steve1316.uma_android_automation.types.Aptitude
 import com.steve1316.uma_android_automation.types.RunningStyle
 import com.steve1316.uma_android_automation.types.SkillCommunityTier
 import com.steve1316.uma_android_automation.types.SkillList
 import com.steve1316.uma_android_automation.types.SkillListEntry
 import com.steve1316.uma_android_automation.types.TrackDistance
 import com.steve1316.uma_android_automation.types.TrackSurface
+import org.json.JSONObject
+import org.opencv.core.Point
 
 private const val USE_MOCK_DATA: Boolean = false
 private const val MOCK_SKILL_POINTS: Int = 1495
 
 /**
- * Handles operations based on the user's Skill Plan Settings.
+ * Handle operations based on the user's Skill Plan Settings.
  *
- * @param game A reference to the Game instance.
+ * @property game The [Game] instance used for bot interaction.
+ * @property campaign The [Campaign] instance currently being automated.
  */
-class SkillPlan (private val game: Game, private val campaign: Campaign) {
-    private val TAG: String = "[${MainActivity.loggerTag}]SkillPlan"
-
-    // Get user settings for skill plans.
+class SkillPlan(private val game: Game, private val campaign: Campaign) {
+    /** The preferred running style from settings. */
     val skillSettingRunningStyleString = SettingsHelper.getStringSetting("skills", "preferredRunningStyle")
+
+    /** The preferred track distance from settings. */
     val skillSettingTrackDistanceString = SettingsHelper.getStringSetting("skills", "preferredTrackDistance")
+
+    /** The preferred track surface from settings. */
     val skillSettingTrackSurfaceString = SettingsHelper.getStringSetting("skills", "preferredTrackSurface")
 
+    /** The preferred track distance override for training. */
     private val trainingSettingTrackDistanceString = SettingsHelper.getStringSetting("training", "preferredDistanceOverride")
+
+    /** The original race strategy from settings. */
     private val racingSettingRunningStyleString = SettingsHelper.getStringSetting("racing", "originalRaceStrategy")
 
-    // Load the skill plans from settings.
-    val skillPlans: Map<String, SkillPlanSettings> = try {
-        val plansString = SettingsHelper.getStringSetting("skills", "plans")
-        if (plansString.isNotEmpty()) {
-            val jsonObject = JSONObject(plansString)
-            val plansMap = mutableMapOf<String, SkillPlanSettings>()
-            jsonObject.keys().forEach { planName ->
-                val planData = jsonObject.getJSONObject(planName)
-                val strategyString: String = planData.getString("strategy")
-                val skillIds: List<Int> = planData
-                    .getString("plan")
-                    .split(",")
-                    .map { it.trim() }
-                    .mapNotNull { it.toIntOrNull() }
-                val skillNames: List<String> = skillIds.mapNotNull { game.skillDatabase.getSkillName(it) }
-                plansMap[planName] = SkillPlanSettings(
-                    bIsEnabled = planData.getBoolean("enabled"),
-                    strategy = SpendingStrategy.fromName(strategyString) ?: SpendingStrategy.DEFAULT,
-                    bEnableBuyInheritedUniqueSkills = planData.getBoolean("enableBuyInheritedUniqueSkills"),
-                    bEnableBuyNegativeSkills = planData.getBoolean("enableBuyNegativeSkills"),
-                    skillNames = skillNames,
-                )
+    /** Map of skill plan names to their corresponding settings. */
+    val skillPlans: Map<String, SkillPlanSettings> =
+        try {
+            val plansString = SettingsHelper.getStringSetting("skills", "plans")
+            if (plansString.isNotEmpty()) {
+                val jsonObject = JSONObject(plansString)
+                val plansMap = mutableMapOf<String, SkillPlanSettings>()
+                jsonObject.keys().forEach { planName ->
+                    val planData = jsonObject.getJSONObject(planName)
+                    val strategyString: String = planData.getString("strategy")
+                    val skillIds: List<Int> =
+                        planData
+                            .getString("plan")
+                            .split(",")
+                            .map { it.trim() }
+                            .mapNotNull { it.toIntOrNull() }
+                    val skillNames: List<String> = skillIds.mapNotNull { game.skillDatabase.getSkillName(it) }
+                    plansMap[planName] =
+                        SkillPlanSettings(
+                            bIsEnabled = planData.getBoolean("enabled"),
+                            strategy = SpendingStrategy.fromName(strategyString) ?: SpendingStrategy.DEFAULT,
+                            bEnableBuyInheritedUniqueSkills = planData.getBoolean("enableBuyInheritedUniqueSkills"),
+                            bEnableBuyNegativeSkills = planData.getBoolean("enableBuyNegativeSkills"),
+                            skillNames = skillNames,
+                        )
+                }
+                plansMap
+            } else {
+                emptyMap()
             }
-            plansMap
-        } else {
+        } catch (e: Exception) {
+            MessageLog.w(TAG, "[WARN] skillPlans:: Could not parse skill plan settings: ${e.message}")
             emptyMap()
         }
-    } catch (e: Exception) {
-        MessageLog.w(TAG, "Could not parse skill plan settings: ${e.message}")
-        emptyMap()
-    }
 
+    /** The strategy used for spending skill points. */
     enum class SpendingStrategy {
+        /** Default spending strategy. Currently synonymous with OPTIMIZE_RANK. */
         DEFAULT,
+
+        /** Prioritize skills that match the trainee's aptitudes and community-tier rankings. */
         OPTIMIZE_SKILLS,
-        OPTIMIZE_RANK;
+
+        /** Prioritize skills that offer the best rank increase per point spent. */
+        OPTIMIZE_RANK,
+
+        ;
 
         companion object {
             private val nameMap = entries.associateBy { it.name }
             private val ordinalMap = entries.associateBy { it.ordinal }
 
+            /** Retrieve the [SpendingStrategy] by its name. */
             fun fromName(value: String): SpendingStrategy? = nameMap[value.uppercase()]
+
+            /** Retrieve the [SpendingStrategy] by its ordinal value. */
             fun fromOrdinal(ordinal: Int): SpendingStrategy? = ordinalMap[ordinal]
         }
     }
 
-    /** Data class used to store all skill plan settings for easier access. */
+    /**
+     * Encapsulates the configuration for a specific skill plan.
+     *
+     * @property bIsEnabled Whether the skill plan is active.
+     * @property strategy The [SpendingStrategy] to follow.
+     * @property bEnableBuyInheritedUniqueSkills Whether to purchase inherited unique skills.
+     * @property bEnableBuyNegativeSkills Whether to purchase negative (blue) skills.
+     * @property skillNames The list of specific skill names to purchase as part of this plan.
+     */
     data class SkillPlanSettings(
         val bIsEnabled: Boolean,
         val strategy: SpendingStrategy,
@@ -93,29 +116,96 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
         val skillNames: List<String>,
     )
 
-    /** Gets all available negative skills in the skill list.
+    companion object {
+        private val TAG: String = "[${MainActivity.loggerTag}]SkillPlan"
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // Debug Tests
+
+    /**
+     * Perform a test run of the skill list OCR and purchasing logic using mock skill points.
      *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * This method allows for testing the skill identification and selection logic without performing actual transactions in the game.
      */
-    private fun getNegativeSkills(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        skillsToBuy: List<String>,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
+    fun startSkillListBuyTest() {
+        MessageLog.i(TAG, "\n[TEST] Now beginning Skill List Buy test.")
+
+        val skillList = SkillList(game, campaign)
+
+        // Verify that the bot is currently at the skill list screen.
+        if (!skillList.checkSkillListScreen()) {
+            MessageLog.e(TAG, "[ERROR] startSkillListBuyTest:: Not on the Skill List screen. Ending test.")
+            return
+        }
+
+        // Detect the current skill points.
+        val currentPoints: Int? = skillList.detectSkillPoints()
+        if (currentPoints == null) {
+            MessageLog.e(TAG, "[ERROR] startSkillListBuyTest:: Failed to detect skill points. Ending test.")
+            return
+        }
+        MessageLog.i(TAG, "[TEST] Current Skill Points: $currentPoints")
+
+        // Scan the skill list and parse all available entries.
+        // Use mock data if enabled for logic testing without a game instance.
+        MessageLog.i(TAG, "[TEST] Scanning skill list...")
+        val allSkills: Map<String, SkillListEntry> = skillList.parseSkillListEntries(bUseMockData = USE_MOCK_DATA)
+
+        val availableSkills: Map<String, SkillListEntry> = allSkills.filter { !it.value.bIsObtained && !it.value.bIsVirtual }
+
+        // Log a summary of all identified available skills.
+        MessageLog.i(TAG, "[TEST] Summary of available skills:")
+        availableSkills.forEach { (name, entry) ->
+            MessageLog.i(TAG, "\t- $name: ${entry.price} SP")
+        }
+
+        // Calculate optimal purchases using a greedy heuristic to minimize remaining points.
+        val sortedSkills: List<SkillListEntry> = availableSkills.values.toList().sortedByDescending { it.price }
+
+        val skillsToBuy = mutableListOf<SkillListEntry>()
+        var remainingPoints = currentPoints
+
+        for (skill in sortedSkills) {
+            if (skill.price <= remainingPoints) {
+                skillsToBuy.add(skill)
+                remainingPoints -= skill.price
+            }
+        }
+
+        // Log a summary of the skills that would be purchased.
+        MessageLog.i(TAG, "[TEST] Identified skills that would be bought to bring SP close to zero:")
+        if (skillsToBuy.isEmpty()) {
+            MessageLog.i(TAG, "\t- No skills can be purchased with current SP.")
+        } else {
+            skillsToBuy.forEach { skill ->
+                MessageLog.i(TAG, "\t- ${skill.name}: ${skill.price} SP")
+            }
+        }
+        MessageLog.i(TAG, "[TEST] Expected remaining Skill Points: $remainingPoints")
+        MessageLog.i(TAG, "[TEST] Skill List Buy test complete.")
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Retrieve all available negative skills from the skill list.
+     *
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param skillsToBuy The list of skills already planned for purchase.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for the identified negative skills.
+     */
+    private fun getNegativeSkills(skillPlanSettings: SkillPlanSettings, skillList: SkillList, skillsToBuy: List<String>, availableSkillPoints: Int): Map<String, Int> {
         if (!skillPlanSettings.bEnableBuyNegativeSkills) {
             return emptyMap()
         }
 
         val result: MutableMap<String, Int> = mutableMapOf()
-        var remainingSkillPoints: Int = availableSkillPoints
+        var remainingSkillPoints = availableSkillPoints
 
         val entries: Map<String, SkillListEntry> = skillList.getNegativeSkills()
         for ((name, entry) in entries) {
@@ -134,29 +224,22 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
         return result.toMap()
     }
 
-    /** Gets all available inherited unique skills in the skill list.
+    /**
+     * Retrieve all available inherited unique skills from the skill list.
      *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param skillsToBuy The list of skills already planned for purchase.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for the identified inherited unique skills.
      */
-    private fun getInheritedUniqueSkills(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        skillsToBuy: List<String>,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
+    private fun getInheritedUniqueSkills(skillPlanSettings: SkillPlanSettings, skillList: SkillList, skillsToBuy: List<String>, availableSkillPoints: Int): Map<String, Int> {
         if (!skillPlanSettings.bEnableBuyInheritedUniqueSkills) {
             return emptyMap()
         }
 
         val result: MutableMap<String, Int> = mutableMapOf()
-        var remainingSkillPoints: Int = availableSkillPoints
+        var remainingSkillPoints = availableSkillPoints
 
         val entries: Map<String, SkillListEntry> = skillList.getInheritedUniqueSkills()
         for ((name, entry) in entries) {
@@ -174,36 +257,26 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
         return result.toMap()
     }
 
-    /** Gets all available skills from the user's skill plan in the skill list.
+    /**
+     * Retrieve all available skills from the user's skill plan that are present in the skill list.
      *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param skillsToBuy The list of skills already planned for purchase.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for the identified user-planned skills.
      */
-    private fun getUserPlannedSkills(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        skillsToBuy: List<String>,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
+    private fun getUserPlannedSkills(skillPlanSettings: SkillPlanSettings, skillList: SkillList, skillsToBuy: List<String>, availableSkillPoints: Int): Map<String, Int> {
         if (skillPlanSettings.skillNames.isEmpty()) {
             return emptyMap()
         }
 
         val result: MutableMap<String, Int> = mutableMapOf()
-        var remainingSkillPoints: Int = availableSkillPoints
+        var remainingSkillPoints = availableSkillPoints
 
-        // If two different versions of one skill are in the skill list AND in the
-        // skill plan, we want to buy the highest level version of that skill that we can afford.
-        // For example, if Corner Recovery O and Swinging Maestro are both in the skill
-        // plan, and both entries are in the skill list, then we want to buy Swinging Maestro.
-        // However, if we do not have enough points for Swinging Maestro, then attempt to
-        // buy Corner Recovery O instead.
+        // If two versions of the same skill are in the skill list and plan, prioritize the higher level version.
+        // For example, if "Corner Recovery O" and "Swinging Maestro" are both in the plan and list,
+        // prioritize "Swinging Maestro". If points are insufficient, attempt to buy "Corner Recovery O" instead.
         for (name in skillPlanSettings.skillNames) {
             // Don't add duplicate entries.
             if (name in skillsToBuy || name in result) {
@@ -212,7 +285,7 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
 
             val entry: SkillListEntry? = skillList.getEntry(name)
             if (entry == null) {
-                MessageLog.e(TAG, "addUserPlannedSkills: Failed to find entry for \"$name\".")
+                MessageLog.e(TAG, "[ERROR] getUserPlannedSkills:: Failed to find entry for \"$name\".")
                 continue
             }
 
@@ -224,35 +297,26 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
                 continue
             }
 
-            // If there are no exact matches, then our only hope of buying
-            // this skill is if it is in an in-place upgrade chain.
-            // This is because getting a skill hint for an in-place chain skill
-            // means that you can upgrade to any higher versions of it.
-            // However if it isn't an in-place chain, then you cannot unlock the
-            // upgraded version simply by buying a lower version. The higher
-            // version requires a separate skill hint to unlock.
+            // If no exact match exists, check for in-place upgrade chains.
+            // Obtaining a skill hint for an in-place chain skill allows upgrading to any higher versions.
+            // Higher versions of non-in-place chains require their own skill hints to unlock.
 
-            // If no downgraded versions exist in our skill list, skip this
-            // entry since we won't be able to buy it.
+            // Skip the entry if no downgraded versions exist in the skill list.
             val availableEntry: SkillListEntry = entry.getFirstAvailableDowngrade() ?: continue
 
-            // Otherwise if there IS a downgraded version in the skill list, then
-            // we need to purchase it for the planned skill to become available.
-
-            // Get all skill entries from the available entry to the one from
-            // the skill plan (inclusive).
+            // If a downgraded version exists, calculate the sequence of upgrades required to reach the planned skill.
             val upgrades: List<SkillListEntry> = availableEntry.getUpgradesUntil(name)
 
             // Handle in-place upgrade skill chains.
             if (upgrades.all { it.bIsInPlace }) {
-                // Only add entries which we haven't already added.
-                val unacquired: List<SkillListEntry> = upgrades
-                    .filter {it.name !in skillsToBuy && it.name !in result }
-            
+                // Only add entries that haven't already been planned or purchased.
+                val unacquired: List<SkillListEntry> =
+                    upgrades
+                        .filter { it.name !in skillsToBuy && it.name !in result }
+
                 val totalPrice: Int = unacquired.sumOf { it.price }
                 if (totalPrice <= remainingSkillPoints) {
                     unacquired.forEach { it.buy() }
-                    // TODO: Does this need to be screenPrice instead of price?
                     val toAdd: Map<String, Int> = unacquired.associate { it.name to it.price }
                     result.putAll(toAdd)
                     remainingSkillPoints -= totalPrice
@@ -264,137 +328,115 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
         return result.toMap()
     }
 
-    /** Gets all available negative, inherited unique, and user planned skills.
+    /**
+     * Retrieve all available negative, inherited unique, and user-planned skills.
      *
-     * These are used in every skill plan so these functions were grouped together.
+     * These common skill checks are performed across all spending strategies.
      *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param skillsToBuy The list of skills already planned for purchase.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for all identified common skills.
      */
-    private fun getSkillsToBuyCommon(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        skillsToBuy: List<String>,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
+    private fun getSkillsToBuyCommon(skillPlanSettings: SkillPlanSettings, skillList: SkillList, skillsToBuy: List<String>, availableSkillPoints: Int): Map<String, Int> {
         val result: MutableMap<String, Int> = mutableMapOf()
 
-        result += getNegativeSkills(
-            skillPlanSettings = skillPlanSettings,
-            skillList = skillList,
-            skillsToBuy = skillsToBuy + result.keys.toList(),
-            availableSkillPoints = availableSkillPoints - result.values.sum(),
-        )
+        result +=
+            getNegativeSkills(
+                skillPlanSettings = skillPlanSettings,
+                skillList = skillList,
+                skillsToBuy = skillsToBuy + result.keys.toList(),
+                availableSkillPoints = availableSkillPoints - result.values.sum(),
+            )
 
-        result += getInheritedUniqueSkills(
-            skillPlanSettings = skillPlanSettings,
-            skillList = skillList,
-            skillsToBuy = skillsToBuy + result.keys.toList(),
-            availableSkillPoints = availableSkillPoints - result.values.sum(),
-        )
+        result +=
+            getInheritedUniqueSkills(
+                skillPlanSettings = skillPlanSettings,
+                skillList = skillList,
+                skillsToBuy = skillsToBuy + result.keys.toList(),
+                availableSkillPoints = availableSkillPoints - result.values.sum(),
+            )
 
-        result += getUserPlannedSkills(
-            skillPlanSettings = skillPlanSettings,
-            skillList = skillList,
-            skillsToBuy = skillsToBuy + result.keys.toList(),
-            availableSkillPoints = availableSkillPoints - result.values.sum(),
-        )
+        result +=
+            getUserPlannedSkills(
+                skillPlanSettings = skillPlanSettings,
+                skillList = skillList,
+                skillsToBuy = skillsToBuy + result.keys.toList(),
+                availableSkillPoints = availableSkillPoints - result.values.sum(),
+            )
 
         return result.toMap()
     }
 
-    /** Gets all available skills to buy following the default strategy.
+    /**
+     * Retrieve all available skills following the default spending strategy.
      *
-     * NOTE: Currently doesn't do anything but it's here since we have a strategy
-     * option for DEFAULT so it'd be weird to not have a function ready for it.
+     * Currently, this strategy is synonymous with OPTIMIZE_RANK.
      *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param skillsToBuy The list of skills already planned for purchase.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for the default strategy.
      */
-    private fun getSkillsToBuyDefaultStrategy(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        skillsToBuy: List<String>,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
-        val result: MutableMap<String, Int> = mutableMapOf()
-
-        return result.toMap()
+    private fun getSkillsToBuyDefaultStrategy(skillPlanSettings: SkillPlanSettings, skillList: SkillList, skillsToBuy: List<String>, availableSkillPoints: Int): Map<String, Int> {
+        // Currently does not implement additional logic beyond common skills.
+        return emptyMap()
     }
 
-    /** Gets all available skills to buy following the OptimizeSkills strategy.
+    /**
+     * Retrieve all available skills following the OptimizeSkills strategy.
      *
-     * This function attempts to calculate the optimal skills to purchase based
-     * on a community made skill tier list. Skills within each tier are just in
-     * alphabetical order, so within each tier we optimize the evaluated rank.
+     * This strategy calculates optimal skills based on a community tier list and evaluates them based on their rank-to-price ratio. It filters skills to match user-specified aptitudes for running
+     * style, track distance, and track surface.
      *
-     * We also filter skills to only include those that match the user-specified
-     * aptitudes for running style, track distance, and track surface.
-     *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param skillsToBuy The list of skills already planned for purchase.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for the OptimizeSkills strategy.
      */
-    private fun getSkillsToBuyOptimizeSkillsStrategy(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        skillsToBuy: List<String>,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
+    private fun getSkillsToBuyOptimizeSkillsStrategy(skillPlanSettings: SkillPlanSettings, skillList: SkillList, skillsToBuy: List<String>, availableSkillPoints: Int): Map<String, Int> {
         val result: MutableMap<String, Int> = mutableMapOf()
-        var remainingSkillPoints: Int = availableSkillPoints
+        var remainingSkillPoints = availableSkillPoints
 
-        // Get user specified running style.
-        var preferredRunningStyle: RunningStyle? = when (skillSettingRunningStyleString.lowercase()) {
-            "no_preference" -> null
-            "inherit" -> RunningStyle.fromShortName(racingSettingRunningStyleString) ?: campaign.trainee.runningStyle
-            else -> RunningStyle.fromName(skillSettingRunningStyleString)
-        }
+        // Determine the user-specified preferred running style.
+        val preferredRunningStyle: RunningStyle? =
+            when (skillSettingRunningStyleString.lowercase()) {
+                "no_preference" -> null
+                "inherit" -> RunningStyle.fromShortName(racingSettingRunningStyleString) ?: campaign.trainee.runningStyle
+                else -> RunningStyle.fromName(skillSettingRunningStyleString)
+            }
 
-        // Get user specified track distance.
-        var preferredTrackDistance: TrackDistance? = when (skillSettingTrackDistanceString.lowercase()) {
-            "no_preference" -> null
-            "inherit" -> TrackDistance.fromName(trainingSettingTrackDistanceString) ?: campaign.trainee.trackDistance
-            else -> TrackDistance.fromName(skillSettingTrackDistanceString)
-        }
+        // Determine the user-specified preferred track distance.
+        val preferredTrackDistance: TrackDistance? =
+            when (skillSettingTrackDistanceString.lowercase()) {
+                "no_preference" -> null
+                "inherit" -> TrackDistance.fromName(trainingSettingTrackDistanceString) ?: campaign.trainee.trackDistance
+                else -> TrackDistance.fromName(skillSettingTrackDistanceString)
+            }
 
-        // Get user specified track surface.
-        var preferredTrackSurface: TrackSurface? = when (skillSettingTrackSurfaceString.lowercase()) {
-            "no_preference" -> null
-            else -> TrackSurface.fromName(skillSettingTrackSurfaceString)
-        }
+        // Determine the user-specified preferred track surface.
+        val preferredTrackSurface: TrackSurface? =
+            when (skillSettingTrackSurfaceString.lowercase()) {
+                "no_preference" -> null
+                else -> TrackSurface.fromName(skillSettingTrackSurfaceString)
+            }
 
-        MessageLog.d(TAG, "Using preferred running style: $preferredRunningStyle")
-        MessageLog.d(TAG, "Using preferred track distance: $preferredTrackDistance")
-        MessageLog.d(TAG, "Using preferred track surface: $preferredTrackSurface")
+        MessageLog.d(TAG, "[DEBUG] getSkillsToBuyOptimizeSkillsStrategy:: Using preferred running style: $preferredRunningStyle")
+        MessageLog.d(TAG, "[DEBUG] getSkillsToBuyOptimizeSkillsStrategy:: Using preferred track distance: $preferredTrackDistance")
+        MessageLog.d(TAG, "[DEBUG] getSkillsToBuyOptimizeSkillsStrategy:: Using preferred track surface: $preferredTrackSurface")
 
+        // Retrieve skills that match the specified aptitudes or are style-agnostic.
         fun getFilteredSkills(remainingSkillPoints: Int): Map<String, SkillListEntry> {
-            // Get only skills which match our aptitudes or user-specified styles or
-            // are agnostic of style or track variables.
             val result: MutableMap<String, SkillListEntry> = mutableMapOf()
 
             result.putAll(skillList.getAptitudeIndependentSkills(preferredRunningStyle))
 
             if (preferredRunningStyle != null) {
-                    result.putAll(skillList.getRunningStyleSkills(preferredRunningStyle))
-                    result.putAll(skillList.getInferredRunningStyleSkills(preferredRunningStyle))
+                result.putAll(skillList.getRunningStyleSkills(preferredRunningStyle))
+                result.putAll(skillList.getInferredRunningStyleSkills(preferredRunningStyle))
             }
             if (preferredTrackDistance != null) {
                 result.putAll(skillList.getTrackDistanceSkills(preferredTrackDistance))
@@ -408,48 +450,40 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
             return result.toMap()
         }
 
-        // Purchasing skills can cause others to become available, so we need to
-        // loop over current skills then update the current skills at the end
-        // of the loop until we run out of affordable skills.
-
-        // Infinite loop protection.
+        // Iterate until no more affordable skills are found, as purchasing can unlock new options.
         val maxIterations = 10
         var i = 0
         var remainingSkills: Map<String, SkillListEntry> = getFilteredSkills(remainingSkillPoints)
-        while (remainingSkills.any { it.value.screenPrice <= remainingSkillPoints}) {
+        while (remainingSkills.any { it.value.screenPrice <= remainingSkillPoints }) {
             MessageLog.v(TAG, "\nChecking skills. Iteration #$i.\n")
-            // Group the remaining entries by their communityTier. Higher values are better.
-            // This can contain a NULL group for skills that are not in the tier list.
-            val groupedByCommunityTier: Map<Int?, List<SkillListEntry>> = remainingSkills.values
-                .groupBy { it.communityTier }
-                .toSortedMap(compareBy { it })
 
-            // Iterate from highest tier to lowest.
+            // Group entries by community tier, with higher tiers prioritized.
+            val groupedByCommunityTier: Map<Int?, List<SkillListEntry>> =
+                remainingSkills.values
+                    .groupBy { it.communityTier }
+                    .toSortedMap(compareBy { it })
+
+            // Iterate from the highest tier to lowest, ignoring unranked (null) entries.
             for ((communityTier, group) in groupedByCommunityTier) {
-                // Ignore the NULL entries since they aren't ranked.
                 if (communityTier == null) {
                     continue
                 }
 
                 MessageLog.v(TAG, "============ SKILL COMMUNITY TIER ${SkillCommunityTier.fromOrdinal(communityTier)} =============")
 
-                // Sort the tier by its point ratio.
+                // Sort within the tier by evaluation point ratio.
                 val sortedByPointRatio: List<SkillListEntry> = group.sortedByDescending { it.evaluationPointRatio }
                 for (entry in sortedByPointRatio) {
-                    MessageLog.v(TAG, "\t${entry.name} -> price(shown): ${entry.price}(${entry.screenPrice}), rank(ratio): ${entry.evaluationPoints}(" + "%.2f".format(entry.evaluationPointRatio) + ")")
+                    MessageLog.v(
+                        TAG,
+                        "\t${entry.name} -> price(shown): ${entry.price}(${entry.screenPrice}), rank(ratio): ${entry.evaluationPoints}(" + "%.2f".format(entry.evaluationPointRatio) + ")",
+                    )
                     // Don't add duplicate entries.
                     if (entry.name in result || entry.name in skillsToBuy) {
                         continue
                     }
 
-                    // If this skill isn't an in-place upgrade and we have already
-                    // added its upgraded version to the list, then don't add it.
-                    if (!entry.bIsAvailable) {
-                        continue
-                    }
-
-                    // If we can't afford this skill, continue to the next.
-                    if (entry.screenPrice > remainingSkillPoints) {
+                    if (!entry.bIsAvailable || entry.screenPrice > remainingSkillPoints) {
                         continue
                     }
 
@@ -464,59 +498,46 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
                 break
             }
         }
-        MessageLog.v(TAG, "-------------------------------------------------")
+        MessageLog.v(TAG, "================================================")
 
-        // We may still have skill points after buying all aptitude-based skills.
-        // Spend remaining points to optimize rank.
-        result += getSkillsToBuyOptimizeRankStrategy(
-            skillPlanSettings = skillPlanSettings,
-            skillList = skillList,
-            skillsToBuy = skillsToBuy + result.keys.toList(),
-            availableSkillPoints = remainingSkillPoints,
-        )
+        // Spend remaining skill points using the Optimize Rank strategy.
+        result +=
+            getSkillsToBuyOptimizeRankStrategy(
+                skillPlanSettings = skillPlanSettings,
+                skillList = skillList,
+                skillsToBuy = skillsToBuy + result.keys.toList(),
+                availableSkillPoints = remainingSkillPoints,
+            )
 
         return result.toMap()
     }
 
-    /** Gets all available skills to buy following the OptimizeRank strategy.
+    /**
+     * Retrieve all available skills following the Optimize Rank strategy.
      *
-     * This function attempts to maximize the trainee's total rank by purchasing
-     * skills with the highest evaluated points (rank) to price ratio.
+     * This strategy maximizes total rank by purchasing skills with the highest rank-to-price ratio. User-specified skill aptitudes are ignored in this strategy.
      *
-     * The user-specified skill aptitude overrides are ignored in this strategy.
-     *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param skillsToBuy The list of skills already planned for purchase.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for the Optimize Rank strategy.
      */
-    private fun getSkillsToBuyOptimizeRankStrategy(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        skillsToBuy: List<String>,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
+    private fun getSkillsToBuyOptimizeRankStrategy(skillPlanSettings: SkillPlanSettings, skillList: SkillList, skillsToBuy: List<String>, availableSkillPoints: Int): Map<String, Int> {
         val result: MutableMap<String, Int> = mutableMapOf()
-        var remainingSkillPoints: Int = availableSkillPoints
+        var remainingSkillPoints = availableSkillPoints
 
-        // Purchasing skills can cause others to become available, so we need to
-        // loop over current skills then update the current skills at the end
-        // of the loop until we run out of affordable skills.
-
-        // Infinite loop protection.
+        // Iterate until no more affordable skills are found, as purchasing can unlock new options.
         val maxIterations = 10
         var i = 0
         var remainingSkills: Map<String, SkillListEntry> = skillList.getAvailableSkills()
-        while (remainingSkills.any { it.value.screenPrice <= remainingSkillPoints}) {
+        while (remainingSkills.any { it.value.screenPrice <= remainingSkillPoints }) {
             MessageLog.v(TAG, "\nChecking skills. Iteration #$i.\n")
-            var sortedByPointRatio: List<SkillListEntry> = remainingSkills.values
-                .sortedByDescending { it.evaluationPointRatio }
+            val sortedByPointRatio: List<SkillListEntry> =
+                remainingSkills.values
+                    .sortedByDescending { it.evaluationPointRatio }
 
-            MessageLog.v(TAG, "========= SKILLS SORTED BY POINT RATIO ==========")
+            MessageLog.v(TAG, "========= SKILLS SORTED BY POINT RATIO =========")
             for (entry in sortedByPointRatio) {
                 MessageLog.v(TAG, "\t${entry.name} -> price(shown): ${entry.price}(${entry.screenPrice}), rank(ratio): ${entry.evaluationPoints}(" + "%.2f".format(entry.evaluationPointRatio) + ")")
                 // Don't add duplicate entries.
@@ -524,7 +545,6 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
                     continue
                 }
 
-                // If we can't afford this skill, continue to the next.
                 if (entry.screenPrice > remainingSkillPoints) {
                     continue
                 }
@@ -540,102 +560,102 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
                 break
             }
         }
-        MessageLog.v(TAG, "-------------------------------------------------")
+        MessageLog.v(TAG, "================================================")
 
         return result.toMap()
     }
 
-    /** Gets all available skills to buy for the user-specified spending strategy.
+    /**
+     * Retrieve all available skills to purchase based on the specified spending strategy.
      *
-     * @param skillPlanSettings The SkillPlanSettings to use when purchasing.
-     * @param skillList A reference to the SkillList instance.
-     * @param skillsToBuy The current list of skill names that we plan to buy.
-     * @param availableSkillPoints The amount of remaining skill points.
-     *
-     * @return A mapping of the new skill names and their prices that we want to buy.
-     * This only includes the skills that we calculated in this function.
-     * It does not include anything from [skillsToBuy].
+     * @param skillPlanSettings The [SkillPlanSettings] to follow.
+     * @param skillList The [SkillList] to analyze.
+     * @param availableSkillPoints The current amount of available skill points.
+     * @return A map of skill names to their prices for all skills to be purchased.
      */
-    private fun getSkillsToBuy(
-        skillPlanSettings: SkillPlanSettings,
-        skillList: SkillList,
-        availableSkillPoints: Int,
-    ): Map<String, Int> {
-        MessageLog.d(TAG, "[SKILLS] Beginning process of calculating skills to purchase...")
+    fun getSkillsToBuy(skillPlanSettings: SkillPlanSettings, skillList: SkillList, availableSkillPoints: Int): Map<String, Int> {
+        MessageLog.i(TAG, "[SKILLS] Beginning process of calculating skills to purchase...")
 
-        if(!skillPlanSettings.bIsEnabled) {
+        if (!skillPlanSettings.bIsEnabled) {
             MessageLog.i(TAG, "[SKILLS] Skill plan is disabled. No skills will be purchased.")
             return emptyMap()
         }
 
-        MessageLog.d(TAG, "======================= Skill Plan =======================")
-        MessageLog.d(TAG, "Spending Strategy: ${skillPlanSettings.strategy}")
-        MessageLog.d(TAG, "Buy Inherited Skills: ${skillPlanSettings.bEnableBuyInheritedUniqueSkills}")
-        MessageLog.d(TAG, "Buy Negative Skills: ${skillPlanSettings.bEnableBuyNegativeSkills}")
-        MessageLog.d(TAG, "User-Specified Skills:" + if (skillPlanSettings.skillNames.isEmpty()) " None" else "")
+        MessageLog.v(TAG, "======================= Skill Plan =======================")
+        MessageLog.v(TAG, "Spending Strategy: ${skillPlanSettings.strategy}")
+        MessageLog.v(TAG, "Buy Inherited Skills: ${skillPlanSettings.bEnableBuyInheritedUniqueSkills}")
+        MessageLog.v(TAG, "Buy Negative Skills: ${skillPlanSettings.bEnableBuyNegativeSkills}")
+        MessageLog.v(TAG, "User-Specified Skills:" + if (skillPlanSettings.skillNames.isEmpty()) " None" else "")
         for (name in skillPlanSettings.skillNames) {
-            MessageLog.d(TAG, "\t$name")
+            MessageLog.v(TAG, "\t$name")
         }
-        MessageLog.d(TAG, "----------------------------------------------------------")
+        MessageLog.v(TAG, "==========================================================")
 
         val result: MutableMap<String, Int> = mutableMapOf()
 
-        // We always perform these common operations.
-        // Other strategies only add on top of these results.
-        result += getSkillsToBuyCommon(
-            skillPlanSettings = skillPlanSettings,
-            skillList = skillList,
-            skillsToBuy = result.keys.toList(),
-            availableSkillPoints = availableSkillPoints - result.values.sum(),
-        )
+        // Execute common skill checks first.
+        result +=
+            getSkillsToBuyCommon(
+                skillPlanSettings = skillPlanSettings,
+                skillList = skillList,
+                skillsToBuy = result.keys.toList(),
+                availableSkillPoints = availableSkillPoints - result.values.sum(),
+            )
 
-        result += when (skillPlanSettings.strategy) {
-            SpendingStrategy.DEFAULT -> getSkillsToBuyDefaultStrategy(
-                skillPlanSettings = skillPlanSettings,
-                skillList = skillList,
-                skillsToBuy = result.keys.toList(),
-                availableSkillPoints = availableSkillPoints - result.values.sum(),
-            )
-            SpendingStrategy.OPTIMIZE_SKILLS -> getSkillsToBuyOptimizeSkillsStrategy(
-                skillPlanSettings = skillPlanSettings,
-                skillList = skillList,
-                skillsToBuy = result.keys.toList(),
-                availableSkillPoints = availableSkillPoints - result.values.sum(),
-            )
-            SpendingStrategy.OPTIMIZE_RANK -> getSkillsToBuyOptimizeRankStrategy(
-                skillPlanSettings = skillPlanSettings,
-                skillList = skillList,
-                skillsToBuy = result.keys.toList(),
-                availableSkillPoints = availableSkillPoints - result.values.sum(),
-            )
-        }
+        // Execute strategy-specific checks.
+        result +=
+            when (skillPlanSettings.strategy) {
+                SpendingStrategy.DEFAULT -> {
+                    getSkillsToBuyDefaultStrategy(
+                        skillPlanSettings = skillPlanSettings,
+                        skillList = skillList,
+                        skillsToBuy = result.keys.toList(),
+                        availableSkillPoints = availableSkillPoints - result.values.sum(),
+                    )
+                }
 
-        MessageLog.d(TAG, "============== Skills To Buy ==============")
+                SpendingStrategy.OPTIMIZE_SKILLS -> {
+                    getSkillsToBuyOptimizeSkillsStrategy(
+                        skillPlanSettings = skillPlanSettings,
+                        skillList = skillList,
+                        skillsToBuy = result.keys.toList(),
+                        availableSkillPoints = availableSkillPoints - result.values.sum(),
+                    )
+                }
+
+                SpendingStrategy.OPTIMIZE_RANK -> {
+                    getSkillsToBuyOptimizeRankStrategy(
+                        skillPlanSettings = skillPlanSettings,
+                        skillList = skillList,
+                        skillsToBuy = result.keys.toList(),
+                        availableSkillPoints = availableSkillPoints - result.values.sum(),
+                    )
+                }
+            }
+
+        MessageLog.v(TAG, "============== Skills To Buy ==============")
         for ((name, price) in result) {
-            MessageLog.d(TAG, "\t$name: $price")
+            MessageLog.v(TAG, "\t$name: $price")
         }
-        MessageLog.d(TAG, "\n\tTOTAL: ${result.values.sum()} / ${if (USE_MOCK_DATA) MOCK_SKILL_POINTS else skillList.skillPoints} pts with ${if (USE_MOCK_DATA) MOCK_SKILL_POINTS else skillList.skillPoints - result.values.sum()} left over pts")
-        MessageLog.d(TAG, "===========================================")
+        MessageLog.v(
+            TAG,
+            "\n\tTOTAL: ${result.values.sum()} / ${if (USE_MOCK_DATA) MOCK_SKILL_POINTS else skillList.skillPoints} pts with ${if (USE_MOCK_DATA) MOCK_SKILL_POINTS else skillList.skillPoints - result.values.sum()} left over pts",
+        )
+        MessageLog.v(TAG, "===========================================")
 
         return result.toMap()
     }
 
-    /** Handles SkillListEntry objects as they are detected.
+    /**
+     * Log the details of a detected skill list entry and handle its purchase if planned.
      *
-     * @param entry The SkillListEntry object that we detected.
-     * @param point The location of the SkillUpButton for this entry.
-     * @param skillsToBuy The list of skill names that we want to purchase.
-     * @param skillList The SkillList instance which triggered this event.
-     *
-     * @return True if all [skillsToBuy] have been purchased. Otherwise, False.
-     * [SkillList] uses a return of True to trigger an early exit of its loop.
+     * @param entry The detected [SkillListEntry].
+     * @param point The screen location of the skill's purchase button.
+     * @param skillsToBuy The list of skill names planned for purchase.
+     * @param skillList The [SkillList] managing the current scan.
+     * @return True if all planned skills have been purchased, triggering an early exit; false otherwise.
      */
-    private fun onSkillListEntryDetected(
-        entry: SkillListEntry,
-        point: Point,
-        skillsToBuy: List<String>,
-        skillList: SkillList,
-    ): Boolean {
+    private fun onSkillListEntryDetected(entry: SkillListEntry, point: Point, skillsToBuy: List<String>, skillList: SkillList): Boolean {
         if (entry.bIsObtained || entry.bIsVirtual) {
             return false
         }
@@ -644,209 +664,146 @@ class SkillPlan (private val game: Game, private val campaign: Campaign) {
             return false
         }
 
-        // Determine if there are other in-place versions of this skill that
-        // we need to buy.
+        // Determine if there are other in-place versions of this skill that need to be purchased.
         if (entry.bIsInPlace) {
-            val namesToBuy: List<String> = listOf(entry.name) +
-                entry.getUpgradeNames().filter { it in skillsToBuy }
+            val namesToBuy: List<String> =
+                listOf(entry.name) +
+                    entry.getUpgradeNames().filter { it in skillsToBuy }
 
             for (name in namesToBuy) {
-                val result: SkillListEntry? = skillList.buySkill(name, point)
-                if (result != null) {
-                    MessageLog.i(TAG, "Buying \"${result.name}\" for ${result.price} pts")
+                val purchaseResult: SkillListEntry? = skillList.buySkill(name, point)
+                if (purchaseResult != null) {
+                    MessageLog.i(TAG, "[INFO] Buying \"${purchaseResult.name}\" for ${purchaseResult.price} pts")
                 }
             }
         } else {
-            val result: SkillListEntry? = skillList.buySkill(entry.name, point)
-            if (result != null) {
-                MessageLog.i(TAG, "Buying \"${result.name}\" for ${result.price} pts")
+            val purchaseResult: SkillListEntry? = skillList.buySkill(entry.name, point)
+            if (purchaseResult != null) {
+                MessageLog.i(TAG, "[INFO] Buying \"${purchaseResult.name}\" for ${purchaseResult.price} pts")
             }
         }
 
-        // Now check if we are done purchasing skills.
+        // Check if all planned skills have been purchased to allow for an early exit.
         val obtained: Map<String, SkillListEntry> = skillList.getObtainedSkills()
-        // If we've purchased all planned skills, we return True to force
-        // the skill list to exit early from its loop.
         if (skillsToBuy.all { it in obtained }) {
-            MessageLog.i(TAG, "All skills purchased. Exiting loop early...")
+            MessageLog.i(TAG, "[SKILLS] All skills purchased. Exiting loop early...")
             return true
         }
 
         return false
     }
 
-    /** Main function for handling all skill plan purchasing logic.
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Start the skill purchasing process.
      *
-     * @return Whether the planned operations were successful.
+     * This method orchestrates the full flow: identifying affordable skills based on the user's settings and then interacting with the game UI to buy them.
+     *
+     * @param skillPlanName Optional name of the skill plan to execute. If null, defaults based on career status.
+     * @return True if the process completed successfully, false otherwise.
      */
     fun start(skillPlanName: String? = null): Boolean {
         val bitmap: Bitmap = game.imageUtils.getSourceBitmap()
 
         val skillList = SkillList(game, campaign)
 
-        // Verify that we are at the skill list screen.
+        // Verify that the bot is currently at the skill list screen.
         val bIsCareerComplete: Boolean = skillList.checkCareerCompleteSkillListScreen(bitmap)
         if (!bIsCareerComplete && !skillList.checkSkillListScreen(bitmap)) {
-            MessageLog.e(TAG, "[SKILLS] Not at skill list screen. Aborting...")
+            MessageLog.e(TAG, "[ERROR] start:: Not at skill list screen. Aborting...")
             return false
         }
 
-        // These skill plan names are manually set in the app settings.
-        // If they are missing, this indicates a programmer error.
-        val skillPlanSettings: SkillPlanSettings = if (skillPlanName == null) {
-            if (bIsCareerComplete) {
-                skillPlans["careerComplete"]!!
+        // Determine which skill plan to execute based on the current context.
+        val skillPlanSettings: SkillPlanSettings =
+            if (skillPlanName == null) {
+                if (bIsCareerComplete) {
+                    skillPlans["careerComplete"]!!
+                } else {
+                    skillPlans["preFinals"]!!
+                }
             } else {
-                skillPlans["preFinals"]!!
+                val tmpPlan: SkillPlanSettings? = skillPlans[skillPlanName]
+                if (tmpPlan == null) {
+                    MessageLog.e(TAG, "[ERROR] start:: Invalid skill plan name: $skillPlanName")
+                    return false
+                }
+                tmpPlan
             }
-        } else {
-            val tmpPlan: SkillPlanSettings? = skillPlans[skillPlanName]
-            if (tmpPlan == null) {
-                MessageLog.e(TAG, "Invalid skill plan name: $skillPlanName")
-                return false
-            }
-            tmpPlan
-        }
 
-        // If no options are enabled for purchasing skills, then we should
-        // exit early to avoid having to scan the whole skill list.
+        // If no purchasing options are enabled, exit early to avoid unnecessary scanning.
         if (
             skillPlanSettings.skillNames.isEmpty() &&
             skillPlanSettings.strategy == SpendingStrategy.DEFAULT &&
             !skillPlanSettings.bEnableBuyInheritedUniqueSkills &&
             !skillPlanSettings.bEnableBuyNegativeSkills
         ) {
-            MessageLog.w(TAG, "[SKILLS] Skill Plan is empty and no options to purchase any skills are enabled. Aborting...")
+            MessageLog.w(TAG, "[WARN] start:: Skill Plan is empty and no options to purchase any skills are enabled. Aborting...")
             skillList.cancelAndExit()
             return true
         }
 
-        // Purchasing skills depends on us knowing our aptitudes.
-        // If we haven't acquired them yet, then we need to force check them.
-        // This can happen if we start the bot at the skill list screen
-        // or at the end of a career.
+        // Ensure that the trainee's aptitudes are up-to-date before calculating purchases.
         if (!USE_MOCK_DATA && !campaign.trainee.bHasUpdatedAptitudes) {
             skillList.checkStats()
         }
 
-        val skillPoints: Int = if (USE_MOCK_DATA) {
-            MOCK_SKILL_POINTS
-        } else {
-            skillList.detectSkillPoints(bitmap) ?: 0
-        }
-        // The cheapest skills are all 70 points and with discounts
-        // can be as low as 42 points. If anything is less than this, then
-        // we should update this.
+        val skillPoints: Int =
+            if (USE_MOCK_DATA) {
+                MOCK_SKILL_POINTS
+            } else {
+                skillList.detectSkillPoints(bitmap) ?: 0
+            }
+
+        // Exit if the current skill points are below the minimum possible skill cost.
         if (skillPoints < 42) {
             MessageLog.i(TAG, "[SKILLS] Skill Points < 42. Cannot afford any skills. Aborting...")
             skillList.cancelAndExit()
             return true
         }
-        
-        // Gather all skill list entry data.
+
+        // Gather and parse all skill entries from the screen.
         skillList.parseSkillListEntries(bUseMockData = USE_MOCK_DATA)
         if (skillList.getAllSkills().isEmpty()) {
-            MessageLog.e(TAG, "[SKILLS] Failed to detect skills.")
+            MessageLog.e(TAG, "[ERROR] start:: Failed to detect skills.")
             skillList.cancelAndExit()
             return false
         }
 
         skillList.printSkillListEntries(verbose = true)
 
-        // Calculate list of skills to purchase.
-        val result: Map<String, Int> = getSkillsToBuy(
-            skillPlanSettings = skillPlanSettings,
-            skillList = skillList,
-            availableSkillPoints = skillPoints,
-        )
+        // Calculate the list of skills to purchase based on settings and points.
+        val skillsToPurchase: Map<String, Int> =
+            getSkillsToBuy(
+                skillPlanSettings = skillPlanSettings,
+                skillList = skillList,
+                availableSkillPoints = skillPoints,
+            )
 
-        // No skills to buy. Return to previous screen.
-        if (result.isEmpty()) {
+        // Exit if no skills were identified for purchase.
+        if (skillsToPurchase.isEmpty()) {
             skillList.cancelAndExit()
             campaign.trainee.skillPoints = skillList.skillPoints
             return true
         }
 
-        // Sell all skills so we can use the `skillList.getObtainedSkills`
-        // to determine if we've finished buying all skills.
+        // Reset the internal purchase state before starting the actual buying process.
         skillList.sellAllSkills()
 
-        // Go back through skill list and purchase skills.
-        skillList.parseSkillListEntries { skillList: SkillList, entry: SkillListEntry, point: Point ->
+        // Iterate through the list again and perform the confirmed purchases.
+        skillList.parseSkillListEntries { currentList: SkillList, entry: SkillListEntry, point: Point ->
             onSkillListEntryDetected(
                 entry = entry,
                 point = point,
-                skillsToBuy = result.keys.toList(),
-                skillList = skillList,
+                skillsToBuy = skillsToPurchase.keys.toList(),
+                skillList = currentList,
             )
         }
 
         skillList.confirmAndExit()
         campaign.trainee.skillPoints = skillList.skillPoints
         return true
-    }
-
-    /** Processes the list of skills in the Skills screen, reads all skills in the list,
-     * logs a summary and then logs another summary of which skills it will buy
-     * to bring down the current Skill Points as close to zero as possible.
-     */
-    fun startSkillListBuyTest() {
-        MessageLog.i(TAG, "\n[TEST] Now beginning Skill List Buy test.")
-
-        val skillList = SkillList(game, campaign)
-
-        // Verify we are on the Skill List screen.
-        if (!skillList.checkSkillListScreen()) {
-            MessageLog.e(TAG, "[TEST] Not on the Skill List screen. Ending test.")
-            return
-        }
-
-        // Detect current skill points.
-        val currentPoints = skillList.detectSkillPoints()
-        if (currentPoints == null) {
-            MessageLog.e(TAG, "[TEST] Failed to detect skill points. Ending test.")
-            return
-        }
-        MessageLog.i(TAG, "[TEST] Current Skill Points: $currentPoints")
-
-        // Parse all skill entries.
-        MessageLog.i(TAG, "[TEST] Scanning skill list...")
-        // Use mock data if enabled for testing this logic without a real game.
-        val allSkills = skillList.parseSkillListEntries(bUseMockData = USE_MOCK_DATA)
-
-        val availableSkills = allSkills.filter { !it.value.bIsObtained && !it.value.bIsVirtual }
-
-        // Log summary of all detected available skills.
-        MessageLog.i(TAG, "[TEST] Summary of available skills:")
-        availableSkills.forEach { (name, entry) ->
-            MessageLog.i(TAG, "\t- $name: ${entry.price} SP")
-        }
-
-        // Calculate "optimal" purchases (greedy approach to minimize remaining points).
-        // We want to get as close to zero as possible.
-        // A simple greedy approach starting from the most expensive skills is often a good heuristic for "spending as much as possible".
-        val sortedSkills = availableSkills.values.toList().sortedByDescending { it.price }
-
-        val skillsToBuy = mutableListOf<SkillListEntry>()
-        var remainingPoints = currentPoints
-
-        for (skill in sortedSkills) {
-            if (skill.price <= remainingPoints) {
-                skillsToBuy.add(skill)
-                remainingPoints -= skill.price
-            }
-        }
-
-        // Log summary of skills that would be bought.
-        MessageLog.i(TAG, "[TEST] Identified skills that would be bought to bring SP close to zero:")
-        if (skillsToBuy.isEmpty()) {
-            MessageLog.i(TAG, "\t- No skills can be bought with current SP.")
-        } else {
-            skillsToBuy.forEach { skill ->
-                MessageLog.i(TAG, "\t- ${skill.name}: ${skill.price} SP")
-            }
-        }
-        MessageLog.i(TAG, "[TEST] Expected remaining Skill Points: $remainingPoints")
-        MessageLog.i(TAG, "[TEST] Skill List Buy test complete.")
     }
 }
