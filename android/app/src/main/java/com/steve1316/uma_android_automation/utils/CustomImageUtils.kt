@@ -1614,11 +1614,11 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                 try {
                     if (detectedText.lowercase().contains("ace") || detectedText.lowercase().contains("da")) {
                         // This is "Race Day", so there are 0 turns left before the mandatory race.
-                        MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected Race Day for extra racing: $detectedText")
+                        MessageLog.i(TAG, "[INFO] Detected Race Day for extra racing: $detectedText")
                         0
                     } else {
                         val cleanedResult = detectedText.replace(Regex("[^0-9]"), "")
-                        MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected day for extra racing: $detectedText")
+                        MessageLog.i(TAG, "[INFO] Detected day for extra racing: $detectedText")
                         cleanedResult.toInt()
                     }
                 } catch (_: NumberFormatException) {
@@ -2015,7 +2015,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
             // Ensure forward slashes are surrounded by spaces.
             val refinedResult = detectedText.replace(Regex("""\s*/\s*"""), " / ").trim()
-            MessageLog.i(TAG, "[INFO] extractRaceName:: Extracted race name: \"$refinedResult\"")
+            MessageLog.i(TAG, "[INFO] Extracted race name: \"$refinedResult\"")
             return refinedResult
         } catch (e: Exception) {
             MessageLog.e(TAG, "[ERROR] extractRaceName:: Exception during race name extraction: ${e.message}")
