@@ -101,9 +101,12 @@ This project is separated into a React Native frontend configured via Expo and a
 2. Download OpenCV for Android (v4.12.0) from `https://opencv.org/releases/`. Create `/android/opencv` and copy the extracted `/OpenCV-android-sdk/sdk/` contents into it.
 3. **IMPORTANT:** The project uses a YOLOv8 model for stat gain detection. Ensure the `best.onnx` model file is present in the `android/app/src/main/assets/` directory.
 4. The project utilizes Expo. Run `yarn install` from the root directory to install frontend dependencies.
-4. The dev environment is ready. Run `yarn start` or `npx expo start` to run the Metro HTTP server.
-5. To test Android builds, execute `yarn android` to compile and install the application directly on your device. Use `yarn build` for release APK generation.
-6. *Note*: Do not run the React Native shell app directly from Android Studio. Always rely on the Expo Metro bundler for correct bridging.
+5. The dev environment is ready. Run `yarn start` or `npx expo start` to run the Metro HTTP server.
+6. To ensure code consistency, developers should format and lint the codebase using the following commands:
+    - `yarn format`: Formats TypeScript and TSX files using **Prettier**.
+    - `yarn format:kt`: Formats Kotlin files using **Ktlint** (following settings in [android/.editorconfig](./android/.editorconfig)).
+7. To test Android builds, execute `yarn android` to compile and install the application directly on your device. Use `yarn build` for release APK generation.
+8. *Note*: Do not run the React Native shell app directly from Android Studio. Always rely on the Expo Metro bundler for correct bridging.
 
 # Technologies Used
 
