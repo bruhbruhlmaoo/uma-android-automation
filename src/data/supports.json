@@ -220,6 +220,13 @@
         ],
         "(❯❯❯)\n#KeepItCurren": [
             "Randomly either\n----------\nWit +10\nSkill points +20\nPerfect Prep! hint +3\nCurren Chan bond +5\n----------\n\n----------\nWit +5\nSkill points +10\nMeticulous Measures hint +3\nCurren Chan bond +5"
+        ],
+        "(❯)\n#AWildCurrenAppeared": [
+            "Speed +20\nCurren Chan bond +5",
+            "Skill points +10\nShrewd Step hint +1\nCurren Chan bond +5"
+        ],
+        "(❯❯)\n#CuteFluffyOverload": [
+            "Sprint Corners ○ hint +1\nCurren Chan bond +5"
         ]
     },
     "Daitaku Helios": {
@@ -678,6 +685,16 @@
         ],
         "(❯❯)\nMarvelously Marvelous ☆": [
             "Guts +15\nWit +15"
+        ],
+        "(❯)\nMarvelous☆Dive!": [
+            "Wit +10\nSkill points +10\nMarvelous Sunday bond +5",
+            "Energy -10\nGuts +25\nMarvelous Sunday bond +5"
+        ],
+        "(❯❯)\nMarvelous☆School!": [
+            "Skill points +30\nMarvelous Sunday bond +5"
+        ],
+        "(❯❯❯)\nMarvelous☆Victory!": [
+            "Energy -10\nGuts +10\nWit +10\nSkill points +20\nAdrenaline Rush hint +3\nMarvelous Sunday bond +5"
         ]
     },
     "Matikanefukukitaru": {

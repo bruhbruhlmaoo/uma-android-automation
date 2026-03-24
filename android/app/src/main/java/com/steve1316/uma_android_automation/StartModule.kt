@@ -43,9 +43,8 @@ import java.time.format.DateTimeFormatter
  * Loaded into the React PackageList via MainApplication's instantiation of the StartPackage.
  */
 class StartModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), ActivityEventListener {
-    private val TAG = "[${MainActivity.loggerTag}]StartModule"
-
     companion object {
+        private val TAG = "[${MainActivity.loggerTag}]StartModule"
         private var reactContext: ReactApplicationContext? = null
         private var emitter: DeviceEventManagerModule.RCTDeviceEventEmitter? = null
     }

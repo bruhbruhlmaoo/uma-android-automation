@@ -26,7 +26,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
     private val enablePrioritizeEnergyOptions: Boolean = SettingsHelper.getBooleanSetting("trainingEvent", "enablePrioritizeEnergyOptions")
 
     /** List of positive status effects to look for in event rewards. */
-    private val positiveStatuses = listOf("Charming", "Fast Learner", "Practice Practice")
+    private val positiveStatuses = listOf("Charming", "Fast Learner", "Practice Perfect")
 
     /** List of negative status effects to look for in event rewards. */
     private val negativeStatuses = listOf("Practice Poor", "Migraine", "Night Owl", "Slow Metabolism", "Slacker")
@@ -124,15 +124,20 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                     MessageLog.i(TAG, "[TRAINING_EVENT] Detected special event: $eventName")
 
                     // Parse the option number from the setting (e.g., "Option 5: Energy +10" -> 5).
-                    val optionMatch = Regex("Option (\\d+)").find(override.selectedOption)
                     val optionIndex =
-                        if (optionMatch != null) {
-                            val optionNumber = optionMatch.groupValues[1].toInt()
-                            MessageLog.i(TAG, "[TRAINING_EVENT] Using setting: ${override.selectedOption} (Option $optionNumber)")
-                            optionNumber - 1
-                        } else {
-                            MessageLog.w(TAG, "[WARN] checkSpecialEventOverride:: Could not parse option number from setting: ${override.selectedOption}. Using option 1 by default.")
+                        if (override.selectedOption == "Default") {
+                            MessageLog.i(TAG, "[TRAINING_EVENT] Selecting Option 1 according to special event override.")
                             0
+                        } else {
+                            val optionMatch = Regex("Option (\\d+)").find(override.selectedOption)
+                            if (optionMatch != null) {
+                                val optionNumber = optionMatch.groupValues[1].toInt()
+                                MessageLog.i(TAG, "[TRAINING_EVENT] Using setting: ${override.selectedOption} (Option $optionNumber)")
+                                optionNumber - 1
+                            } else {
+                                MessageLog.w(TAG, "[WARN] checkSpecialEventOverride:: Could not parse option number from setting: ${override.selectedOption}. Using option 1 by default.")
+                                0
+                            }
                         }
 
                     return Pair(optionIndex, override.requiresConfirmation)
@@ -651,8 +656,6 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
             if (!specialEventHandled) {
                 MessageLog.w(TAG, "[WARN] handleTrainingEvent:: First option will be selected since OCR failed to match the event title and no event rewards were found.")
                 optionSelected = 0
-            } else {
-                MessageLog.w(TAG, "[WARN] handleTrainingEvent:: No event rewards were found, but special event override was applied.")
             }
         }
 

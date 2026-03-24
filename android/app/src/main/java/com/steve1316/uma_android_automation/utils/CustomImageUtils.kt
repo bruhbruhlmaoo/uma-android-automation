@@ -15,7 +15,30 @@ import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.bot.Game
-import com.steve1316.uma_android_automation.components.*
+import com.steve1316.uma_android_automation.components.ButtonRaceListFullStats
+import com.steve1316.uma_android_automation.components.ComponentInterface
+import com.steve1316.uma_android_automation.components.IconEnergyBarLeftPart
+import com.steve1316.uma_android_automation.components.IconEnergyBarRightPart0
+import com.steve1316.uma_android_automation.components.IconEnergyBarRightPart1
+import com.steve1316.uma_android_automation.components.IconEventTitleSpacer
+import com.steve1316.uma_android_automation.components.IconRaceListPredictionDoubleStar
+import com.steve1316.uma_android_automation.components.IconStatBlockGuts
+import com.steve1316.uma_android_automation.components.IconStatBlockPower
+import com.steve1316.uma_android_automation.components.IconStatBlockSpeed
+import com.steve1316.uma_android_automation.components.IconStatBlockStamina
+import com.steve1316.uma_android_automation.components.IconStatBlockTrainer
+import com.steve1316.uma_android_automation.components.IconStatBlockWit
+import com.steve1316.uma_android_automation.components.IconStatSupportEtsukoOtonashi
+import com.steve1316.uma_android_automation.components.IconStatSupportRikoKashimoto
+import com.steve1316.uma_android_automation.components.IconStatSupportYayoiAkikawa
+import com.steve1316.uma_android_automation.components.IconUnityCupSpiritExplosion
+import com.steve1316.uma_android_automation.components.IconUnityCupSpiritTraining
+import com.steve1316.uma_android_automation.components.LabelEnergy
+import com.steve1316.uma_android_automation.components.LabelRivalRacer
+import com.steve1316.uma_android_automation.components.LabelStatMaxed
+import com.steve1316.uma_android_automation.components.LabelStatTableHeaderSkillPoints
+import com.steve1316.uma_android_automation.components.LabelStatTrackSurface
+import com.steve1316.uma_android_automation.components.LabelTrainingFailureChance
 import com.steve1316.uma_android_automation.components.Region
 import com.steve1316.uma_android_automation.types.BoundingBox
 import com.steve1316.uma_android_automation.types.StatName
@@ -1614,11 +1637,11 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                 try {
                     if (detectedText.lowercase().contains("ace") || detectedText.lowercase().contains("da")) {
                         // This is "Race Day", so there are 0 turns left before the mandatory race.
-                        MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected Race Day for extra racing: $detectedText")
+                        MessageLog.i(TAG, "[INFO] Detected Race Day for extra racing: $detectedText")
                         0
                     } else {
                         val cleanedResult = detectedText.replace(Regex("[^0-9]"), "")
-                        MessageLog.i(TAG, "[INFO] determineTurnsRemainingBeforeNextGoal:: Detected day for extra racing: $detectedText")
+                        MessageLog.i(TAG, "[INFO] Detected day for extra racing: $detectedText")
                         cleanedResult.toInt()
                     }
                 } catch (_: NumberFormatException) {
@@ -1661,7 +1684,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                         debugName = "dateString",
                     )
                 if (result != "") {
-                    MessageLog.i(TAG, "[INFO] Detected date: $result")
+                    MessageLog.v(TAG, "[INFO] Detected date: $result")
 
                     if (debugMode) {
                         MessageLog.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
@@ -1702,7 +1725,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
         }
 
         if (result != "") {
-            MessageLog.i(TAG, "[INFO] Detected date: $result")
+            MessageLog.v(TAG, "[INFO] Detected date: $result")
 
             if (debugMode) {
                 MessageLog.d(TAG, "[DEBUG] determineDayString:: Date string detected to be at \"$result\".")
@@ -2015,7 +2038,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
             // Ensure forward slashes are surrounded by spaces.
             val refinedResult = detectedText.replace(Regex("""\s*/\s*"""), " / ").trim()
-            MessageLog.i(TAG, "[INFO] extractRaceName:: Extracted race name: \"$refinedResult\"")
+            MessageLog.i(TAG, "[INFO] Extracted race name: \"$refinedResult\"")
             return refinedResult
         } catch (e: Exception) {
             MessageLog.e(TAG, "[ERROR] extractRaceName:: Exception during race name extraction: ${e.message}")

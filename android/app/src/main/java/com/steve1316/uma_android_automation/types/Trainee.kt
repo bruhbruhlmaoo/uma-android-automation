@@ -162,7 +162,7 @@ class Trainee {
     var statTrackLocation: Point? = null
 
     /** List of all positive status names that can be detected. */
-    private val positiveStatusList = listOf("Charming", "Fast Learner", "Practice Practice")
+    private val positiveStatusList = listOf("Charming", "Fast Learner", "Practice Perfect")
 
     /** List of all negative status names that can be detected. */
     private val negativeStatusList = listOf("Practice Poor", "Migraine", "Night Owl", "Slow Metabolism", "Slacker")
@@ -901,24 +901,25 @@ class Trainee {
     /** Logs the trainee's current state in a structured format for the Remote Log Viewer dashboard. */
     fun logInfo() {
         if (name.isNotEmpty()) {
-            MessageLog.i(TAG, "[TRAINEE] Name: $name")
+            MessageLog.v(TAG, "[TRAINEE] Name: $name")
         }
-        MessageLog.i(TAG, "[TRAINEE] Stats: $stats")
-        MessageLog.i(TAG, "[TRAINEE] Energy: $energy%")
-        MessageLog.i(TAG, "[TRAINEE] Fans: $fans")
+        MessageLog.v(TAG, "[TRAINEE] Stats: $stats")
+        MessageLog.v(TAG, "[TRAINEE] Energy: $energy%")
+        MessageLog.v(TAG, "[TRAINEE] Fans: $fans")
+        MessageLog.v(TAG, "[TRAINEE] Skill Points: $skillPoints")
         val trackString = "Turf=${trackSurfaceAptitudes[TrackSurface.TURF]}, Dirt=${trackSurfaceAptitudes[TrackSurface.DIRT]}"
         val distanceString =
             "Sprint=${trackDistanceAptitudes[TrackDistance.SPRINT]}, Mile=${trackDistanceAptitudes[TrackDistance.MILE]}, Medium=${trackDistanceAptitudes[TrackDistance.MEDIUM]}, Long=${trackDistanceAptitudes[TrackDistance.LONG]}"
         val styleString =
             "Front=${runningStyleAptitudes[RunningStyle.FRONT_RUNNER]}, Pace=${runningStyleAptitudes[RunningStyle.PACE_CHASER]}, Late=${runningStyleAptitudes[RunningStyle.LATE_SURGER]}, End=${runningStyleAptitudes[RunningStyle.END_CLOSER]}"
-        MessageLog.i(TAG, "[TRAINEE] Track: $trackString")
-        MessageLog.i(TAG, "[TRAINEE] Distance: $distanceString")
-        MessageLog.i(TAG, "[TRAINEE] Style: $styleString")
+        MessageLog.v(TAG, "[TRAINEE] Track: $trackString")
+        MessageLog.v(TAG, "[TRAINEE] Distance: $distanceString")
+        MessageLog.v(TAG, "[TRAINEE] Style: $styleString")
         if (currentPositiveStatuses.isNotEmpty()) {
-            MessageLog.i(TAG, "[TRAINEE] Positive Statuses: ${currentPositiveStatuses.joinToString(", ")}")
+            MessageLog.v(TAG, "[TRAINEE] Positive Statuses: ${currentPositiveStatuses.joinToString(", ")}")
         }
         if (currentNegativeStatuses.isNotEmpty()) {
-            MessageLog.i(TAG, "[TRAINEE] Negative Statuses: ${currentNegativeStatuses.joinToString(", ")}")
+            MessageLog.v(TAG, "[TRAINEE] Negative Statuses: ${currentNegativeStatuses.joinToString(", ")}")
         }
     }
 

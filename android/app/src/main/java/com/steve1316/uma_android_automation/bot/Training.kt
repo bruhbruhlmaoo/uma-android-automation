@@ -344,7 +344,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
             }
 
             val scoreString: String = String.format("%.2f", score)
-            MessageLog.i(TAG, "[TRAINING] ${training.name} Training has a score of $scoreString with a focus on building relationship bars.")
+            MessageLog.i(TAG, "[TRAINING] ${training.name} Training has a score of $scoreString with a focus on building ${barResults.size} relationship bars.")
             return score
         }
 
@@ -2034,7 +2034,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
         MessageLog.i(TAG, "[TRAINING] Now starting process to execute training...")
 
         if (trainingSelected != null) {
-            MessageLog.i(TAG, "[TRAINING] Executing the $trainingSelected Training.")
+            MessageLog.i(TAG, "[TRAINING] Executing the $trainingSelected Training.\n")
 
             // Check if this training is a rainbow training that exceeds the stat cap buffer.
             val training = trainingMap[trainingSelected]

@@ -701,7 +701,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (bAfterRacePurchase) {
             MessageLog.i(TAG, "[TRACKBLAZER] Buying extra items after participating in a race...")
         }
-        MessageLog.i(TAG, "[TRACKBLAZER] Initiating buying process. Current inventory being checked for per-item limit of 5.")
+        MessageLog.i(TAG, "[TRACKBLAZER] Initiating buying process.")
 
         // Update current coins via OCR before buying.
         updateShopCoins()
@@ -720,14 +720,11 @@ class Trackblazer(game: Game) : Campaign(game) {
         val filteredPriorityList = finalPriorityList.filter { (inventoryLimits[it] ?: 0) > 0 }
 
         if (filteredPriorityList.isEmpty()) {
-            MessageLog.i(TAG, "[TRACKBLAZER] Filtered priority list is empty. All priority items are either at their limit in the inventory or none were identified.")
             printCurrentInventory()
         } else if (bDryRun) {
             MessageLog.i(TAG, "[TEST] Dry Run: Identified items that would be bought: ${filteredPriorityList.joinToString(", ")}")
             shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bDryRun = true)
             return
-        } else {
-            MessageLog.i(TAG, "[TRACKBLAZER] Filtered priority list has ${filteredPriorityList.size} items to check in shop. Current coins: $shopCoins.")
         }
 
         val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits)
@@ -742,12 +739,13 @@ class Trackblazer(game: Game) : Campaign(game) {
             // Handle "Exchange Complete" dialog.
             if (handleDialogs(DialogExchangeComplete, args = mapOf("itemsBought" to itemsBought)) is DialogHandlerResult.Handled) {
                 MessageLog.i(TAG, "[TRACKBLAZER] Successfully handled \"Exchange Complete\" dialog.")
+
+                // Update internal coins count via OCR after purchase.
+                updateShopCoins()
+
                 ButtonBack.click(game.imageUtils)
                 game.wait(2.0)
             }
-
-            // Update internal coins count via OCR after purchase.
-            updateShopCoins()
         }
 
         // Exit the Shop to return to the Main screen.

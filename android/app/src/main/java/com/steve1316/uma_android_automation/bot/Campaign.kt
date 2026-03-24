@@ -16,6 +16,7 @@ import com.steve1316.uma_android_automation.components.ButtonClose
 import com.steve1316.uma_android_automation.components.ButtonCompleteCareer
 import com.steve1316.uma_android_automation.components.ButtonCraneGame
 import com.steve1316.uma_android_automation.components.ButtonCraneGameOk
+import com.steve1316.uma_android_automation.components.ButtonDetails
 import com.steve1316.uma_android_automation.components.ButtonHomeFansInfo
 import com.steve1316.uma_android_automation.components.ButtonHomeFullStats
 import com.steve1316.uma_android_automation.components.ButtonInfirmary
@@ -731,9 +732,6 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
 
                 result.dialog.close(game.imageUtils)
-
-                // Print the trainee info with the updated fan count.
-                trainee.logInfo()
             }
 
             "umamusume_details" -> {
@@ -1106,7 +1104,7 @@ abstract class Campaign(game: Game) : Task(game) {
             Log.d(TAG, "[DEBUG] updateDate:: Date did not change.")
             return false
         } else {
-            MessageLog.i(TAG, "[DATE] New date: $date")
+            MessageLog.v(TAG, "[DATE] New date: $date")
             return true
         }
     }
@@ -1570,6 +1568,23 @@ abstract class Campaign(game: Game) : Task(game) {
                 onAfterTurnStartUpdates()
             }
 
+            // Since we're at the main screen, we don't need to worry about this
+            // flag anymore since we will update our aptitudes here if needed.
+            trainee.bTemporaryRunningStyleAptitudesUpdated = false
+
+            if (!trainee.bHasUpdatedAptitudes) {
+                openAptitudesDialog()
+                tryHandleAllDialogs()
+            }
+
+            val bIsScheduledRaceDayInitial = LabelScheduledRace.check(game.imageUtils, sourceBitmap = sourceBitmap)
+            val bIsMandatoryRaceDayInitial = IconRaceDayRibbon.check(game.imageUtils, sourceBitmap = sourceBitmap)
+
+            if (!date.bIsFinaleSeason && !bIsMandatoryRaceDayInitial && !bIsScheduledRaceDayInitial && bNeedToCheckFans && !bHasTriedCheckingFansToday) {
+                openFansDialog()
+                tryHandleAllDialogs()
+            }
+
             // Mark that we've checked the date this turn.
             bHasCheckedDateThisTurn = true
         }
@@ -1580,35 +1595,15 @@ abstract class Campaign(game: Game) : Task(game) {
             return true
         }
 
-        // Since we're at the main screen, we don't need to worry about this
-        // flag anymore since we will update our aptitudes here if needed.
-        trainee.bTemporaryRunningStyleAptitudesUpdated = false
-
-        if (!trainee.bHasUpdatedAptitudes) {
-            openAptitudesDialog()
-            tryHandleAllDialogs()
-        }
-
-        val bIsScheduledRaceDay = LabelScheduledRace.check(game.imageUtils, sourceBitmap = sourceBitmap)
-        val bIsMandatoryRaceDay = IconRaceDayRibbon.check(game.imageUtils, sourceBitmap = sourceBitmap)
-
-        // Check for fans if needed.
-        if (
-            !date.bIsFinaleSeason &&
-            !bIsMandatoryRaceDay &&
-            !bIsScheduledRaceDay &&
-            bNeedToCheckFans &&
-            !bHasTriedCheckingFansToday
-        ) {
-            openFansDialog()
-            tryHandleAllDialogs()
-        }
+        // Print the trainee info after all turn-start updates and potential fan count updates.
+        trainee.logInfo()
 
         // Scenario-specific main screen entry hook (e.g. for item usage).
         onMainScreenEntry()
 
         // Decision-making process.
         val action = decideNextAction()
+        val bIsScheduledRaceDay = LabelScheduledRace.check(game.imageUtils)
         return executeAction(action, bIsScheduledRaceDay)
     }
 
@@ -1693,8 +1688,6 @@ abstract class Campaign(game: Game) : Task(game) {
         } finally {
             MessageLog.disableOutput = false
         }
-
-        trainee.logInfo()
     }
 
     /**
@@ -1901,6 +1894,46 @@ abstract class Campaign(game: Game) : Task(game) {
                         MessageLog.w(TAG, "[WARN] process:: handleSkillList() failed.")
                     }
                 }
+
+                // Perform a final update of the fan count.
+                game.wait(1.0)
+                val buttonLocation = ButtonDetails.find(game.imageUtils).first
+                if (buttonLocation != null) {
+                    val fansText =
+                        game.imageUtils.performOCROnRegion(
+                            game.imageUtils.getSourceBitmap(),
+                            game.imageUtils.relX(buttonLocation.x, 280),
+                            game.imageUtils.relY(buttonLocation.y, -735),
+                            game.imageUtils.relWidth(220),
+                            game.imageUtils.relHeight(50),
+                            useThreshold = false,
+                            useGrayscale = true,
+                            scale = 2.0,
+                            ocrEngine = "tesseract",
+                            debugName = "final_fan_count",
+                        )
+
+                    val cleanedFans = fansText.replace(Regex("[^0-9]"), "")
+                    if (cleanedFans.isNotEmpty()) {
+                        trainee.fans = cleanedFans.toInt()
+                    } else {
+                        MessageLog.w(TAG, "[WARN] process:: Could not detect final fan count for the end of the Career from OCR: $fansText")
+                    }
+
+                    // Now click the button to open the details dialog for aptitude and stat updates.
+                    game.gestureUtils.tap(buttonLocation.x, buttonLocation.y, ButtonDetails.template.path)
+                    game.wait(1.0)
+                    ButtonDetails.click(game.imageUtils)
+                    game.wait(1.0)
+                } else {
+                    MessageLog.w(TAG, "[WARN] process:: Could not find ButtonDetails to perform final updates for the end of the Career.")
+                }
+
+                handleDialogs()
+
+                // Print the final Trainee information.
+                trainee.logInfo()
+
                 return TaskResult.Success(
                     TaskResultCode.TASK_RESULT_COMPLETE,
                     "Bot has reached end of run. Stopping bot...",

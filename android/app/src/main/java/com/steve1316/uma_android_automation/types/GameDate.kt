@@ -250,7 +250,6 @@ class GameDate {
             }
 
             val result = GameDate(yearEnum, monthEnum, phaseEnum)
-            MessageLog.i(TAG, "[DATE] Detected $result")
             return result
         }
 

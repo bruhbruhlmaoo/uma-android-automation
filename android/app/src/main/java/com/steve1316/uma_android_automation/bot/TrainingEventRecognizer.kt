@@ -157,8 +157,8 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
             eventTitle = matchedSpecialEvent
         }
 
-        // Remove whitespaces to standardize the result for comparison.
-        val processedResult = ocrResult.replace(" ", "")
+        // Standardize the OCR result for comparison by removing progression symbols, newlines, and whitespaces.
+        val processedResult = cleanTitle(ocrResult)
 
         // Search for the most similar string within the character event data.
         characterEventData?.keys()?.forEach { characterKey ->
@@ -175,10 +175,11 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
                     eventOptions.add(eventOptionsArray.getString(i))
                 }
 
-                // Calculate similarity score between processed OCR result and known event name.
-                val score = stringSimilarityService.score(processedResult, eventName)
+                // Calculate similarity score between standardized OCR result and known event name.
+                val cleanedEventName = cleanTitle(eventName)
+                val score = stringSimilarityService.score(processedResult, cleanedEventName)
                 if (!hideComparisonResults) {
-                    MessageLog.i(TAG, "[CHARACTER] $characterKey \"${processedResult}\" vs. \"${eventName}\" confidence: ${game.decimalFormat.format(score)}")
+                    MessageLog.i(TAG, "[CHARACTER] $characterKey \"${processedResult}\" vs. \"${cleanedEventName}\" (from \"${eventName}\") confidence: ${game.decimalFormat.format(score)}")
                 }
 
                 if (score >= confidence) {
@@ -213,10 +214,11 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
                     eventOptions.add(eventOptionsArray.getString(i))
                 }
 
-                // Calculate similarity score between processed OCR result and known event name.
-                val score = stringSimilarityService.score(processedResult, eventName)
+                // Calculate similarity score between standardized OCR result and known event name.
+                val cleanedEventName = cleanTitle(eventName)
+                val score = stringSimilarityService.score(processedResult, cleanedEventName)
                 if (!hideComparisonResults) {
-                    MessageLog.i(TAG, "[SUPPORT] $supportName \"${processedResult}\" vs. \"${eventName}\" confidence: $score")
+                    MessageLog.i(TAG, "[SUPPORT] $supportName \"${processedResult}\" vs. \"${cleanedEventName}\" (from \"${eventName}\") confidence: $score")
                 }
 
                 if (score >= confidence) {
@@ -243,6 +245,19 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
         val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
         ocrMatchingCache[ocrResult] = result
         return result
+    }
+
+    /**
+     * Standardizes the event title by removing progression symbols, newlines, and whitespaces.
+     *
+     * @param title The event title to clean.
+     * @return The cleaned and standardized event title.
+     */
+    private fun cleanTitle(title: String): String {
+        // Remove progression symbols like (❯), (❯❯), (❯❯❯) and their variations.
+        val cleanedProgression = title.replace(Regex("""\([❯❮]+\)"""), "")
+        // Remove newlines and whitespaces to standardize the result for comparison.
+        return cleanedProgression.replace("\n", "").replace(" ", "").replace("\r", "")
     }
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////

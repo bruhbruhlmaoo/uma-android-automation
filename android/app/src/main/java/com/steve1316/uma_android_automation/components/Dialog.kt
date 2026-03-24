@@ -303,100 +303,100 @@ object DialogObjects {
     /** List of all [DialogInterface] objects. */
     val items: List<DialogInterface> =
         listOf(
-            DialogAccountLink, // Title Screen
-            DialogAgeConfirmation, // Anywhere (ALWAYS THROW ERROR)
-            DialogAgendaDetails, // Career
-            DialogAutoFill, // Career (Unity Cup)
-            DialogAutoSelect, // Career Selection
-            DialogAllRewardsEarned, // Career (event only)
-            DialogBonusUmamusumeDetails, // Career -> Career Profile dialog
-            DialogBorrowCard, // Career Selection
-            DialogBorrowCardConfirmation, // Career Selection
-            DialogCareer, // Career
-            DialogCareerComplete, // Career
-            DialogCareerEventDetails, // Card details
-            DialogCareerProfile, // Career
-            DialogChoices, // Career (training event effects)
-            DialogCompleteCareer, // Career (yes this is different from above...)
-            DialogConcertSkipConfirmation, // Career
-            DialogConfirmAutoSelect, // Career Selection
-            DialogConfirmExchange, // Main Screen
-            DialogConfirmRestoreRP, // Team Trials
-            DialogConfirmUse, // Career (Trackblazer)
-            DialogConnectionError, // Anywhere
-            DialogConsecutiveRaceWarning, // Career
-            DialogContinueCareer, // Main Screen
-            DialogDailySale, // Team Trials, Special Events, Daily Races
-            DialogDateChanged, // Anywhere
-            DialogDisplaySettings, // Anywhere
-            DialogDownloadError, // Title Screen (only?)
-            DialogEpithet, // Career End
-            DialogEpithets, // Career DialogMenu -> Epithets button
-            DialogExchangeComplete, // Career (Trackblazer)
-            DialogExternalLink, // Main Screen
-            DialogFans, // Career DialogGoals
-            DialogFeaturedCards, // Career
-            DialogFinalConfirmation, // Career Selection
-            DialogFollowTrainer, // Career
-            DialogGiveUp, // Career
-            DialogGoalNotReached, // Career
-            DialogGoals, // Career
-            DialogHelpAndGlossary, // Anywhere (from options dialog)
-            DialogInfirmary, // Career
-            DialogInsufficientFans, // Career
-            DialogItemsSelected, // Team Trials, Special Events, Daily Races
-            DialogLog, // Career
-            DialogMenu, // Career
-            DialogMoodEffect, // Career
-            DialogMyAgendas, // Career
-            DialogNoRetries, // Career
-            DialogNotices, // Main Screen
-            DialogOpenSoon, // Shop (only when clicking inactive daily sales button)
-            DialogOptions, // Anywhere
-            DialogOverwrite, // Career -> Agenda
-            DialogPerks, // Career -> Career Profile dialog
-            DialogPlacing, // Career -> DialogTryAgain
-            DialogPresents, // Main Screen (I think?)
-            DialogPurchaseAlarmClock, // Career
-            DialogPurchaseCarats, // Anywhere (ALWAYS THROW ERROR)
-            DialogPurchaseDailyRaceTicket, // Daily Races
-            DialogRaceDetails, // Daily Races, Special Events, and Career
-            DialogRacePlayback, // Career
-            DialogRaceRecommendations, // Career
-            DialogRecreation, // Career
-            DialogRegistrationComplete, // Anywhere
-            DialogRequestFulfilled, // Transfer Requests
-            DialogRest, // Career
-            DialogRestAndRecreation, // Career
-            DialogRewardsCollected, // Main Screen, Special Events
-            DialogRunners, // Career -> Race screens
-            DialogScheduleRace, // Career -> Agenda
-            DialogScheduleCancellation, // Career -> Agenda
-            DialogScheduledRaceAvailable, // Career
-            DialogScheduledRaces, // Career
-            DialogScheduleSettings, // Career
-            DialogSessionError, // Anywhere
-            DialogShop, // Career (Trackblazer)
-            DialogSkillDetails, // Anywhere
-            DialogSkillListConfirmation, // Career
-            DialogSkillListConfirmExit, // Career
-            DialogSkillsLearned, // Career
-            DialogSongAcquired, // Career
-            DialogSparkDetails, // Career (legacy uma details)
-            DialogSparks, // Career -> Career Profile dialog
-            DialogSpecialMissions, // Main Screen, Special Events
-            DialogStrategy, // Race Screen
-            DialogStoryUnlocked, // Main Screen, end of career
-            DialogTeamInfo, // Career (Unity Cup)
-            DialogTrophyWon, // Career
-            DialogTryAgain, // Career
-            DialogUmamusumeClass, // Career
-            DialogUmamusumeDetails, // Career
-            DialogUnityCupAvailable, // Career (Unity Cup)
-            DialogUnityCupConfirmation, // Career (Unity Cup)
-            DialogUnlockRequirements, // Race Screen
+            DialogAccountLink,
+            DialogAgeConfirmation,
+            DialogAgendaDetails,
+            DialogAutoFill,
+            DialogAutoSelect,
+            DialogAllRewardsEarned,
+            DialogBonusUmamusumeDetails,
+            DialogBorrowCard,
+            DialogBorrowCardConfirmation,
+            DialogCareer,
+            DialogCareerComplete,
+            DialogCareerEventDetails,
+            DialogCareerProfile,
+            DialogChoices,
+            DialogCompleteCareer,
+            DialogConcertSkipConfirmation,
+            DialogConfirmAutoSelect,
+            DialogConfirmExchange,
+            DialogConfirmRestoreRP,
+            DialogConfirmUse,
+            DialogConnectionError,
+            DialogConsecutiveRaceWarning,
+            DialogContinueCareer,
+            DialogDailySale,
+            DialogDateChanged,
+            DialogDisplaySettings,
+            DialogDownloadError,
+            DialogEpithet,
+            DialogEpithets,
+            DialogExchangeComplete,
+            DialogExternalLink,
+            DialogFans,
+            DialogFeaturedCards,
+            DialogFinalConfirmation,
+            DialogFollowTrainer,
+            DialogGiveUp,
+            DialogGoalNotReached,
+            DialogGoals,
+            DialogHelpAndGlossary,
+            DialogInfirmary,
+            DialogInsufficientFans,
+            DialogItemsSelected,
+            DialogLog,
+            DialogMenu,
+            DialogMoodEffect,
+            DialogMyAgendas,
+            DialogNoRetries,
+            DialogNotices,
+            DialogOpenSoon,
+            DialogOptions,
+            DialogOverwrite,
+            DialogPerks,
+            DialogPlacing,
+            DialogPresents,
+            DialogPurchaseAlarmClock,
+            DialogPurchaseCarats,
+            DialogPurchaseDailyRaceTicket,
+            DialogRaceDetails,
+            DialogRacePlayback,
+            DialogRaceRecommendations,
+            DialogRecreation,
+            DialogRegistrationComplete,
+            DialogRequestFulfilled,
+            DialogRest,
+            DialogRestAndRecreation,
+            DialogRewardsCollected,
+            DialogRunners,
+            DialogScheduleRace,
+            DialogScheduleCancellation,
+            DialogScheduledRaceAvailable,
+            DialogScheduledRaces,
+            DialogScheduleSettings,
+            DialogSessionError,
+            DialogShop,
+            DialogSkillDetails,
+            DialogSkillListConfirmation,
+            DialogSkillListConfirmExit,
+            DialogSkillsLearned,
+            DialogSongAcquired,
+            DialogSparkDetails,
+            DialogSparks,
+            DialogSpecialMissions,
+            DialogStrategy,
+            DialogStoryUnlocked,
+            DialogTeamInfo,
+            DialogTrophyWon,
+            DialogTryAgain,
+            DialogUmamusumeClass,
+            DialogUmamusumeDetails,
+            DialogUnityCupAvailable,
+            DialogUnityCupConfirmation,
+            DialogUnlockRequirements,
             DialogUnmetRequirements,
-            DialogViewStory, // Main Screen, end of career
+            DialogViewStory,
         )
 
     /** Mapping of each [DialogInterface]'s name to the interface object. */
@@ -407,7 +407,10 @@ object DialogObjects {
 //      DIALOG OBJECTS
 // =========================
 
-/** This dialog also has an "Account Link" button, but we never want to allow the bot to click that, so we won't add it. */
+/** Title Screen.
+ *
+ * This dialog also has an "Account Link" button, but we never want to allow the bot to click that, so we won't add it.
+ */
 object DialogAccountLink : DialogInterface {
     override val name: String = "account_link"
     override val title: String = "Account Link"
@@ -419,7 +422,11 @@ object DialogAccountLink : DialogInterface {
         )
 }
 
-/** This dialog has two different OK buttons: ButtonEnter and ButtonOk. However since we never want to handle those buttons, we won't even add them in here. */
+/** Anywhere (ALWAYS THROW ERROR).
+ *
+ * This dialog has two different OK buttons: ButtonEnter and ButtonOk.
+ * However since we never want to handle those buttons, we won't even add them in here.
+ */
 object DialogAgeConfirmation : DialogInterface {
     override val name: String = "age_confirmation"
     override val title: String = "Age Confirmation"
@@ -431,6 +438,7 @@ object DialogAgeConfirmation : DialogInterface {
         )
 }
 
+/** Career */
 object DialogAgendaDetails : DialogInterface {
     override val name: String = "agenda_details"
     override val title: String = "Agenda Details"
@@ -442,6 +450,7 @@ object DialogAgendaDetails : DialogInterface {
         )
 }
 
+/** Career (Unity Cup) */
 object DialogAutoFill : DialogInterface {
     override val name: String = "auto_fill"
     override val title: String = "Auto-Fill"
@@ -454,6 +463,7 @@ object DialogAutoFill : DialogInterface {
         )
 }
 
+/** Career Selection */
 object DialogAutoSelect : DialogInterface {
     override val name: String = "auto_select"
     override val title: String = "Auto-Select"
@@ -467,6 +477,7 @@ object DialogAutoSelect : DialogInterface {
         )
 }
 
+/** Career (event only) */
 object DialogAllRewardsEarned : DialogInterface {
     override val name: String = "all_rewards_earned"
     override val title: String = "ALL REWARDS EARNED!"
@@ -478,6 +489,7 @@ object DialogAllRewardsEarned : DialogInterface {
         )
 }
 
+/** Career -> Career Profile dialog. */
 object DialogBonusUmamusumeDetails : DialogInterface {
     override val name: String = "bonus_umamusume_details"
     override val title: String = "Bonus Umamusume Details"
@@ -489,6 +501,7 @@ object DialogBonusUmamusumeDetails : DialogInterface {
         )
 }
 
+/** Career Selection */
 object DialogBorrowCard : DialogInterface {
     override val name: String = "borrow_card"
     override val title: String = "Borrow Card"
@@ -500,6 +513,7 @@ object DialogBorrowCard : DialogInterface {
         )
 }
 
+/** Career Selection */
 object DialogBorrowCardConfirmation : DialogInterface {
     override val name: String = "borrow_card_confirmation"
     override val title: String = "Confirmation"
@@ -512,6 +526,7 @@ object DialogBorrowCardConfirmation : DialogInterface {
         )
 }
 
+/** Career */
 object DialogCareer : DialogInterface {
     override val name: String = "career"
     override val title: String = "Career"
@@ -523,6 +538,7 @@ object DialogCareer : DialogInterface {
         )
 }
 
+/** Career */
 object DialogCareerComplete : DialogInterface {
     override val name: String = "career_complete"
     override val title: String = "Career Complete"
@@ -547,6 +563,7 @@ object DialogCareerComplete : DialogInterface {
     }
 }
 
+/** Career (training event effects). */
 object DialogChoices : DialogInterface {
     override val name: String = "choices"
     override val title: String = "Choices"
@@ -558,6 +575,7 @@ object DialogChoices : DialogInterface {
         )
 }
 
+/** Career (yes this is different from above...). */
 object DialogCompleteCareer : DialogInterface {
     override val name: String = "complete_career"
     override val title: String = "Complete Career"
@@ -570,6 +588,7 @@ object DialogCompleteCareer : DialogInterface {
         )
 }
 
+/** Career */
 object DialogConcertSkipConfirmation : DialogInterface {
     override val name: String = "concert_skip_confirmation"
     override val title: String = "Confirmation"
@@ -583,6 +602,7 @@ object DialogConcertSkipConfirmation : DialogInterface {
         )
 }
 
+/** Career Selection */
 object DialogConfirmAutoSelect : DialogInterface {
     override val name: String = "confirm_auto_select"
     override val title: String = "Confirm Auto-Select"
@@ -596,6 +616,7 @@ object DialogConfirmAutoSelect : DialogInterface {
         )
 }
 
+/** Main Screen */
 object DialogConfirmExchange : DialogInterface {
     override val name: String = "confirm_exchange"
     override val title: String = "Confirm Exchange"
@@ -607,6 +628,7 @@ object DialogConfirmExchange : DialogInterface {
         )
 }
 
+/** Career (Trackblazer) */
 object DialogConfirmUse : DialogInterface {
     override val name: String = "confirm_use"
     override val title: String = "Confirm Use"
@@ -619,6 +641,7 @@ object DialogConfirmUse : DialogInterface {
         )
 }
 
+/** Anywhere */
 object DialogConnectionError : DialogInterface {
     override val name: String = "connection_error"
     override val title: String = "Connection Error"
@@ -642,6 +665,7 @@ object DialogConnectionError : DialogInterface {
     }
 }
 
+/** Career */
 object DialogConsecutiveRaceWarning : DialogInterface {
     override val name: String = "consecutive_race_warning"
     override val title: String = "Warning"
@@ -654,6 +678,7 @@ object DialogConsecutiveRaceWarning : DialogInterface {
         )
 }
 
+/** Main Screen */
 object DialogContinueCareer : DialogInterface {
     override val name: String = "continue_career"
     override val title: String = "Continue Career"
@@ -666,6 +691,7 @@ object DialogContinueCareer : DialogInterface {
         )
 }
 
+/** Team Trials */
 object DialogConfirmRestoreRP : DialogInterface {
     override val name: String = "confirm_restore_rp"
     override val title: String = "Confirm"
@@ -678,6 +704,7 @@ object DialogConfirmRestoreRP : DialogInterface {
         )
 }
 
+/** Team Trials, Special Events, Daily Races. */
 object DialogDailySale : DialogInterface {
     override val name: String = "daily_sale"
     override val title: String = "Daily Sale"
@@ -690,6 +717,7 @@ object DialogDailySale : DialogInterface {
         )
 }
 
+/** Anywhere */
 object DialogDateChanged : DialogInterface {
     override val name: String = "date_changed"
     override val title: String = "Date Changed"
@@ -701,6 +729,7 @@ object DialogDateChanged : DialogInterface {
         )
 }
 
+/** Anywhere */
 object DialogDisplaySettings : DialogInterface {
     override val name: String = "display_settings"
     override val title: String = "Display Settings"
@@ -713,6 +742,7 @@ object DialogDisplaySettings : DialogInterface {
         )
 }
 
+/** Title Screen (only?) */
 object DialogDownloadError : DialogInterface {
     override val name: String = "download_error"
     override val title: String = "Download Error"
@@ -725,6 +755,7 @@ object DialogDownloadError : DialogInterface {
         )
 }
 
+/** Career End */
 object DialogEpithet : DialogInterface {
     override val name: String = "epithet"
     override val title: String = "Epithet"
@@ -738,6 +769,8 @@ object DialogEpithet : DialogInterface {
 }
 
 // This is the dialog opened from the Epithets button in DialogMenu.
+
+/** Career DialogMenu -> Epithets button. */
 object DialogEpithets : DialogInterface {
     override val name: String = "epithets"
     override val title: String = "Epithets"
@@ -749,6 +782,7 @@ object DialogEpithets : DialogInterface {
         )
 }
 
+/** Career (Trackblazer) */
 object DialogExchangeComplete : DialogInterface {
     override val name: String = "exchange_complete"
     override val title: String = "Exchange Complete"
@@ -761,6 +795,7 @@ object DialogExchangeComplete : DialogInterface {
         )
 }
 
+/** Main Screen */
 object DialogExternalLink : DialogInterface {
     override val name: String = "external_link"
     override val title: String = "External Link"
@@ -773,6 +808,7 @@ object DialogExternalLink : DialogInterface {
         )
 }
 
+/** Career DialogGoals */
 object DialogFans : DialogInterface {
     override val name: String = "fans"
     override val title: String = "Fans"
@@ -784,6 +820,7 @@ object DialogFans : DialogInterface {
         )
 }
 
+/** Career */
 object DialogFeaturedCards : DialogInterface {
     override val name: String = "featured_cards"
     override val title: String = "Featured Cards"
@@ -795,6 +832,7 @@ object DialogFeaturedCards : DialogInterface {
         )
 }
 
+/** Career Selection */
 object DialogFinalConfirmation : DialogInterface {
     override val name: String = "final_confirmation"
     override val title: String = "Final Confirmation"
@@ -807,6 +845,7 @@ object DialogFinalConfirmation : DialogInterface {
         )
 }
 
+/** Career */
 object DialogFollowTrainer : DialogInterface {
     override val name: String = "follow_trainer"
     override val title: String = "Follow Trainer"
@@ -819,6 +858,7 @@ object DialogFollowTrainer : DialogInterface {
         )
 }
 
+/** Career */
 object DialogGiveUp : DialogInterface {
     override val name: String = "give_up"
     override val title: String = "Give Up"
@@ -831,6 +871,7 @@ object DialogGiveUp : DialogInterface {
         )
 }
 
+/** Career */
 object DialogGoalNotReached : DialogInterface {
     override val name: String = "goal_not_reached"
     override val title: String = "Goal Not Reached"
@@ -843,6 +884,7 @@ object DialogGoalNotReached : DialogInterface {
         )
 }
 
+/** Career */
 object DialogGoals : DialogInterface {
     override val name: String = "goals"
     override val title: String = "Goals"
@@ -854,6 +896,7 @@ object DialogGoals : DialogInterface {
         )
 }
 
+/** Anywhere (from options dialog). */
 object DialogHelpAndGlossary : DialogInterface {
     override val name: String = "help_and_glossary"
     override val title: String = "Help & Glossary"
@@ -865,6 +908,7 @@ object DialogHelpAndGlossary : DialogInterface {
         )
 }
 
+/** Career */
 object DialogInfirmary : DialogInterface {
     override val name: String = "infirmary"
     override val title: String = "Infirmary"
@@ -878,6 +922,7 @@ object DialogInfirmary : DialogInterface {
         )
 }
 
+/** Career */
 object DialogInsufficientFans : DialogInterface {
     override val name: String = "insufficient_fans"
     override val title: String = "Insufficient Fans"
@@ -890,6 +935,7 @@ object DialogInsufficientFans : DialogInterface {
         )
 }
 
+/** Team Trials, Special Events, Daily Races. */
 object DialogItemsSelected : DialogInterface {
     override val name: String = "items_selected"
     override val title: String = "Items Selected"
@@ -902,6 +948,7 @@ object DialogItemsSelected : DialogInterface {
         )
 }
 
+/** Career */
 object DialogLog : DialogInterface {
     override val name: String = "log"
     override val title: String = "Log"
@@ -913,6 +960,7 @@ object DialogLog : DialogInterface {
         )
 }
 
+/** Career */
 object DialogMenu : DialogInterface {
     override val name: String = "menu"
     override val title: String = "Menu"
@@ -927,6 +975,7 @@ object DialogMenu : DialogInterface {
         )
 }
 
+/** Career */
 object DialogMoodEffect : DialogInterface {
     override val name: String = "mood_effect"
     override val title: String = "Mood Effect"
@@ -938,6 +987,7 @@ object DialogMoodEffect : DialogInterface {
         )
 }
 
+/** Career */
 object DialogMyAgendas : DialogInterface {
     override val name: String = "my_agendas"
     override val title: String = "My Agendas"
@@ -949,6 +999,7 @@ object DialogMyAgendas : DialogInterface {
         )
 }
 
+/** Career */
 object DialogNoRetries : DialogInterface {
     override val name: String = "no_retries"
     override val title: String = "No Retries"
@@ -960,6 +1011,7 @@ object DialogNoRetries : DialogInterface {
         )
 }
 
+/** Main Screen */
 object DialogNotices : DialogInterface {
     override val name: String = "notices"
     override val title: String = "Notices"
@@ -971,6 +1023,7 @@ object DialogNotices : DialogInterface {
         )
 }
 
+/** Shop (only when clicking inactive daily sales button). */
 object DialogOpenSoon : DialogInterface {
     override val name: String = "open_soon"
     override val title: String = "Open Soon!"
@@ -982,6 +1035,7 @@ object DialogOpenSoon : DialogInterface {
         )
 }
 
+/** Card details */
 object DialogCareerEventDetails : DialogInterface {
     override val name: String = "career_event_details"
     override val title: String = "Career Event Details"
@@ -993,6 +1047,7 @@ object DialogCareerEventDetails : DialogInterface {
         )
 }
 
+/** Career */
 object DialogCareerProfile : DialogInterface {
     override val name: String = "career_profile"
     override val title: String = "Career Profile"
@@ -1004,6 +1059,7 @@ object DialogCareerProfile : DialogInterface {
         )
 }
 
+/** Anywhere */
 object DialogOptions : DialogInterface {
     override val name: String = "options"
     override val title: String = "Options"
@@ -1016,6 +1072,7 @@ object DialogOptions : DialogInterface {
         )
 }
 
+/** Career -> Agenda */
 object DialogOverwrite : DialogInterface {
     override val name: String = "overwrite"
     override val title: String = "Overwrite"
@@ -1028,6 +1085,7 @@ object DialogOverwrite : DialogInterface {
         )
 }
 
+/** Career -> Career Profile dialog. */
 object DialogPerks : DialogInterface {
     override val name: String = "perks"
     override val title: String = "Perks"
@@ -1039,6 +1097,7 @@ object DialogPerks : DialogInterface {
         )
 }
 
+/** Career -> DialogTryAgain */
 object DialogPlacing : DialogInterface {
     override val name: String = "placing"
     override val title: String = "Placing"
@@ -1050,6 +1109,7 @@ object DialogPlacing : DialogInterface {
         )
 }
 
+/** Main Screen (I think?). */
 object DialogPresents : DialogInterface {
     override val name: String = "presents"
     override val title: String = "Presents"
@@ -1063,6 +1123,8 @@ object DialogPresents : DialogInterface {
 }
 
 /**
+ * Career.
+ *
  * If the player has 0 carats, then this dialog shows a "Purchase Carats" button instead of ButtonOk. We don't even want to humor this as an option, so that button will not be added.
  *
  * The other, less scary option is it will have a ButtonOk button which will attempt to buy a clock using carats. Again, we don't want to even give the bot a chance to do this, so we just won't even
@@ -1079,6 +1141,7 @@ object DialogPurchaseAlarmClock : DialogInterface {
         )
 }
 
+/** Anywhere (ALWAYS THROW ERROR). */
 object DialogPurchaseCarats : DialogInterface {
     override val name: String = "purchase_carats"
     override val title: String = "Purchase Carats"
@@ -1090,6 +1153,7 @@ object DialogPurchaseCarats : DialogInterface {
         )
 }
 
+/** Daily Races */
 object DialogPurchaseDailyRaceTicket : DialogInterface {
     override val name: String = "purchase_daily_race_ticket"
     override val title: String = "Purchase Daily Race Ticket"
@@ -1102,6 +1166,7 @@ object DialogPurchaseDailyRaceTicket : DialogInterface {
         )
 }
 
+/** Daily Races, Special Events, and Career. */
 object DialogRaceDetails : DialogInterface {
     override val name: String = "race_details"
     override val title: String = "Race Details"
@@ -1131,6 +1196,7 @@ object DialogRaceDetails : DialogInterface {
     }
 }
 
+/** Career */
 object DialogRacePlayback : DialogInterface {
     override val name: String = "race_playback"
     override val title: String = "Race Playback"
@@ -1146,6 +1212,7 @@ object DialogRacePlayback : DialogInterface {
         )
 }
 
+/** Career */
 object DialogRaceRecommendations : DialogInterface {
     override val name: String = "race_recommendations"
     override val title: String = "Race Recommendations"
@@ -1161,6 +1228,7 @@ object DialogRaceRecommendations : DialogInterface {
         )
 }
 
+/** Career */
 object DialogRecreation : DialogInterface {
     override val name: String = "recreation"
     override val title: String = "Recreation"
@@ -1174,6 +1242,7 @@ object DialogRecreation : DialogInterface {
         )
 }
 
+/** Anywhere */
 object DialogRegistrationComplete : DialogInterface {
     override val name: String = "registration_complete"
     override val title: String = "Registration Complete"
@@ -1185,6 +1254,7 @@ object DialogRegistrationComplete : DialogInterface {
         )
 }
 
+/** Transfer Requests */
 object DialogRequestFulfilled : DialogInterface {
     override val name: String = "request_fulfilled"
     override val title: String = "REQUEST FULFILLED"
@@ -1196,6 +1266,7 @@ object DialogRequestFulfilled : DialogInterface {
         )
 }
 
+/** Career */
 object DialogRest : DialogInterface {
     override val name: String = "rest"
     override val title: String = "Rest"
@@ -1209,6 +1280,7 @@ object DialogRest : DialogInterface {
         )
 }
 
+/** Career */
 object DialogRestAndRecreation : DialogInterface {
     // This one doesn't have a checkbox to not ask again for some reason.
     override val name: String = "rest_and_recreation"
@@ -1222,6 +1294,7 @@ object DialogRestAndRecreation : DialogInterface {
         )
 }
 
+/** Main Screen, Special Events. */
 object DialogRewardsCollected : DialogInterface {
     override val name: String = "rewards_collected"
     override val title: String = "Rewards Collected"
@@ -1233,6 +1306,7 @@ object DialogRewardsCollected : DialogInterface {
         )
 }
 
+/** Career -> Race screens. */
 object DialogRunners : DialogInterface {
     override val name: String = "runners"
     override val title: String = "Runners"
@@ -1244,6 +1318,7 @@ object DialogRunners : DialogInterface {
         )
 }
 
+/** Career -> Agenda */
 object DialogScheduleRace : DialogInterface {
     override val name: String = "schedule_race"
     override val title: String = "Schedule Race"
@@ -1255,6 +1330,7 @@ object DialogScheduleRace : DialogInterface {
         )
 }
 
+/** Career -> Agenda */
 object DialogScheduleCancellation : DialogInterface {
     override val name: String = "schedule_cancellation"
     override val title: String = "Schedule Cancellation"
@@ -1266,6 +1342,7 @@ object DialogScheduleCancellation : DialogInterface {
         )
 }
 
+/** Career */
 object DialogScheduledRaceAvailable : DialogInterface {
     override val name: String = "scheduled_race_available"
     override val title: String = "Scheduled Race Available"
@@ -1278,6 +1355,7 @@ object DialogScheduledRaceAvailable : DialogInterface {
         )
 }
 
+/** Career */
 object DialogScheduledRaces : DialogInterface {
     override val name: String = "scheduled_races"
     override val title: String = "Scheduled Races"
@@ -1289,6 +1367,7 @@ object DialogScheduledRaces : DialogInterface {
         )
 }
 
+/** Career */
 object DialogScheduleSettings : DialogInterface {
     override val name: String = "schedule_settings"
     override val title: String = "Schedule Settings"
@@ -1301,6 +1380,7 @@ object DialogScheduleSettings : DialogInterface {
         )
 }
 
+/** Anywhere */
 object DialogSessionError : DialogInterface {
     override val name: String = "session_error"
     override val title: String = "Session Error"
@@ -1312,6 +1392,7 @@ object DialogSessionError : DialogInterface {
         )
 }
 
+/** Career (Trackblazer) */
 object DialogShop : DialogInterface {
     override val name: String = "shop"
     override val title: String = "Shop"
@@ -1324,6 +1405,7 @@ object DialogShop : DialogInterface {
         )
 }
 
+/** Anywhere */
 object DialogSkillDetails : DialogInterface {
     override val name: String = "skill_details"
     override val title: String = "Skill Details"
@@ -1335,6 +1417,7 @@ object DialogSkillDetails : DialogInterface {
         )
 }
 
+/** Career */
 object DialogSkillListConfirmation : DialogInterface {
     override val name: String = "skill_list_confirmation"
     override val title: String = "Confirmation"
@@ -1347,6 +1430,7 @@ object DialogSkillListConfirmation : DialogInterface {
         )
 }
 
+/** Career */
 object DialogSkillListConfirmExit : DialogInterface {
     override val name: String = "skill_list_confirm_exit"
     override val title: String = "Confirm"
@@ -1359,6 +1443,7 @@ object DialogSkillListConfirmExit : DialogInterface {
         )
 }
 
+/** Career */
 object DialogSkillsLearned : DialogInterface {
     override val name: String = "skills_learned"
     override val title: String = "Skills Learned"
@@ -1370,6 +1455,7 @@ object DialogSkillsLearned : DialogInterface {
         )
 }
 
+/** Career */
 object DialogSongAcquired : DialogInterface {
     override val name: String = "song_acquired"
     override val title: String = "Song Acquired"
@@ -1381,6 +1467,7 @@ object DialogSongAcquired : DialogInterface {
         )
 }
 
+/** Career (legacy uma details). */
 object DialogSparkDetails : DialogInterface {
     override val name: String = "spark_details"
     override val title: String = "Spark Details"
@@ -1392,6 +1479,7 @@ object DialogSparkDetails : DialogInterface {
         )
 }
 
+/** Career -> Career Profile dialog. */
 object DialogSparks : DialogInterface {
     override val name: String = "sparks"
     override val title: String = "Sparks"
@@ -1403,6 +1491,7 @@ object DialogSparks : DialogInterface {
         )
 }
 
+/** Main Screen, Special Events. */
 object DialogSpecialMissions : DialogInterface {
     override val name: String = "special_missions"
     override val title: String = "Special Missions"
@@ -1415,6 +1504,7 @@ object DialogSpecialMissions : DialogInterface {
         )
 }
 
+/** Race Screen */
 object DialogStrategy : DialogInterface {
     override val name: String = "strategy"
     override val title: String = "Strategy"
@@ -1431,6 +1521,7 @@ object DialogStrategy : DialogInterface {
         )
 }
 
+/** Main Screen, end of career. */
 object DialogStoryUnlocked : DialogInterface {
     override val name: String = "story_unlocked"
     override val title: String = "Story Unlocked"
@@ -1442,6 +1533,7 @@ object DialogStoryUnlocked : DialogInterface {
         )
 }
 
+/** Career (Unity Cup) */
 object DialogTeamInfo : DialogInterface {
     override val name: String = "team_info"
     override val title: String = "Team Info"
@@ -1454,6 +1546,7 @@ object DialogTeamInfo : DialogInterface {
         )
 }
 
+/** Career */
 object DialogTrophyWon : DialogInterface {
     override val name: String = "trophy_won"
     override val title: String = "TROPHY WON!"
@@ -1465,6 +1558,7 @@ object DialogTrophyWon : DialogInterface {
         )
 }
 
+/** Career */
 object DialogTryAgain : DialogInterface {
     override val name: String = "try_again"
     override val title: String = "Try Again"
@@ -1477,6 +1571,7 @@ object DialogTryAgain : DialogInterface {
         )
 }
 
+/** Career */
 object DialogUmamusumeClass : DialogInterface {
     override val name: String = "umamusume_class"
     override val title: String = "Umamusume Class"
@@ -1488,6 +1583,7 @@ object DialogUmamusumeClass : DialogInterface {
         )
 }
 
+/** Career */
 object DialogUmamusumeDetails : DialogInterface {
     override val name: String = "umamusume_details"
     override val title: String = "Umamusume Details"
@@ -1499,6 +1595,7 @@ object DialogUmamusumeDetails : DialogInterface {
         )
 }
 
+/** Career (Unity Cup) */
 object DialogUnityCupAvailable : DialogInterface {
     override val name: String = "unity_cup_available"
     override val title: String = "Unity Cup Available"
@@ -1510,6 +1607,7 @@ object DialogUnityCupAvailable : DialogInterface {
         )
 }
 
+/** Career (Unity Cup) */
 object DialogUnityCupConfirmation : DialogInterface {
     override val name: String = "unity_cup_confirmation"
     override val title: String = "Confirmation"
@@ -1522,6 +1620,7 @@ object DialogUnityCupConfirmation : DialogInterface {
         )
 }
 
+/** Race Screen */
 object DialogUnlockRequirements : DialogInterface {
     override val name: String = "unlock_requirements"
     override val title: String = "Unlock Requirements"
@@ -1545,6 +1644,7 @@ object DialogUnmetRequirements : DialogInterface {
         )
 }
 
+/** Main Screen, end of career. */
 object DialogViewStory : DialogInterface {
     override val name: String = "view_story"
     override val title: String = "View Story"
