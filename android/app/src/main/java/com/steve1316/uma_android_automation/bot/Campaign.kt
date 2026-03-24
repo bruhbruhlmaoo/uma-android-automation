@@ -546,6 +546,14 @@ abstract class Campaign(game: Game) : Task(game) {
                 }
             }
 
+            "insufficient_goal_race_result_pts" -> {
+                MessageLog.i(TAG, "[RACE] Insufficient Goal Race Result Pts dialog! Forced to race...")
+                racing.hasInsufficientGoalRacePtsRequirement = true
+                result.dialog.ok(game.imageUtils)
+                // This dialog requires a little extra delay since it loads the race list instead of just closing the dialog.
+                game.wait(1.0, skipWaitingForLoading = true)
+            }
+
             "goal_not_reached" -> {
                 // We are handling the logic for when to race on our own. Thus, we just close this warning.
                 racing.encounteredRacingPopup = true
