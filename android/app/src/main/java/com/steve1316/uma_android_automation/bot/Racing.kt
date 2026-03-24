@@ -149,6 +149,9 @@ class Racing(private val game: Game, private val campaign: Campaign) {
     /** Indicates that a G3 or above requirement has been detected. */
     var hasG3OrAboveRequirement = false
 
+    /** Indicates that an insufficient goal race result pts requirement has been detected. */
+    var hasInsufficientGoalRacePtsRequirement = false
+
     /** Tracks the specific day to race based on opportunity cost analysis. */
     private var nextSmartRaceDay: Int? = null
 
@@ -356,6 +359,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         hasTrophyRequirement = false
         hasPreOpOrAboveRequirement = false
         hasG3OrAboveRequirement = false
+        hasInsufficientGoalRacePtsRequirement = false
     }
 
     /**
@@ -832,9 +836,9 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         val turnsRemaining = game.imageUtils.determineTurnsRemainingBeforeNextGoal()
         MessageLog.i(TAG, "[RACE] Current remaining number of days before the next mandatory race: $turnsRemaining.")
 
-        // If the setting to force racing extra races is enabled, always return true.
-        if (enableForceRacing) {
-            Log.d(TAG, "[DEBUG] checkEligibilityToStartExtraRacingProcess:: Force racing is enabled so eligibility to start extra races will be true.")
+        // If the setting to force racing extra races is enabled or we have a specific requirement, always return true.
+        if (enableForceRacing || hasFanRequirement || hasTrophyRequirement || hasInsufficientGoalRacePtsRequirement) {
+            Log.d(TAG, "[DEBUG] checkEligibilityToStartExtraRacingProcess:: Force racing or requirement is active so eligibility will be true.")
             return true
         }
 
@@ -2527,7 +2531,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             // Check for mandatory racing plan mode before any screen detection.
             // Bypass this check if a fan or trophy requirement is active.
             val (_, mandatoryExtraRaceData) =
-                if (hasFanRequirement || hasTrophyRequirement) {
+                if (hasFanRequirement || hasTrophyRequirement || hasInsufficientGoalRacePtsRequirement) {
                     Pair(null, null)
                 } else {
                     findMandatoryExtraRaceForCurrentTurn()
@@ -2551,7 +2555,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             }
 
             // Check for the consecutive race dialog before proceeding.
-            val overrideIgnore: Boolean = enableForceRacing || enableMandatoryRacingPlan
+            val overrideIgnore: Boolean = enableForceRacing || enableMandatoryRacingPlan || hasInsufficientGoalRacePtsRequirement
             val result: DialogHandlerResult = campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to overrideIgnore))
             if (result is DialogHandlerResult.Handled &&
                 result.dialog.name == "consecutive_race_warning" &&
@@ -2573,9 +2577,9 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
             val maxCount = LabelRaceSelectionFans.findAll(game.imageUtils).size
             if (maxCount == 0) {
-                // If there is a fan/trophy requirement but no races available, reset the flags and proceed with training to advance the day.
-                if (hasFanRequirement || hasTrophyRequirement) {
-                    MessageLog.i(TAG, "[RACE] Fan/trophy requirement detected but no extra races available. Clearing requirement flags and proceeding with training to advance the day.")
+                // If there is a fan/trophy/goal pts requirement but no races available, reset the flags and proceed with training to advance the day.
+                if (hasFanRequirement || hasTrophyRequirement || hasInsufficientGoalRacePtsRequirement) {
+                    MessageLog.i(TAG, "[RACE] Requirement detected but no extra races available. Clearing requirement flags and proceeding with training to advance the day.")
                 } else {
                     MessageLog.e(TAG, "[ERROR] handleExtraRace:: Was unable to find any extra races to select. Canceling the racing process and doing something else.")
                 }
@@ -2588,6 +2592,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             }
 
             if (hasFanRequirement) MessageLog.i(TAG, "[RACE] Fan requirement criteria detected. This race must be completed to meet the requirement.")
+            if (hasInsufficientGoalRacePtsRequirement) MessageLog.i(TAG, "[RACE] Goal race result pts requirement criteria detected. This race must be completed to meet the requirement.")
             if (hasTrophyRequirement) {
                 when {
                     hasPreOpOrAboveRequirement -> {
@@ -2606,8 +2611,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
             // Determine whether to use smart racing with user-selected races or standard racing.
             val useSmartRacing =
-                if (hasFanRequirement) {
-                    // If fan requirement is needed, force standard racing to ensure the race proceeds.
+                if (hasFanRequirement || hasInsufficientGoalRacePtsRequirement) {
+                    // If fan or goal pts requirement is needed, force standard racing to ensure the race proceeds and picks double stars.
                     false
                 } else if (hasTrophyRequirement) {
                     // Trophy requirement can use smart racing as it filters to G1 races internally.
@@ -2991,10 +2996,10 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Detect double-star races on screen.
         var doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
 
-        // If no double predictions found and fans/Pre-OP/G3 requirement is active and is after Junior Year, scroll to find them.
-        if (doublePredictionLocations.isEmpty() && campaign.date.year != DateYear.JUNIOR && (hasFanRequirement || hasPreOpOrAboveRequirement || hasG3OrAboveRequirement)) {
+        // If no double predictions found and fans/Pre-OP/G3/GoalPts requirement is active and is after Junior Year, scroll to find them.
+        if (doublePredictionLocations.isEmpty() && campaign.date.year != DateYear.JUNIOR && (hasFanRequirement || hasPreOpOrAboveRequirement || hasG3OrAboveRequirement || hasInsufficientGoalRacePtsRequirement)) {
             val maxScrollAttempts = 5
-            MessageLog.i(TAG, "[RACE] No double-star predictions found on initial screen. Scrolling to find races to satisfy fans/pre-op requirement...")
+            MessageLog.i(TAG, "[RACE] No double-star predictions found on initial screen. Scrolling to find races to satisfy requirements...")
 
             for (scrollAttempt in 1..maxScrollAttempts) {
                 MessageLog.i(TAG, "[RACE] Scrolling down (attempt $scrollAttempt/$maxScrollAttempts)...")
@@ -3141,7 +3146,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                     filteredRaces.indexOfFirst { it.isRival && it.fans == maxRivalFans }
                 }
             } else {
-                if (!enableForceRacing) {
+                if (!enableForceRacing && !hasInsufficientGoalRacePtsRequirement) {
                     filteredRaces.indexOfFirst { it.fans == maxFans }
                 } else {
                     filteredRaces.indexOfFirst { it.hasDoublePredictions }.takeIf { it != -1 } ?: filteredRaces.indexOfFirst { it.fans == maxFans }

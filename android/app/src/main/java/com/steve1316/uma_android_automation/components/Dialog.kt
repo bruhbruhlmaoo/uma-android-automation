@@ -344,6 +344,7 @@ object DialogObjects {
             DialogHelpAndGlossary,
             DialogInfirmary,
             DialogInsufficientFans,
+            DialogInsufficientGoalRaceResultPts,
             DialogItemsSelected,
             DialogLog,
             DialogMenu,
@@ -927,6 +928,19 @@ object DialogInsufficientFans : DialogInterface {
     override val name: String = "insufficient_fans"
     override val title: String = "Insufficient Fans"
     override val closeButton = null
+    override val okButton: BaseComponentInterface = ButtonRace
+    override val buttons: List<BaseComponentInterface> =
+        listOf(
+            ButtonCancel,
+            ButtonRace,
+        )
+}
+
+/** Career (Trackblazer) */
+object DialogInsufficientGoalRaceResultPts : DialogInterface {
+    override val name: String = "insufficient_goal_race_result_pts"
+    override val title: String = "Insufficient Goal Race Result Pts"
+    override val closeButton: BaseComponentInterface = ButtonCancel
     override val okButton: BaseComponentInterface = ButtonRace
     override val buttons: List<BaseComponentInterface> =
         listOf(
