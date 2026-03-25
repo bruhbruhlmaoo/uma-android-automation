@@ -1,17 +1,143 @@
-[
-    {
-        "value": "URA Finale",
-        "label": "URA Finale",
-        "disabled": false
+{
+    "URA Finale": {
+        "Exhilarating! What a Scoop!": [
+            "Stamina +10\nEtsuko Otonashi bond +5",
+            "Guts +10\nEtsuko Otonashi bond +5"
+        ],
+        "A Trainer's Knowledge": [
+            "Power +10\nEtsuko Otonashi bond +5",
+            "Speed +10\nEtsuko Otonashi bond +5"
+        ],
+        "Best Foot Forward!": [
+            "Randomly either\n----------\nEnergy -10\nPower +20\nGuts +20\nBeeline Burst hint +1\n----------\n\n----------\nMood -1",
+            "Randomly either\n----------\nEnergy +30\nStamina +20\nBreath of Fresh Air hint +1\n----------\n\n----------\nMood -1"
+        ]
     },
-    {
-        "value": "Unity Cup",
-        "label": "Unity Cup",
-        "disabled": false
-    },
-    {
-        "value": "Trackblazer",
-        "label": "Trackblazer",
-        "disabled": false
+    "Unity Cup": {},
+    "Trackblazer": {
+        "Ordinary? Or Full Throttle?!": [
+            "Stamina +6\nGuts +6",
+            "Fighter hint +1"
+        ],
+        "All on the Line": [
+            "Stamina +6\nWit +6",
+            "Triple 7s hint +1"
+        ],
+        "Pondering over Perennials": [
+            "Speed +6\nPower +6",
+            "Standing By hint +1"
+        ],
+        "Living Alone": [
+            "Power +6\nGuts +6",
+            "Ramp Up hint +1"
+        ],
+        "A Grandkid Get-Together": [
+            "Stamina +6\nWit +6",
+            "Prepared to Pass hint +1"
+        ],
+        "Agnes Digital Explodes": [
+            "Mood +1",
+            "Uma Stan hint +1"
+        ],
+        "The Inescapable Ardan": [
+            "Speed +6\nGuts +6",
+            "Front Runner Straightaways ○ hint +1"
+        ],
+        "Tamamo's Struggle at the Arcade": [
+            "Guts +6\nWit +6",
+            "Unyielding Spirit hint +1"
+        ],
+        "The Strongest, Mightiest Cinderella!": [
+            "Mood +1",
+            "Prudent Positioning hint +1"
+        ],
+        "A Trip to the Victory Club!": [
+            "Stamina +6\nWit +6",
+            "Sprint Straightaways ○ hint +1"
+        ],
+        "Golshi Games: Who Is the Werewolf?!": [
+            "Power +6\nWit +6",
+            "Studious hint +1"
+        ],
+        "The Exciting Fruit Fest": [
+            "Stamina +6\nPower +6",
+            "Front Runner Straightaways ○ hint +1"
+        ],
+        "Taiki and Pearl's Language Exchange": [
+            "Speed +6\nWit +6",
+            "Sympathy hint +1"
+        ],
+        "Brian Gets Jealous?": [
+            "All stats +4",
+            "Steadfast hint +1"
+        ],
+        "Vega and Spica": [
+            "Speed +6\nWit +6",
+            "Fast-Paced hint +1"
+        ],
+        "The Little Marvelous Match Girl": [
+            "Energy +10",
+            "Hydrate hint +1"
+        ],
+        "Expressing My Feelings to Maruzen": [
+            "Skill points +24",
+            "Shifting Gears hint +1"
+        ],
+        "Worldwide Windy": [
+            "Speed +6\nGuts +6",
+            "Masterful Gambit hint +1"
+        ],
+        "Keeping It Cute!": [
+            "Stamina +6\nPower +6",
+            "Trick (Front) hint +1"
+        ],
+        "Mission: Big Surprise!": [
+            "Mood +1",
+            "Trick (Front) hint +1"
+        ],
+        "What's Wrong with Golshi?!": [
+            "Speed +6\nPower +6",
+            "Disorient hint +1"
+        ],
+        "The Perfect Combo": [
+            "Power +6\nGuts +6",
+            "Sprinting Gear hint +1"
+        ],
+        "Idle Committee Banter": [
+            "Speed +6\nPower +6",
+            "Passing Pro hint +1"
+        ],
+        "A Family (?) Shopping Trip!": [
+            "Skill points +24",
+            "Deep Breaths hint +1"
+        ],
+        "An Unusual Addition": [
+            "Power +6\nWit +6",
+            "Pace Strategy hint +1"
+        ],
+        "Under the Same Umbrella": [
+            "Speed +6\nGuts +6",
+            "Rainy Days ○ hint +1"
+        ],
+        "Hungry for Affection": [
+            "Speed +6\nWit +6",
+            "Murmur hint +1"
+        ],
+        "Fear the Fearless": [
+            "Stamina +6\nGuts +6",
+            "Levelheaded hint +1"
+        ],
+        "Leave It to the Great Detective!": [
+            "Speed +6\nStamina +6",
+            "Nimble Navigator hint +1"
+        ],
+        "Gullible Socialites": [
+            "Guts +6\nWit +6",
+            "Go with the Flow hint +1"
+        ],
+        "I Wanna Join the Discussion!": [
+            "Stamina +6\nGuts +6",
+            "Shake It Out hint +1"
+        ]
     }
-]
+}
