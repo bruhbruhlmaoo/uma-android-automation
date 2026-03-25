@@ -108,6 +108,9 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Threshold for energy level to use energy items. */
     private var energyThresholdToUseEnergyItems: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerEnergyThreshold", 40)
 
+    /** Whether the Reset Whistle forces training. */
+    private val whistleForcesTraining: Boolean = SettingsHelper.getBooleanSetting("scenarioOverrides", "trackblazerWhistleForcesTraining", true)
+
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // Debug Tests
@@ -956,7 +959,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         // Re-analyze after shuffle.
                         MessageLog.i(TAG, "[TRACKBLAZER] Re-analyzing trainings after Reset Whistle.")
                         training.analyzeTrainings()
-                        trainingSelected = training.recommendTraining()
+                        trainingSelected = training.recommendTraining(forceSelection = whistleForcesTraining)
 
                         // Perform another consolidated item usage pass if needed after shuffle.
                         useItems(trainee, trainingSelected)

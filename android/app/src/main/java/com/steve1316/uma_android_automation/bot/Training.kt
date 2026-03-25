@@ -47,7 +47,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
     internal var trainingMap: MutableMap<StatName, TrainingOption> = mutableMapOf()
 
     /** Map to store training options that were skipped. */
-    private var skippedTrainingMap: MutableMap<StatName, TrainingOption> = mutableMapOf()
+    internal var skippedTrainingMap: MutableMap<StatName, TrainingOption> = mutableMapOf()
 
     /** List of training names that are restricted or unavailable. */
     private val restrictedTrainingNames: MutableSet<StatName> = mutableSetOf()
@@ -1578,9 +1578,10 @@ class Training(private val game: Game, private val campaign: Campaign) {
      * 2. **Early Game Rule**: Focuses on relationship building during the Pre-Debut and Junior Year.
      * 3. **Mid/Late Game Rule**: Uses ratio-based stat efficiency scoring for Year 2 and beyond.
      *
+     * @param forceSelection If true, the best training option will be selected even if it exceeds the failure chance threshold.
      * @return The name of the recommended training option, or null if no suitable option is found.
      */
-    fun recommendTraining(): StatName? {
+    fun recommendTraining(forceSelection: Boolean = false): StatName? {
         // Build skillHintsPerLocation from the training map.
         val skillHintsPerLocation: Map<StatName, Int> = StatName.entries.associateWith { trainingMap[it]?.numSkillHints ?: 0 }
 
@@ -1631,7 +1632,11 @@ class Training(private val game: Game, private val campaign: Campaign) {
         // Build and log training analysis results and selection reasoning.
         logSelectionReasoning(trainingConfig, scoringMode, trainingScores, skippedScores, best)
 
-        return best?.name ?: trainingMap.keys.firstOrNull { it !in blacklist }
+        return best?.name ?: if (forceSelection) {
+            skippedScores.maxByOrNull { it.value }?.key?.name ?: trainingMap.keys.firstOrNull { it !in blacklist }
+        } else {
+            trainingMap.keys.firstOrNull { it !in blacklist }
+        }
     }
 
     /**
