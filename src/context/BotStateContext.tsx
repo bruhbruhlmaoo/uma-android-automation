@@ -194,6 +194,7 @@ export interface Settings {
         trackblazerShopCheckGrades: string[]
         trackblazerMinStatGainForCharm: number
         trackblazerMaxRetriesPerRace: number
+        trackblazerWhistleForcesTraining: boolean
     }
 }
 
@@ -403,6 +404,7 @@ export const defaultSettings: Settings = {
         trackblazerShopCheckGrades: ["G1", "G2", "G3"],
         trackblazerMinStatGainForCharm: 30,
         trackblazerMaxRetriesPerRace: 1,
+        trackblazerWhistleForcesTraining: true,
     },
 }
 

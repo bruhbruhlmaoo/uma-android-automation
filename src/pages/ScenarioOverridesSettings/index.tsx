@@ -4,6 +4,7 @@ import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext } from "../../context/BotStateContext"
 import { SearchPageProvider } from "../../context/SearchPageContext"
 import CustomSlider from "../../components/CustomSlider"
+import CustomCheckbox from "../../components/CustomCheckbox"
 import CustomTitle from "../../components/CustomTitle"
 import PageHeader from "../../components/PageHeader"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
@@ -131,6 +132,16 @@ const ScenarioOverridesSettings = () => {
                                 showValue={true}
                                 showLabels={true}
                                 description="The minimum expected gain for the main training stat required to use a Good-Luck Charm instead of skipping training."
+                            />
+                        </View>
+
+                        <View style={styles.section}>
+                            <CustomCheckbox
+                                searchId="trackblazer-whistle-forces-training"
+                                checked={scenarioOverrides.trackblazerWhistleForcesTraining}
+                                onCheckedChange={(checked) => updateOverrideSetting("trackblazerWhistleForcesTraining", checked)}
+                                label="Reset Whistle Forces Training"
+                                description="Whether or not using a Reset Whistle means it can ignore the failure chance thresholds in the Training Settings page. If enabled, the bot will pick the best available training after usage even if it's risky."
                             />
                         </View>
 

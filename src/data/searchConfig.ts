@@ -539,6 +539,13 @@ const searchConfig: SearchOption[] = [
         description: "Sets the maximum number of retries allowed for a single race in the Trackblazer scenario.",
         page: "ScenarioOverridesSettings",
     },
+    {
+        id: "trackblazer-whistle-forces-training",
+        title: "Trackblazer Reset Whistle Forces Training",
+        description:
+            "Whether or not using a Reset Whistle means it can ignore the failure chance thresholds in the Training Settings page. If enabled, the bot will pick the best available training after usage even if it's risky.",
+        page: "ScenarioOverridesSettings",
+    },
 
     // ============================================================
     // Debug Settings

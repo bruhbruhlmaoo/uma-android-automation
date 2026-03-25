@@ -269,6 +269,11 @@ const MessageLog = () => {
                 ? "No Support Event Overrides"
                 : `${Object.keys(settings.trainingEvent.supportEventOverrides).length} Support Event Override(s) applied`
         }
+🎭 Scenario Event Overrides: ${
+            Object.keys(settings.trainingEvent.scenarioEventOverrides).length === 0
+                ? "No Scenario Event Overrides"
+                : `${Object.keys(settings.trainingEvent.scenarioEventOverrides).length} Scenario Event Override(s) applied`
+        }
 🔋 Prioritize Energy Options: ${settings.trainingEvent.enablePrioritizeEnergyOptions ? "✅" : "❌"}
 
 ---------- Training Options ----------
@@ -355,6 +360,7 @@ ${longTargetsString}
 🛍️ Trackblazer Shop Check Grades: ${settings.scenarioOverrides?.trackblazerShopCheckGrades?.join(", ")}
 ✨ Trackblazer Min Stat Gain for Charm: ${settings.scenarioOverrides?.trackblazerMinStatGainForCharm}
 🔄 Trackblazer Max Retries per Race: ${settings.scenarioOverrides?.trackblazerMaxRetriesPerRace}
+🔄 Trackblazer Whistle Forces Training: ${settings.scenarioOverrides?.trackblazerWhistleForcesTraining ? "✅" : "❌"}
 
 ---------- Misc Options ----------
 🔍 Popup Check: ${settings.general.enablePopupCheck ? "✅" : "❌"}
