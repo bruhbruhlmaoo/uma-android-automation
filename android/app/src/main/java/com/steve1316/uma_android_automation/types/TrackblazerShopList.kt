@@ -400,9 +400,10 @@ class TrackblazerShopList(private val game: Game) {
      * @param itemNames The names of the items to use.
      * @param bUseAll If true, attempt to use all items in the list. If false, stop after the first successful usage.
      * @param scannedItems Optional list of pre-scanned items to use instead of performing a new scan.
+     * @param reason Optional reason for using the items.
      * @return A list of names for the items that were used.
      */
-    fun useSpecificItems(itemNames: List<String>, bUseAll: Boolean = false, scannedItems: List<ScannedItem>? = null): List<String> {
+    fun useSpecificItems(itemNames: List<String>, bUseAll: Boolean = false, scannedItems: List<ScannedItem>? = null, reason: String? = null): List<String> {
         val successfullyUsedNames = mutableListOf<String>()
         if (itemNames.isEmpty()) return successfullyUsedNames
 
@@ -428,7 +429,12 @@ class TrackblazerShopList(private val game: Game) {
                             tempScanned.removeAt(itemIndex)
 
                             // Exit early if we only wanted to use one item.
-                            if (!bUseAll) return successfullyUsedNames
+                            if (!bUseAll) {
+                                if (successfullyUsedNames.isNotEmpty()) {
+                                    MessageLog.i(TAG, "[INFO] Successfully queued ${successfullyUsedNames.size} item(s) for usage.")
+                                }
+                                return successfullyUsedNames
+                            }
                         } else {
                             break
                         }
@@ -436,6 +442,9 @@ class TrackblazerShopList(private val game: Game) {
                         break
                     }
                 }
+            }
+            if (successfullyUsedNames.isNotEmpty()) {
+                MessageLog.i(TAG, "[INFO] Successfully queued ${successfullyUsedNames.size} item(s) for usage.")
             }
             return successfullyUsedNames
         }
@@ -471,6 +480,9 @@ class TrackblazerShopList(private val game: Game) {
             false
         }
 
+        if (successfullyUsedNames.isNotEmpty()) {
+            MessageLog.i(TAG, "[INFO] Successfully queued ${successfullyUsedNames.size} item(s) for usage.")
+        }
         return successfullyUsedNames
     }
 
@@ -483,7 +495,7 @@ class TrackblazerShopList(private val game: Game) {
     fun useBestMegaphone(scannedItems: List<ScannedItem>? = null): String? {
         // Define the Megaphone priority from strongest to weakest.
         val megaphonePriority = listOf("Empowering Megaphone", "Motivating Megaphone", "Coaching Megaphone")
-        val used = useSpecificItems(megaphonePriority, bUseAll = false, scannedItems = scannedItems)
+        val used = useSpecificItems(megaphonePriority, bUseAll = false, scannedItems = scannedItems, reason = "Best available megaphone for current turn.")
         return used.firstOrNull()
     }
 
@@ -504,7 +516,7 @@ class TrackblazerShopList(private val game: Game) {
                 StatName.GUTS -> "Guts Ankle Weights"
                 else -> return false
             }
-        return useSpecificItems(listOf(itemName), scannedItems = scannedItems).isNotEmpty()
+        return useSpecificItems(listOf(itemName), scannedItems = scannedItems, reason = "Boosting $stat training gains.").isNotEmpty()
     }
 
     /**
@@ -559,7 +571,7 @@ class TrackblazerShopList(private val game: Game) {
      * @return True if the charm was queued.
      */
     fun useGoodLuckCharm(scannedItems: List<ScannedItem>? = null): Boolean {
-        return useSpecificItems(listOf("Good-Luck Charm"), scannedItems = scannedItems).isNotEmpty()
+        return useSpecificItems(listOf("Good-Luck Charm"), scannedItems = scannedItems, reason = "Setting training failure chance to 0%.").isNotEmpty()
     }
 
     /**
