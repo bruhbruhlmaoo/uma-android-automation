@@ -706,6 +706,13 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Update current coins via OCR before buying.
         updateShopCoins()
 
+        // If the shop coins are 0, it is possible that the OCR failed to read them correctly.
+        // In this case, we will initiate a "Force Purchase" process to attempt to buy items until we can't anymore.
+        val bForcePurchase = shopCoins == 0
+        if (bForcePurchase) {
+            MessageLog.i(TAG, "[TRACKBLAZER] Shop coins read as 0. This may be an OCR failure. Initiating Force Purchase mode.")
+        }
+
         // Buy items from the shop.
         // Rule: Each item is limited to 5 in the inventory.
         // Bad Condition items except Rich Hand Cream and Miracle Cure will be limited to 1 in our current inventory.
@@ -723,11 +730,11 @@ class Trackblazer(game: Game) : Campaign(game) {
             printCurrentInventory()
         } else if (bDryRun) {
             MessageLog.i(TAG, "[TEST] Dry Run: Identified items that would be bought: ${filteredPriorityList.joinToString(", ")}")
-            shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bDryRun = true)
+            shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bDryRun = true, bForcePurchase = bForcePurchase)
             return
         }
 
-        val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits)
+        val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bForcePurchase = bForcePurchase)
         if (itemsBought.isNotEmpty()) {
             // Update internal inventory.
             val nextInventory = currentInventory.toMutableMap()

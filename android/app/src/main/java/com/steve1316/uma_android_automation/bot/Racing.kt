@@ -2997,7 +2997,10 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         var doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
 
         // If no double predictions found and fans/Pre-OP/G3/GoalPts requirement is active and is after Junior Year, scroll to find them.
-        if (doublePredictionLocations.isEmpty() && campaign.date.year != DateYear.JUNIOR && (hasFanRequirement || hasPreOpOrAboveRequirement || hasG3OrAboveRequirement || hasInsufficientGoalRacePtsRequirement)) {
+        if (doublePredictionLocations.isEmpty() &&
+            campaign.date.year != DateYear.JUNIOR &&
+            (hasFanRequirement || hasPreOpOrAboveRequirement || hasG3OrAboveRequirement || hasInsufficientGoalRacePtsRequirement)
+        ) {
             val maxScrollAttempts = 5
             MessageLog.i(TAG, "[RACE] No double-star predictions found on initial screen. Scrolling to find races to satisfy requirements...")
 

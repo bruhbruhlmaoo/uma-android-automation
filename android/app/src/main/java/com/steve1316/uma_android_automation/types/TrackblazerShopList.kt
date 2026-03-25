@@ -645,9 +645,10 @@ class TrackblazerShopList(private val game: Game) {
      * @param currentCoins The current amount of Shop Coins available.
      * @param inventoryLimits A map of item names to the maximum amount that can be bought for each.
      * @param bDryRun If true, only logs intentions without performing any clicks.
+     * @param bForcePurchase If true, the bot will attempt to buy items even if [currentCoins] is 0, stopping once it hits a disabled item.
      * @return A list of successfully purchased items.
      */
-    fun buyItems(priorityList: List<String>, currentCoins: Int, inventoryLimits: Map<String, Int>, bDryRun: Boolean = false): List<String> {
+    fun buyItems(priorityList: List<String>, currentCoins: Int, inventoryLimits: Map<String, Int>, bDryRun: Boolean = false, bForcePurchase: Boolean = false): List<String> {
         if (priorityList.isEmpty()) {
             MessageLog.i(TAG, "[INFO] Priority shopping list is empty. No items to buy.")
             return emptyList()
@@ -688,7 +689,10 @@ class TrackblazerShopList(private val game: Game) {
         // Determine which items from the priority list are available and affordable.
         val itemsToBuy = mutableListOf<Triple<String, Int, ScrollListEntry>>()
         val skippedItemsReasons = mutableMapOf<String, String>()
-        var remainingCoinsAfterProposed = currentCoins
+
+        // If in Force Purchase mode and current coins is 0, we assume OCR failure and proceed with a high sacrificial value for calculation.
+        val effectiveCoins = if (bForcePurchase && currentCoins == 0) 9999 else currentCoins
+        var remainingCoinsAfterProposed = effectiveCoins
 
         val tempAvailable = availableInShop.toMutableList()
         for (item in priorityList) {
@@ -724,6 +728,9 @@ class TrackblazerShopList(private val game: Game) {
         if (availableInShop.isNotEmpty()) {
             MessageLog.v(TAG, "Identified ${availableInShop.size} items in shop.")
         }
+        if (bForcePurchase) {
+            MessageLog.v(TAG, "Force purchase mode enabled. Temporarily setting Shop Coin balance to 9999.")
+        }
 
         if (itemsToBuy.isEmpty()) {
             MessageLog.v(TAG, "No items from the filtered priority list will be bought. Current coins: $currentCoins.")
@@ -745,8 +752,8 @@ class TrackblazerShopList(private val game: Game) {
         for (boughtItem in itemsToBuy) {
             MessageLog.v(TAG, "\t${boughtItem.first}: ${boughtItem.second} coins")
         }
-        val totalCost = currentCoins - remainingCoinsAfterProposed
-        MessageLog.v(TAG, "\n\tTOTAL: $totalCost / $currentCoins coins with $remainingCoinsAfterProposed left over coins")
+        val totalCost = effectiveCoins - remainingCoinsAfterProposed
+        MessageLog.v(TAG, "\n\tTOTAL: $totalCost / $effectiveCoins coins with $remainingCoinsAfterProposed left over coins")
         MessageLog.v(TAG, "==========================================")
 
         if (bDryRun) {
@@ -770,6 +777,12 @@ class TrackblazerShopList(private val game: Game) {
             val itemName = itemNameMapInPurchase[entry.index] ?: getShopItemName(entry, isDisabled)
 
             if (itemName != null) {
+                // In Force Purchase mode, we stop if we encounter a disabled button, as it means we are out of coins.
+                if (bForcePurchase && isDisabled) {
+                    MessageLog.i(TAG, "[INFO] Force Purchase: Encountered disabled item \"$itemName\". Stopping purchasing.")
+                    return@processItemsWithFallback true
+                }
+
                 // Find the first matching item in our purchase list.
                 val targetIndex = itemsRemainingToClick.indexOfFirst { it.first == itemName }
                 if (targetIndex != -1) {

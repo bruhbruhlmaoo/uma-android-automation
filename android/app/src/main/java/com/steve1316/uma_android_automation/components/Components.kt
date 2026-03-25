@@ -187,11 +187,12 @@ interface ComponentInterface : BaseComponentInterface {
     override fun findImageWithBitmap(imageUtils: CustomImageUtils, sourceBitmap: Bitmap, region: IntArray?, confidence: Double?): Point? {
         // If we are searching within a cropped bitmap (like an entry bitmap), we should default to searching the entire bitmap
         // if no specific region is provided. This prevents out-of-bounds errors from default regions intended for full-screen use.
-        val searchRegion = if (region == null && (sourceBitmap.width != SharedData.displayWidth || sourceBitmap.height != SharedData.displayHeight)) {
-            intArrayOf(0, 0, 0, 0)
-        } else {
-            region ?: template.region
-        }
+        val searchRegion =
+            if (region == null && (sourceBitmap.width != SharedData.displayWidth || sourceBitmap.height != SharedData.displayHeight)) {
+                intArrayOf(0, 0, 0, 0)
+            } else {
+                region ?: template.region
+            }
 
         return imageUtils.findImageWithBitmap(
             templateName = template.path,
@@ -216,11 +217,12 @@ interface ComponentInterface : BaseComponentInterface {
 
         // If we are searching within a cropped bitmap (like an entry bitmap), we should default to searching the entire bitmap
         // if no specific region is provided.
-        val searchRegion = if (region == null && (bitmap.width != SharedData.displayWidth || bitmap.height != SharedData.displayHeight)) {
-            intArrayOf(0, 0, 0, 0)
-        } else {
-            region ?: template.region
-        }
+        val searchRegion =
+            if (region == null && (bitmap.width != SharedData.displayWidth || bitmap.height != SharedData.displayHeight)) {
+                intArrayOf(0, 0, 0, 0)
+            } else {
+                region ?: template.region
+            }
 
         val points: ArrayList<Point> =
             imageUtils.findAllWithBitmap(
@@ -388,11 +390,12 @@ interface ComplexComponentInterface : BaseComponentInterface {
     }
 
     override fun findImageWithBitmap(imageUtils: CustomImageUtils, sourceBitmap: Bitmap, region: IntArray?, confidence: Double?): Point? {
-        val searchRegion = if (region == null && (sourceBitmap.width != SharedData.displayWidth || sourceBitmap.height != SharedData.displayHeight)) {
-            intArrayOf(0, 0, 0, 0)
-        } else {
-            region
-        }
+        val searchRegion =
+            if (region == null && (sourceBitmap.width != SharedData.displayWidth || sourceBitmap.height != SharedData.displayHeight)) {
+                intArrayOf(0, 0, 0, 0)
+            } else {
+                region
+            }
 
         for (template in templates) {
             val result: Point? =
