@@ -430,8 +430,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                         game.wait(1.0)
                     }
                     return DialogHandlerResult.Handled(detectedDialog)
-                } else if (racing.lastRaceGrade == RaceGrade.G1 && racing.raceRetries >= 0) {
-                    MessageLog.i(TAG, "[TRACKBLAZER] G1 race retry button is available. Retrying.")
+                } else if (racing.lastRaceGrade != null && racing.trackblazerRetryGrades.contains(racing.lastRaceGrade) && racing.raceRetries >= 0) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] ${racing.lastRaceGrade} race retry button is available. Retrying.")
                     racing.raceRetries--
                     if (detectedDialog.ok(game.imageUtils)) {
                         game.wait(1.0)

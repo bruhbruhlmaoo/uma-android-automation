@@ -197,6 +197,24 @@ class Racing(private val game: Game, private val campaign: Campaign) {
     /** The maximum number of retries allowed per race. */
     private val maxRetriesPerRace = if (game.scenario == "Trackblazer") SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerMaxRetriesPerRace", 1) else 1
 
+    /** The list of race grades that are eligible for retries in Trackblazer. */
+    internal val trackblazerRetryGrades: List<RaceGrade> =
+        try {
+            val gradesString = SettingsHelper.getStringSetting("scenarioOverrides", "trackblazerRetryRacesBeforeFinalGrades", "[\"G1\",\"G2\",\"G3\"]")
+            val jsonArray = JSONArray(gradesString)
+            val grades = mutableListOf<RaceGrade>()
+            for (i in 0 until jsonArray.length()) {
+                val gradeName = jsonArray.getString(i)
+                val grade = RaceGrade.fromName(gradeName)
+                if (grade != null) {
+                    grades.add(grade)
+                }
+            }
+            grades
+        } catch (e: Exception) {
+            listOf(RaceGrade.G1, RaceGrade.G2, RaceGrade.G3)
+        }
+
     /**
      * Stores comprehensive information about a specific race.
      *
@@ -1255,9 +1273,14 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                     campaign.onRaceWin()
                     game.wait(1.0)
 
-                    // After closing the popup, check if we can retry a G1 race.
-                    if (lastRaceGrade == RaceGrade.G1 && raceRetries > 0 && retriesThisRace < maxRetriesPerRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils) == false) {
-                        MessageLog.i(TAG, "[TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
+                    // After closing the popup, check if we can retry a specific race grade.
+                    if (lastRaceGrade != null &&
+                        trackblazerRetryGrades.contains(lastRaceGrade) &&
+                        raceRetries > 0 &&
+                        retriesThisRace < maxRetriesPerRace &&
+                        ButtonTryAgainAlt.checkDisabled(game.imageUtils) == false
+                    ) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] $lastRaceGrade race detected and retry button is available. Retrying...")
                         if (ButtonTryAgainAlt.click(game.imageUtils)) {
                             game.wait(3.0)
                             retriesThisRace++
@@ -1273,20 +1296,21 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                             raceRetries--
                         }
                     } else {
-                        MessageLog.i(TAG, "[TRACKBLAZER] No retries remaining or G1/Rival race conditions not met.")
+                        MessageLog.i(TAG, "[TRACKBLAZER] No retries remaining or G1/G2/G3/Rival race conditions not met.")
                     }
                 }
 
                 game.scenario == "Trackblazer" &&
-                    lastRaceGrade == RaceGrade.G1 &&
+                    lastRaceGrade != null &&
+                    trackblazerRetryGrades.contains(lastRaceGrade) &&
                     raceRetries > 0 &&
                     retriesThisRace < maxRetriesPerRace &&
                     ButtonTryAgainAlt.checkDisabled(
                         game.imageUtils,
                         sourceBitmap = bitmap,
                     ) == false -> {
-                    // Check if we can retry a G1 race even if no popup appeared.
-                    MessageLog.i(TAG, "[TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
+                    // Check if we can retry a specific race grade even if no popup appeared.
+                    MessageLog.i(TAG, "[TRACKBLAZER] $lastRaceGrade race detected and retry button is available. Retrying...")
                     if (ButtonTryAgainAlt.click(game.imageUtils, sourceBitmap = bitmap)) {
                         game.wait(3.0)
                         retriesThisRace++
