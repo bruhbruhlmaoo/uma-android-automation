@@ -105,6 +105,15 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Flag to track when a shop check should be performed after a race. */
     private var bShouldCheckShop: Boolean = false
 
+    /** Mapping of energy-restoring items to their gain values. */
+    private val energyGains =
+        mapOf(
+            "Royal Kale Juice" to 100,
+            "Vita 65" to 65,
+            "Vita 40" to 40,
+            "Vita 20" to 20,
+        )
+
     /** Threshold for energy level to use energy items. */
     private var energyThresholdToUseEnergyItems: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerEnergyThreshold", 40)
 
@@ -656,7 +665,7 @@ class Trackblazer(game: Game) : Campaign(game) {
      */
     fun updateShopCoins(): Int {
         MessageLog.i(TAG, "[TRACKBLAZER] Updating current amount of Shop Coins...")
-        game.wait(3.0)
+        game.wait(2.0)
         val (trainingItemsButtonLocation, sourceBitmap) = ButtonTrainingItems.find(game.imageUtils)
         if (trainingItemsButtonLocation == null) {
             MessageLog.e(TAG, "[ERROR] updateShopCoins:: Failed to find Training Items button.")
@@ -1206,6 +1215,9 @@ class Trackblazer(game: Game) : Campaign(game) {
                             if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing quick-use item: \"$itemName\".", nextInventory, reason = reason)) {
                                 itemsUsedCount++
                                 itemsUsedWithReasons.add(itemName to reason)
+                                if (itemName == "Energy Drink MAX") {
+                                    trainee?.energy = (trainee?.energy ?: 100) + 5
+                                }
                             }
                         } else if (trainee != null) {
                             // Handle Energy, Mood, Ankle Weights, Charm, Megaphones, etc.
@@ -1427,11 +1439,10 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
         }
 
-        // Energy Items Check (Only one per pass).
+        // Energy Items Check.
         if (trainee.energy <= energyThresholdToUseEnergyItems && shopList.energyItemNames.contains(itemName)) {
-            val gainMap = mapOf("Vita 65" to 65, "Vita 40" to 40, "Vita 20" to 20)
-            val gain = gainMap[itemName] ?: 0
-            if (trainee.energy + gain <= 100) {
+            if (isBestEnergyItemToUse(trainee, itemName, nextInventory, remainingItemsOfInterest)) {
+                val gain = energyGains[itemName] ?: 0
                 val reason = "Restored energy (current: ${trainee.energy}%) because it fell below the $energyThresholdToUseEnergyItems% threshold."
                 if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for use (Energy: ${trainee.energy}%, Gain: +$gain).", nextInventory, reason = reason)) {
                     trainee.energy += gain
@@ -1443,14 +1454,8 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Royal Kale Juice Check.
         if (itemName == "Royal Kale Juice") {
             val hasMoodItems = nextInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
-            val shouldUse =
-                if (trainee.energy <= 20) {
-                    true
-                } else if (trainee.energy <= energyThresholdToUseEnergyItems) {
-                    hasMoodItems || trainee.mood == Mood.AWFUL
-                } else {
-                    false
-                }
+            val moodConditionMet = trainee.energy <= 20 || hasMoodItems || trainee.mood == Mood.AWFUL
+            val shouldUse = isBestEnergyItemToUse(trainee, itemName, nextInventory, remainingItemsOfInterest) && moodConditionMet
 
             if (shouldUse) {
                 val oldEnergy = trainee.energy
@@ -1628,5 +1633,67 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
         summary.append("\n===============================================")
         MessageLog.v(TAG, summary.toString())
+    }
+
+    /**
+     * Determines if using the current energy item is part of the best possible combination of available energy items.
+     * This follows a greedy approach to maximize energy gain while staying at or below 100%.
+     *
+     * @param trainee The trainee's current state.
+     * @param itemName The name of the item being considered.
+     * @param nextInventory The current inventory counts reflecting changes in this pass.
+     * @param remainingItemsOfInterest The set of items we still expect to encounter in the current pass.
+     * @return True if this item should be used, false otherwise.
+     */
+    private fun isBestEnergyItemToUse(trainee: Trainee, itemName: String, nextInventory: Map<String, Int>, remainingItemsOfInterest: Set<String>): Boolean {
+        val currentGain = energyGains[itemName] ?: return false
+        val currentEnergy = trainee.energy
+
+        val hasMoodItems = nextInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
+        val isKaleJuiceUsable = currentEnergy <= 20 || hasMoodItems || trainee.mood == Mood.AWFUL
+
+        // Royal Kale Juice "Last Resort" logic: If energy is very low, we prioritize Kale Juice over everything.
+        // It gives 100, so any other energy item used first would be wasted.
+        if (currentEnergy <= 20 && isKaleJuiceUsable) {
+            val hasKaleJuice =
+                (itemName == "Royal Kale Juice") ||
+                    (nextInventory["Royal Kale Juice"] ?: 0) > 0 ||
+                    (remainingItemsOfInterest.contains("Royal Kale Juice") && !disabledItems.contains("Royal Kale Juice"))
+            if (hasKaleJuice) {
+                return itemName == "Royal Kale Juice"
+            }
+        }
+
+        // Collect all available energy items from this scan pass.
+        val availableEnergyItems = mutableListOf<Int>()
+        remainingItemsOfInterest.forEach { name ->
+            val gain = energyGains[name]
+            if (gain != null) {
+                // If this is Kale Juice, only include it if it's usable.
+                if (name == "Royal Kale Juice" && !isKaleJuiceUsable) return@forEach
+
+                val count = (nextInventory[name] ?: 0)
+                repeat(count) { availableEnergyItems.add(gain) }
+            }
+        }
+
+        // Current item (we know we have at least one because we are looking at it).
+        availableEnergyItems.add(currentGain)
+
+        // Sort gains descending for greedy selection.
+        availableEnergyItems.sortDescending()
+
+        // Find the combination that provides max gain <= (100 - currentEnergy).
+        var simulatedEnergy = currentEnergy
+        val pickedEnergyItems = mutableListOf<Int>()
+        for (gain in availableEnergyItems) {
+            if (simulatedEnergy + gain <= 100) {
+                simulatedEnergy += gain
+                pickedEnergyItems.add(gain)
+            }
+        }
+
+        // If currentGain was one of the picked items, use it.
+        return pickedEnergyItems.contains(currentGain)
     }
 }
