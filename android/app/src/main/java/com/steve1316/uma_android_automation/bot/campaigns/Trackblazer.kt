@@ -1406,29 +1406,28 @@ class Trackblazer(game: Game) : Campaign(game) {
         val sb = StringBuilder()
         sb.appendLine("\n========== Race Item Usage Reasoning ==========")
         sb.appendLine("Race: $grade ($fans fans)")
-        sb.appendLine("Inventory: ${itemsFound.joinToString(", ").ifEmpty { "None" }}")
-        sb.appendLine("")
+        sb.appendLine("Inventory: ${itemsFound.joinToString(", ").ifEmpty { "No Racing Items available" }}")
 
         if (hammerToUse != null) {
+            sb.appendLine("")
             sb.appendLine("- Using a $hammerToUse for $grade.")
-        } else {
-            if (grade == RaceGrade.G1) {
-                sb.appendLine("- No Hammers available for G1 race.")
-            } else if (grade == RaceGrade.G2 || grade == RaceGrade.G3) {
-                sb.appendLine("- No Artisan Cleat Hammer available for $grade.")
+
+            if (hammerToUse != "Master Cleat Hammer" && masterHammerCount > 0) {
+                sb.appendLine("- Master Cleat Hammer is only for G1.")
             }
         }
 
         if (useGlowSticks) {
+            sb.appendLine("")
             sb.appendLine("- Using Glow Sticks: Boosting fan gain for high-fan G1 race.")
-        } else if (grade == RaceGrade.G1 && glowSticksCount > 0) {
-            sb.appendLine("- Skipping Glow Sticks: Fan count $fans is below 20000 threshold.")
+        } else if (glowSticksCount > 0) {
+            sb.appendLine("")
+            sb.appendLine("- Glow Sticks are only for G1 with >20000 fans.")
         }
 
-        sb.appendLine("")
-
         if (hammerToUse == null && !useGlowSticks) {
-            sb.appendLine("- No items will be used.")
+            sb.appendLine("")
+            sb.appendLine("No items will be used.")
         }
 
         sb.appendLine("===============================================")
