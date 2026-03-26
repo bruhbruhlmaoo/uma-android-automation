@@ -347,9 +347,15 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
      * @param confidence The OCR matching confidence.
      */
     private fun printEventSummary(eventTitle: String, ownerName: String, eventRewards: ArrayList<String>, weights: List<Int>?, selectedOption: Int, confidence: Double) {
+        val sb = StringBuilder()
+        sb.appendLine("\n========== Training Event Summary ==========")
+
         val ownerInfo = if (ownerName.isNotEmpty()) " ($ownerName)" else ""
-        MessageLog.i(TAG, "[TRAINING_EVENT] Event: \"$eventTitle\"$ownerInfo [Confidence: ${game.decimalFormat.format(confidence)}]")
-        MessageLog.i(TAG, "[TRAINING_EVENT] Options:")
+        sb.appendLine("Event: \"$eventTitle\"$ownerInfo [Confidence: ${game.decimalFormat.format(confidence)}]")
+        sb.appendLine("Current Date: ${campaign.date}")
+        sb.appendLine("")
+
+        sb.appendLine("Options:")
 
         eventRewards.forEachIndexed { index, reward ->
             // Create a condensed reward summary by joining truncated lines.
@@ -363,10 +369,13 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
 
             val weightInfo = if (weights != null && index < weights.size) " [Weight: ${weights[index]}]" else ""
             val selectionMarker = if (index == selectedOption) " <---- SELECTED" else ""
-            MessageLog.i(TAG, "  Option ${index + 1}$weightInfo: $condensed$selectionMarker")
+            sb.appendLine("  Option ${index + 1}$weightInfo: $condensed$selectionMarker")
         }
 
-        MessageLog.i(TAG, "[TRAINING_EVENT] Selected: Option ${selectedOption + 1}")
+        sb.appendLine("")
+        sb.appendLine("Selected: Option ${selectedOption + 1}")
+        sb.appendLine("============================================")
+        MessageLog.v(TAG, sb.toString())
     }
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -498,7 +507,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                     val selectionWeight = List(eventRewards.size) { 0 }.toMutableList()
 
                     // Sum up the stat gains with additional weight applied to stats that are prioritized.
-                    eventRewards.forEach { reward ->
+                    eventRewards.forEachIndexed { rewardIndex, reward ->
                         val formattedReward: List<String> = reward.split("\n")
 
                         formattedReward.forEach { line ->
@@ -517,17 +526,13 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
 
                             var priorityStatCheck = false
                             if (line.lowercase().contains("can start dating")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of 100 to unlock recreation/dating for this support.")
-                                selectionWeight[optionSelected] += 100
+                                selectionWeight[rewardIndex] += 100
                             } else if (line.lowercase().contains("event chain ended")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of -200 for event chain ending.")
-                                selectionWeight[optionSelected] += -300
+                                selectionWeight[rewardIndex] += -300
                             } else if (line.lowercase().contains("(random)")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of -10 for random reward.")
-                                selectionWeight[optionSelected] += -10
+                                selectionWeight[rewardIndex] += -10
                             } else if (line.lowercase().contains("randomly")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of 50 for random options.")
-                                selectionWeight[optionSelected] += 50
+                                selectionWeight[rewardIndex] += 50
                             } else if (line.lowercase().contains("energy")) {
                                 val finalEnergyValue =
                                     try {
@@ -556,19 +561,19 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                     } catch (_: NumberFormatException) {
                                         20
                                     }
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalEnergyValue for energy.")
-                                selectionWeight[optionSelected] += finalEnergyValue
+                                selectionWeight[rewardIndex] += finalEnergyValue
                             } else if (line.lowercase().contains("mood")) {
                                 val moodWeight = if (formattedLine.contains("-")) -50 else 50
-                                MessageLog.i(TAG, "[TRAINING-EVENT] Adding weight for option#${optionSelected + 1} of $moodWeight for ${if (moodWeight > 0) "positive" else "negative"} mood gain.")
-                                selectionWeight[optionSelected] += moodWeight
+                                selectionWeight[rewardIndex] += moodWeight
                             } else if (line.lowercase().contains("bond")) {
                                 val bondWeight = if (formattedLine.contains("-")) -20 else 20
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $bondWeight for bond ${if (bondWeight > 0) "gain" else "loss"}.")
-                                selectionWeight[optionSelected] += bondWeight
+                                selectionWeight[rewardIndex] += bondWeight
                             } else if (line.lowercase().contains("hint")) {
+                                selectionWeight[rewardIndex] += 25
                             } else if (PositiveStatus.names.any { status -> line.contains(status) }) {
+                                selectionWeight[rewardIndex] += 25
                             } else if (NegativeStatus.names.any { status -> line.contains(status) }) {
+                                selectionWeight[rewardIndex] += -25
                             } else if (line.lowercase().contains("skill")) {
                                 val finalSkillPoints =
                                     if (formattedLine.contains("/")) {
@@ -586,8 +591,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                     } else {
                                         formattedLine.toInt()
                                     }
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalSkillPoints for skill points.")
-                                selectionWeight[optionSelected] += finalSkillPoints
+                                selectionWeight[rewardIndex] += finalSkillPoints
                             } else {
                                 // Apply inflated weights to the prioritized stats based on their order.
                                 campaign.training.statPrioritization.forEachIndexed { index, stat ->
@@ -624,8 +628,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                                 priorityStatCheck = false
                                                 10
                                             }
-                                        MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalStatValue for prioritized stat.")
-                                        selectionWeight[optionSelected] += finalStatValue
+                                        selectionWeight[rewardIndex] += finalStatValue
                                     }
                                 }
 
@@ -651,13 +654,10 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                         } catch (_: NumberFormatException) {
                                             10
                                         }
-                                    MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalStatValue for non-prioritized stat.")
-                                    selectionWeight[optionSelected] += finalStatValue
+                                    selectionWeight[rewardIndex] += finalStatValue
                                 }
                             }
                         }
-
-                        optionSelected++
                     }
 
                     // Select the best option that aligns with the stat prioritization made in the Training options.
