@@ -757,7 +757,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
                 }
             }
 
-        analyzeTrainings(singleTraining = true)
+        analyzeTrainings(mapOf("singleTraining" to true))
         val result = trainingMap[trainingName]
         if (result != null) {
             MessageLog.v(TAG, "[TEST] OCR Results for $trainingName: $result")
@@ -785,11 +785,17 @@ class Training(private val game: Game, private val campaign: Campaign) {
     /**
      * Analyze all available training options to determine their stat gains, relationship progress, and other details.
      *
-     * @param test Whether to force high failure chance trainings through for testing purposes.
-     * @param singleTraining Whether to analyze only the currently displayed training on the screen.
-     * @param ignoreFailureChance Whether to bypass the failure chance threshold check.
+     * @param args A map containing optional parameters:
+     *             - "test" (Boolean): Whether to force high failure chance trainings through for testing purposes.
+     *             - "singleTraining" (Boolean): Whether to analyze only the currently displayed training on the screen.
+     *             - "ignoreFailureChance" (Boolean): Whether to bypass the failure chance threshold check.
+     *             - "isIrregularEvaluation" (Boolean): Whether this analysis is for an irregular training evaluation.
      */
-    fun analyzeTrainings(test: Boolean = false, singleTraining: Boolean = false, ignoreFailureChance: Boolean = false) {
+    fun analyzeTrainings(args: Map<String, Any?> = emptyMap()) {
+        val test = args["test"] as? Boolean ?: false
+        val singleTraining = args["singleTraining"] as? Boolean ?: false
+        val ignoreFailureChance = args["ignoreFailureChance"] as? Boolean ?: false
+        val isIrregularEvaluation = args["isIrregularEvaluation"] as? Boolean ?: false
         if (singleTraining) {
             MessageLog.v(TAG, "\n[TRAINING] Now starting process to analyze the training on screen.")
         } else {
@@ -1352,6 +1358,30 @@ class Training(private val game: Game, private val campaign: Campaign) {
                         continue
                     }
 
+                    if (!test && isIrregularEvaluation) {
+                        val minIrregularGain = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerIrregularTrainingMinStatGain", 30)
+                        if (mainStatGain < minIrregularGain) {
+                            MessageLog.i(TAG, "[TRAINING] Skipping ${result.name} training due to irregular training threshold ($mainStatGain < $minIrregularGain).")
+
+                            // Store the skipped training for logging purposes.
+                            val skippedTraining =
+                                TrainingOption(
+                                    name = result.name,
+                                    statGains = result.statGains,
+                                    correctedStats = result.correctedStats,
+                                    failureChance = result.failureChance,
+                                    relationshipBars = result.relationshipBars,
+                                    numRainbow = result.numRainbow,
+                                    numSpiritGaugesCanFill = result.numSpiritGaugesCanFill,
+                                    numSpiritGaugesReadyToBurst = result.numSpiritGaugesReadyToBurst,
+                                    numSkillHints = result.numSkillHints,
+                                    skipReason = "low irregular gain",
+                                )
+                            skippedTrainingMap[result.name] = skippedTraining
+                            continue
+                        }
+                    }
+
                     val newTraining =
                         TrainingOption(
                             name = result.name,
@@ -1581,7 +1611,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
      * @param forceSelection If true, the best training option will be selected even if it exceeds the failure chance threshold.
      * @return The name of the recommended training option, or null if no suitable option is found.
      */
-    fun recommendTraining(forceSelection: Boolean = false): StatName? {
+    fun recommendTraining(forceSelection: Boolean = false, isIrregularEvaluation: Boolean = false): StatName? {
         // Build skillHintsPerLocation from the training map.
         val skillHintsPerLocation: Map<StatName, Int> = StatName.entries.associateWith { trainingMap[it]?.numSkillHints ?: 0 }
 
@@ -1630,7 +1660,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
         }
 
         // Build and log training analysis results and selection reasoning.
-        logSelectionReasoning(trainingConfig, scoringMode, trainingScores, skippedScores, best)
+        val finalScoringMode = if (isIrregularEvaluation) "Trackblazer (Irregular Training)" else scoringMode
+        logSelectionReasoning(trainingConfig, finalScoringMode, trainingScores, skippedScores, best)
 
         return best?.name ?: if (forceSelection) {
             skippedScores.maxByOrNull { it.value }?.key?.name ?: trainingMap.keys.firstOrNull { it !in blacklist }
@@ -1717,6 +1748,17 @@ class Training(private val game: Game, private val campaign: Campaign) {
                     val greenCount = selected.relationshipBars.count { it.dominantColor == "green" }
                     if (blueCount > 0 || greenCount > 0) {
                         keyFactors.add("Has $blueCount blue and $greenCount green relationship bar(s) to build.")
+                    }
+                }
+
+                "Trackblazer (Irregular Training)" -> {
+                    val mainGain = selected.statGains[selected.name] ?: 0
+                    val minIrregularGain = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerIrregularTrainingMinStatGain", 30)
+                    if (mainGain >= minIrregularGain) {
+                        keyFactors.add("Met irregular training main stat gain threshold ($mainGain >= $minIrregularGain).")
+                    }
+                    if (selected.numRainbow > 0) {
+                        keyFactors.add("Rainbow training detected (multiplier applied).")
                     }
                 }
 

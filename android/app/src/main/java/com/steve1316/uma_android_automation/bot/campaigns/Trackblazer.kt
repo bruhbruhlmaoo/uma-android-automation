@@ -28,6 +28,7 @@ import com.steve1316.uma_android_automation.components.IconGoalRibbon
 import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
 import com.steve1316.uma_android_automation.components.IconUnityCupTutorialHeader
+import com.steve1316.uma_android_automation.components.LabelScheduledRace
 import com.steve1316.uma_android_automation.types.DateMonth
 import com.steve1316.uma_android_automation.types.DatePhase
 import com.steve1316.uma_android_automation.types.DateYear
@@ -122,6 +123,9 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Whether a race hammer has been used this turn. */
     private var bUsedHammerToday: Boolean = false
 
+    /** Flag indicating that the bot decided to train instead of running extra races due to high stat gains. */
+    private var bIsIrregularTraining: Boolean = false
+
     /** Tracks whether the inventory has been synced at least once during this session. */
     private var bInventorySynced: Boolean = false
 
@@ -145,6 +149,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /** Whether the Reset Whistle forces training. */
     private val whistleForcesTraining: Boolean = SettingsHelper.getBooleanSetting("scenarioOverrides", "trackblazerWhistleForcesTraining", true)
+
+    /** Whether to enable Irregular Training in between races during Trackblazer. */
+    private val enableIrregularTraining: Boolean = SettingsHelper.getBooleanSetting("scenarioOverrides", "trackblazerEnableIrregularTraining", false)
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -588,6 +595,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         bUsedWhistleToday = false
         bUsedCharmToday = false
         bUsedHammerToday = false
+        bIsIrregularTraining = false
     }
 
     override fun onBeforeMainScreenUpdate() {
@@ -642,6 +650,38 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (date.bIsFinaleSeason && date.day >= 73) {
             MessageLog.i(TAG, "[TRACKBLAZER] It is the Finale. Prioritizing training.")
             return MainScreenAction.TRAIN
+        }
+
+        if (enableIrregularTraining && date.year > DateYear.JUNIOR) {
+            val isScheduledRace = LabelScheduledRace.check(game.imageUtils)
+            val isMandatoryRace = IconRaceDayRibbon.check(game.imageUtils) || IconGoalRibbon.check(game.imageUtils)
+
+            if (!isScheduledRace && !isMandatoryRace) {
+                MessageLog.i(TAG, "[TRACKBLAZER] Evaluating for Irregular Training...")
+
+                if (ButtonTraining.click(game.imageUtils)) {
+                    game.wait(game.dialogWaitDelay)
+
+                    val isIrregularEvaluation = true
+                    val hasCharm = !bUsedCharmToday && (currentInventory["Good-Luck Charm"] ?: 0) > 0
+                    training.analyzeTrainings(mapOf("ignoreFailureChance" to hasCharm, "isIrregularEvaluation" to isIrregularEvaluation))
+
+                    val bestTraining = training.recommendTraining(isIrregularEvaluation = isIrregularEvaluation)
+
+                    if (bestTraining != null) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Valid Irregular Training found ($bestTraining). Hijacking turn.")
+                        ButtonBack.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay)
+
+                        bIsIrregularTraining = true
+                        return MainScreenAction.TRAIN
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] No valid Irregular Training found. Backing out to resume racing logic.")
+                        ButtonBack.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay)
+                    }
+                }
+            }
         }
 
         // Otherwise, use base class decision logic.
@@ -1016,7 +1056,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Initial Training Analysis.
         val hasCharm = date.day >= 13 && !bUsedCharmToday && (currentInventory["Good-Luck Charm"] ?: 0) > 0
-        training.analyzeTrainings(ignoreFailureChance = hasCharm)
+        training.analyzeTrainings(mapOf("ignoreFailureChance" to hasCharm))
         var trainingSelected: StatName? = training.recommendTraining()
 
         // Finally, perform a consolidated item usage pass after the training is finalized.
@@ -1026,7 +1066,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Reset Whistle Check: Use if recommendations are poor.
         // We define "poor" as no training being selected or certain other conditions.
-        if (date.day >= 13 && !bUsedWhistleToday && trainingSelected == null) {
+        // Block whistling during irregular training evaluations.
+        if (date.day >= 13 && !bUsedWhistleToday && trainingSelected == null && !bIsIrregularTraining) {
             val hasWhistle = (currentInventory["Reset Whistle"] ?: 0) > 0 && !disabledItems.contains("Reset Whistle")
             if (hasWhistle) {
                 MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Using Reset Whistle.")
@@ -1066,6 +1107,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                 recoverEnergy()
             }
         }
+
+        bIsIrregularTraining = false
     }
 
     /**
