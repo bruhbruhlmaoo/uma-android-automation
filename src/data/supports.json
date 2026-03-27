@@ -1683,6 +1683,101 @@
             "Energy +14\nSpeed +18\nMood +1\nTazuna Hayakawa bond +5\nTail Held High hint +3"
         ]
     },
+    "Team Sirius": {
+        "I Shall Have the Last Laugh\nMejiro McQueen": [
+            "Maximum Energy +4\nStamina +11\nGuts +11\nWit +11\nRisky Business hint +2\nTeam Sirius bond +5"
+        ],
+        "The Secret to her Success\nRice Shower": [
+            "Energy +30\nSkill points +17\nTarget in Sight ○ hint +2\nTeam Sirius bond +5"
+        ],
+        "Common Threads, Dreams Entwined\nWinning Ticket": [
+            "Energy +12\nMood +1\nPower +17\nTeam Sirius bond +5"
+        ],
+        "It's Tough Being a Little Sister\nNarita Brian": [
+            "Speed +23\nSkill points +23\nTeam Sirius bond +5\nHeal Practice Poor"
+        ],
+        "The \"Scenery\" that Lies Beyond\nSilence Suzuka": [
+            "Energy -5\nSpeed +17\nPower +17\nSkill points +17\nTeam Sirius bond +5"
+        ],
+        "I Want to Share My Dream\nSpecial Week": [
+            "Energy +48\nTeam Sirius bond +5"
+        ],
+        "The Meaning of Support": [
+            "Energy +24\nSpeed +11\nStamina +11\nPower +11\nBest in Japan hint +1\nGet Pure Passion: Team Sirius status\nTeam Sirius bond +5"
+        ],
+        "Watch Where You're Going!": [
+            "Extra Tank hint +1\nTeam Sirius bond +5",
+            "Guts +17\nTeam Sirius bond +5"
+        ],
+        "So Many Options!": [
+            "Energy +12\nMood +1\nTeam Sirius bond +5",
+            "Energy -10\nStamina +17\nSkill points +17\nTeam Sirius bond +5"
+        ],
+        "On and On": [
+            "Speed +11\nStamina +5\nTeam Sirius bond +5",
+            "Speed +17\nTeam Sirius bond +5"
+        ],
+        "What Should I Do?": [
+            "Speed +5\nStamina +5\nWit +5\nTeam Sirius bond +5",
+            "Left-Handed ○ hint +1\nTeam Sirius bond +5"
+        ],
+        "To Maintain My Weight": [
+            "Energy -10\nStamina +17\nTeam Sirius bond +5",
+            "Maximum Energy +4\nStamina +5\nTeam Sirius bond +5"
+        ],
+        "To Reach the Greatest Heights": [
+            "Stamina +5\nGuts +5\nTeam Sirius bond +5",
+            "Early Lead hint +1\nTeam Sirius bond +5"
+        ],
+        "A Page of Flower Shop Assistance": [
+            "Mood +2\nTeam Sirius bond +5",
+            "Stamina +11\nTeam Sirius bond +5"
+        ],
+        "A Page About Cloudy Weather": [
+            "Speed +5\nGuts +5\nTeam Sirius bond +5",
+            "Firm Conditions ○ hint +1\nTeam Sirius bond +5"
+        ],
+        "Full-Power Muscles!": [
+            "Stamina +5\nSkill points +17\nTeam Sirius bond +5",
+            "Mood +1\nSkill points +17\nTeam Sirius bond +5"
+        ],
+        "Full-Power Racing!": [
+            "Late Surger Corners ○ hint +1\nTeam Sirius bond +5",
+            "Skill points +34\nTeam Sirius bond +5"
+        ],
+        "Student Council Member!": [
+            "Mood +1\nSpeed +5\nTeam Sirius bond +5",
+            "Maximum Energy +4\nTeam Sirius bond +5"
+        ],
+        "Lone Wolf": [
+            "Speed +3\nStamina +3\nPower +3\nTeam Sirius bond +5",
+            "Lone Wolf hint +1\nTeam Sirius bond +5"
+        ],
+        "We're All First Magnitude Stars\nDating starts": [
+            "Speed +6\nStamina +5\nPower +5\nGet Pure Passion: Team Sirius status\nTeam Sirius bond +5\nCan start dating"
+        ],
+        "Teamwork Makes the Dream Work!": [
+            "Energy +12\nTeam Sirius bond +5",
+            "Speed +11\nWit +5\nTeam Sirius bond +5"
+        ],
+        "Every One of Us has a Dream\nAfter first training": [
+            "Speed +6\nPower +6\nTeam Sirius bond +5"
+        ],
+        "A Second Serving of Training\nRandomly after training (repeatable)": [
+            "Stamina +4\n(random) Skill points +4\nTeam Sirius bond +5",
+            "Speed +4\n(random) Skill points +4\nTeam Sirius bond +5",
+            "(random) Energy +3\nSkill points +4\nTeam Sirius bond +5"
+        ],
+        "Beyond the Dream's Horizon\nAfter Finals (bond maxed)": [
+            "All stats +5\nSkill points +11"
+        ],
+        "Another Day, Another Step Towards Our Dream\nAfter Finals (bond not maxed)": [
+            "All stats +3\nSkill points +5"
+        ],
+        "The Luckiest Umamusume in Japan\nDating before the first New Year's": [
+            "Speed +8\nStamina +8\nPower +8\nCorner Recovery ○ hint +1\nTeam Sirius bond +5"
+        ]
+    },
     "Tokai Teio": {
         "My Way, Or...": [
             "Mood +1\nSkill points +15\nTokai Teio bond +5",
