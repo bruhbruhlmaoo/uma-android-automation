@@ -55,6 +55,10 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Representation of the item shop list along with the mapping of items to their price and effect. */
     private val shopList: TrackblazerShopList = TrackblazerShopList(game)
 
+    init {
+        shopList.getInventorySummaryCallback = { getInventorySummary() }
+    }
+
     /** Current number of coins available to spend in the shop. */
     var shopCoins: Int = 0
 
@@ -297,7 +301,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                 if (quickUseItemsOnly.isNotEmpty()) {
                     MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were purchased. Navigating and queuing for usage...")
                     val usedItems = shopList.useSpecificItems(quickUseItemsOnly, bUseAll = true, reason = "Quick-use after purchase.")
-                    usedItems.forEach { useInventoryItem(it) }
+                    usedItems.forEach { useInventoryItem(it.first) }
 
                     // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
                     if (detectedDialog.ok(game.imageUtils)) {
@@ -805,7 +809,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         val filteredPriorityList = finalPriorityList.filter { (inventoryLimits[it] ?: 0) > 0 }
 
         if (filteredPriorityList.isEmpty()) {
-            printCurrentInventory()
+            MessageLog.v(TAG, getInventorySummary(withDividers = true))
         } else if (bDryRun) {
             MessageLog.i(TAG, "[TEST] Dry Run: Identified items that would be bought: ${filteredPriorityList.joinToString(", ")}")
             shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bDryRun = true, bForcePurchase = bForcePurchase)
@@ -1101,36 +1105,27 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         val useGlowSticks = grade == RaceGrade.G1 && fans >= 20000 && hasGlowSticks
 
-        logRaceItemUsageReasoning(grade, fans, masterHammerCount, artisanHammerCount, glowSticksCount, hammerToUse, useGlowSticks)
-
         if (hammerToUse != null || useGlowSticks) {
             MessageLog.i(TAG, "[TRACKBLAZER] Suitable race items found in inventory (Hammer: $hammerToUse, Glow Sticks: $useGlowSticks). Opening Training Items dialog.")
             if (shopList.openTrainingItemsDialog()) {
-                var itemsUsedCount = 0
+                val itemsToUseList = mutableListOf<String>()
+                if (hammerToUse != null) itemsToUseList.add(hammerToUse)
+                if (useGlowSticks) itemsToUseList.add("Glow Sticks")
 
-                if (hammerToUse != null) {
-                    if (shopList.useSpecificItems(listOf(hammerToUse), reason = "Race bonus for $grade.").isNotEmpty()) {
-                        useInventoryItem(hammerToUse)
-                        itemsUsedCount++
-                    }
+                // Pass the reasoning and trigger a single consolidated usage summary.
+                val itemsUsed = shopList.useSpecificItems(itemsToUseList, bUseAll = false, reason = "Race bonus for $grade.")
+                itemsUsed.forEach { (name, _) ->
+                    useInventoryItem(name)
                 }
 
-                if (useGlowSticks) {
-                    if (shopList.useSpecificItems(listOf("Glow Sticks"), reason = "Boosting fan gain for $grade.").isNotEmpty()) {
-                        useInventoryItem("Glow Sticks")
-                        itemsUsedCount++
-                    }
-                }
-
-                if (itemsUsedCount > 0) {
-                    MessageLog.i(TAG, "[TRACKBLAZER] Queued $itemsUsedCount race items for $grade ($fans fans). Confirming usage.")
-                    confirmAndCloseItemDialog(itemsUsedCount)
-
+                if (itemsUsed.isNotEmpty()) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Queued ${itemsUsed.size} race items for $grade ($fans fans). Confirming usage.")
+                    confirmAndCloseItemDialog(itemsUsed.size)
                     bUsedHammerToday = true
                 } else {
-                    MessageLog.i(TAG, "[TRACKBLAZER] No suitable race items found for grade $grade.")
-                    ButtonClose.click(game.imageUtils)
-                    game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+                    if (ButtonClose.click(game.imageUtils)) {
+                        game.wait(game.dialogWaitDelay)
+                    }
                 }
             }
         } else {
@@ -1326,12 +1321,19 @@ class Trackblazer(game: Game) : Campaign(game) {
         disabledItems = currentDisabledItems.toSet()
         bInventorySynced = true
 
-        // Print the categorized inventory summary.
-        printCurrentInventory()
-
-        // Log reasoning for item usage decisions made during this pass.
+        // Log reasoning for item usage decisions made during this pass, incorporating the inventory summary.
         if (trainee != null) {
-            logItemUsageReasoning(initialEnergy, initialMood, initialMegaphoneTurnCounter, trainingSelected, itemsUsedWithReasons)
+            val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
+            val stateContext =
+                buildString {
+                    val stateList = listOf("Energy=$initialEnergy%", "Mood=$initialMood", "Megaphone Turn=$initialMegaphoneTurnCounter")
+                    appendLine("Current State: ${stateList.joinToString(", ")}")
+                    if (trainingSelected != null) {
+                        val failureInfo = if (failureChance > 0) " (Fail: $failureChance%)" else ""
+                        append("Selected Training: $trainingSelected$failureInfo")
+                    }
+                }.trimEnd()
+            shopList.printItemUsageSummary(itemsUsedWithReasons, stateContext)
         }
 
         if (itemsUsedCount > 0 && !bDryRun) {
@@ -1357,99 +1359,6 @@ class Trackblazer(game: Game) : Campaign(game) {
             "Scholar's Hat" -> "Fast Learner"
             else -> "null"
         }
-    }
-
-    /**
-     * Log detailed reasoning for item usage decisions.
-     *
-     * @param energy The initial energy of the trainee.
-     * @param mood The initial mood of the trainee.
-     * @param megaphoneTurnCounter The initial megaphone turn counter of the trainee.
-     * @param trainingSelected The stat name of the selected training.
-     * @param itemsUsedWithReasons The list of names and specific reasons for items that were used.
-     */
-    private fun logItemUsageReasoning(energy: Int, mood: Mood, megaphoneTurnCounter: Int, trainingSelected: StatName?, itemsUsedWithReasons: List<Pair<String, String>>) {
-        val sb = StringBuilder()
-        sb.appendLine("\n========== Item Usage Reasoning ==========")
-        sb.appendLine("Current State: Energy=$energy%, Mood=$mood, Megaphone Turn=$megaphoneTurnCounter")
-        if (trainingSelected != null) {
-            val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
-            sb.appendLine("Selected Training: $trainingSelected (Fail: $failureChance%)")
-        }
-        sb.appendLine("")
-
-        if (itemsUsedWithReasons.isEmpty()) {
-            sb.appendLine("No items were used this pass.")
-            // Provide context on why common items might have been skipped.
-            if (trainee.energy > energyThresholdToUseEnergyItems) {
-                sb.appendLine("- Energy is above $energyThresholdToUseEnergyItems% threshold.")
-            }
-            if (trainee.mood.ordinal > Mood.BAD.ordinal) {
-                sb.appendLine("- Mood is acceptable (${trainee.mood}).")
-            }
-            if (trainee.megaphoneTurnCounter > 0) {
-                sb.appendLine("- Megaphone is already active (${trainee.megaphoneTurnCounter} turns left).")
-            }
-        } else {
-            sb.appendLine("Items Used:")
-            sb.appendLine("")
-            // Group the items used by name and reason and count them.
-            val groupedItems = itemsUsedWithReasons.groupBy { it }.mapValues { it.value.size }
-            groupedItems.forEach { (pair, count) ->
-                val (name, reason) = pair
-                sb.appendLine("- ${count}x $name: $reason")
-            }
-        }
-        sb.appendLine("===========================================")
-        MessageLog.v(TAG, sb.toString())
-    }
-
-    /**
-     * Log detailed reasoning for race item usage.
-     *
-     * @param grade The grade of the detected race.
-     * @param fans The number of fans awarded by the race.
-     * @param hasMasterHammer Whether the Master Cleat Hammer is in inventory.
-     * @param hasArtisanHammer Whether the Artisan Cleat Hammer is in inventory.
-     * @param hasGlowSticks Whether Glow Sticks are in inventory.
-     * @param hammerToUse The specific hammer chosen for use, if any.
-     * @param useGlowSticks Whether Glow Sticks were chosen for use.
-     */
-    private fun logRaceItemUsageReasoning(grade: RaceGrade, fans: Int, masterHammerCount: Int, artisanHammerCount: Int, glowSticksCount: Int, hammerToUse: String?, useGlowSticks: Boolean) {
-        val itemsFound = mutableListOf<String>()
-        if (masterHammerCount > 0) itemsFound.add("${masterHammerCount}x Master Cleat Hammer")
-        if (artisanHammerCount > 0) itemsFound.add("${artisanHammerCount}x Artisan Cleat Hammer")
-        if (glowSticksCount > 0) itemsFound.add("${glowSticksCount}x Glow Sticks")
-
-        val sb = StringBuilder()
-        sb.appendLine("\n========== Race Item Usage Reasoning ==========")
-        sb.appendLine("Race: $grade ($fans fans)")
-        sb.appendLine("Inventory: ${itemsFound.joinToString(", ").ifEmpty { "No Racing Items available" }}")
-
-        if (hammerToUse != null) {
-            sb.appendLine("")
-            sb.appendLine("- Using a $hammerToUse for $grade.")
-
-            if (hammerToUse != "Master Cleat Hammer" && masterHammerCount > 0) {
-                sb.appendLine("- Master Cleat Hammer is only for G1.")
-            }
-        }
-
-        if (useGlowSticks) {
-            sb.appendLine("")
-            sb.appendLine("- Using Glow Sticks: Boosting fan gain for high-fan G1 race.")
-        } else if (glowSticksCount > 0) {
-            sb.appendLine("")
-            sb.appendLine("- Glow Sticks are only for G1 with >20000 fans.")
-        }
-
-        if (hammerToUse == null && !useGlowSticks) {
-            sb.appendLine("")
-            sb.appendLine("No items will be used.")
-        }
-
-        sb.appendLine("===============================================")
-        MessageLog.v(TAG, sb.toString())
     }
 
     /**
@@ -1659,16 +1568,25 @@ class Trackblazer(game: Game) : Campaign(game) {
     }
 
     /**
-     * Prints the current inventory categorized with item amounts.
+     * Returns a formatted summary of the current inventory categorized with item amounts.
+     *
+     * @param withDividers If true, includes the standard "Current Inventory" dividers and footer.
+     * @return Formatted inventory summary string.
      */
-    fun printCurrentInventory() {
+    fun getInventorySummary(withDividers: Boolean = false): String {
         // Group items by category from the central shopItems mapping.
         val inventoryByCategory =
             currentInventory.filter { it.value > 0 }.keys.groupBy { itemName ->
                 shopList.shopItems[itemName]?.category ?: "Other"
             }
 
-        val summary = StringBuilder("\n============== Current Inventory ==============\n")
+        val summary =
+            if (withDividers) {
+                StringBuilder("\n============== Current Inventory ==============\n")
+            } else {
+                StringBuilder("\n[Current Inventory]\n")
+            }
+
         var hasItems = false
 
         // Sort categories to maintain consistent order (Stats first, then others).
@@ -1684,7 +1602,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         sortedCategories.forEach { category ->
             val items = inventoryByCategory[category] ?: emptyList()
             if (items.isNotEmpty()) {
-                summary.append("\n[$category]\n")
+                summary.append("\n$category\n")
                 items.sorted().forEach { name ->
                     summary.append("- $name: ${currentInventory[name]}\n")
                 }
@@ -1695,8 +1613,12 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (!hasItems) {
             summary.append("\nInventory is empty.\n")
         }
-        summary.append("\n===============================================")
-        MessageLog.v(TAG, summary.toString())
+
+        if (withDividers) {
+            summary.append("\n===============================================")
+        }
+
+        return summary.toString()
     }
 
     /**

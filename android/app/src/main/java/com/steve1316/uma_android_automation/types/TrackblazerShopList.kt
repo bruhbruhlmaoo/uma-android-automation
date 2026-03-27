@@ -17,7 +17,9 @@ import com.steve1316.uma_android_automation.components.CheckboxShopItem
 import com.steve1316.uma_android_automation.components.IconDialogScrollListBottomRight
 import com.steve1316.uma_android_automation.components.IconDialogScrollListTopLeft
 import com.steve1316.uma_android_automation.components.LabelOnSale
+import com.steve1316.uma_android_automation.types.Mood
 import com.steve1316.uma_android_automation.types.StatName
+import com.steve1316.uma_android_automation.types.Trainee
 import com.steve1316.uma_android_automation.utils.ScrollList
 import com.steve1316.uma_android_automation.utils.ScrollListEntry
 import org.opencv.core.Point
@@ -47,6 +49,9 @@ data class TrackblazerItemInfo(val price: Int, val effect: String, val isQuickUs
  * @property game Reference to the bot's [Game] instance.
  */
 class TrackblazerShopList(private val game: Game) {
+    /** Callback provider to retrieve the current inventory summary. */
+    var getInventorySummaryCallback: (() -> String)? = null
+
     /** List of names for items that grant stats. */
     val statItemNames get() = shopItems.filter { it.value.category == "Stats" }.keys.toList()
 
@@ -395,24 +400,24 @@ class TrackblazerShopList(private val game: Game) {
     }
 
     /**
-     * Use specific items by their names and return the list of items that were successfully used.
+     * Queues specific items for usage from the Training Items dialog.
      *
-     * @param itemNames The names of the items to use.
-     * @param bUseAll If true, attempt to use all items in the list. If false, stop after the first successful usage.
+     * @param itemsToUse List of item names to attempt to use.
+     * @param bUseAll If true, attempts to use all available copies of each item instead of just one.
      * @param scannedItems Optional list of pre-scanned items to use instead of performing a new scan.
-     * @param reason Optional reason for using the items.
-     * @return A list of names for the items that were used.
+     * @param reason The reason why these items are being used (for logging).
+     * @return A list of [Pair] containing successfully used item names and their reasons.
      */
-    fun useSpecificItems(itemNames: List<String>, bUseAll: Boolean = false, scannedItems: List<ScannedItem>? = null, reason: String? = null): List<String> {
-        val successfullyUsedNames = mutableListOf<String>()
-        if (itemNames.isEmpty()) return successfullyUsedNames
+    fun useSpecificItems(itemsToUse: List<String>, bUseAll: Boolean = false, scannedItems: List<ScannedItem>? = null, reason: String? = null): List<Pair<String, String>> {
+        val successfullyUsed = mutableListOf<Pair<String, String>>()
+        if (itemsToUse.isEmpty()) return successfullyUsed
 
         if (scannedItems != null) {
             MessageLog.i(TAG, "[INFO] Using pre-scanned items for specific item usage.")
             val tempScanned = scannedItems.toMutableList()
-            for (name in itemNames) {
+            for (name in itemsToUse) {
                 // If we already used this name and aren't using all, skip to the next name.
-                if (!bUseAll && successfullyUsedNames.contains(name)) continue
+                if (!bUseAll && successfullyUsed.any { it.first == name }) continue
 
                 // If using all, find all available instances of this name in the pre-scanned list.
                 while (true) {
@@ -421,20 +426,16 @@ class TrackblazerShopList(private val game: Game) {
                         val info = tempScanned[itemIndex]
                         val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, info.entry.bitmap)
                         if (plusButtonPoint != null) {
-                            MessageLog.i(TAG, "[INFO] Queuing specific item for use: \"$name\" (from pre-scanned).")
+                            val useReason = reason ?: shopItems[name]?.effect ?: "No reason provided"
+                            MessageLog.i(TAG, "[INFO] Queuing specific item for use: \"$name\". (Reason: $useReason)")
                             // Tap the plus button based on the entry's position.
                             game.tap(info.entry.bbox.x + plusButtonPoint.x, info.entry.bbox.y + plusButtonPoint.y)
-                            successfullyUsedNames.add(name)
+                            successfullyUsed.add(name to useReason)
                             // Remove from temp list so we don't try to use the same instance twice.
                             tempScanned.removeAt(itemIndex)
 
                             // Exit early if we only wanted to use one item.
-                            if (!bUseAll) {
-                                if (successfullyUsedNames.isNotEmpty()) {
-                                    MessageLog.i(TAG, "[INFO] Successfully queued ${successfullyUsedNames.size} item(s) for usage.")
-                                }
-                                return successfullyUsedNames
-                            }
+                            if (!bUseAll) break
                         } else {
                             break
                         }
@@ -442,48 +443,64 @@ class TrackblazerShopList(private val game: Game) {
                         break
                     }
                 }
+                // Stop early if we only wanted one item in total and we got it.
+                if (!bUseAll && successfullyUsed.isNotEmpty()) break
             }
-            if (successfullyUsedNames.isNotEmpty()) {
-                MessageLog.i(TAG, "[INFO] Successfully queued ${successfullyUsedNames.size} item(s) for usage.")
-            }
-            return successfullyUsedNames
-        }
+        } else {
+            val itemNameMapInUse = mutableMapOf<Int, String>()
+            processItemsWithFallback(
+                keyExtractor = { entry ->
+                    val name = getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
+                    if (name != null) itemNameMapInUse[entry.index] = name
+                    name
+                },
+            ) { entry ->
+                val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
+                val itemName = itemNameMapInUse[entry.index] ?: getShopItemName(entry, isDisabled)
 
-        val itemNameMapInUseSpecific = mutableMapOf<Int, String>()
-        processItemsWithFallback(
-            keyExtractor = { entry ->
-                val name = getShopItemName(entry, ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true)
-                if (name != null) itemNameMapInUseSpecific[entry.index] = name
-                name
-            },
-        ) { entry ->
-            val isDisabled = ButtonSkillUp.checkDisabled(game.imageUtils, entry.bitmap) == true
-            val name = itemNameMapInUseSpecific[entry.index] ?: getShopItemName(entry, isDisabled)
+                if (itemName != null && itemsToUse.contains(itemName) && !isDisabled) {
+                    // If bUseAll is true, click until the button is disabled or we hit a reasonable limit.
+                    var clicks = 0
+                    while (true) {
+                        // Update individual log to include the item's effect or the explicit reason.
+                        val useReason = reason ?: shopItems[itemName]?.effect ?: "No reason provided"
+                        val logPrefix = if (bUseAll) "[TRACKBLAZER] Queuing item for use (copy ${clicks + 1}):" else "[TRACKBLAZER] Queuing specific item for use:"
+                        MessageLog.i(TAG, "$logPrefix \"$itemName\". (Reason: $useReason)")
 
-            // Check if this item is in our target list and if we should use it.
-            val alreadyUsedMatch = successfullyUsedNames.contains(name)
-            if (name != null && itemNames.contains(name) && (!alreadyUsedMatch || bUseAll)) {
-                // Only use the item if its plus button is enabled.
-                if (!isDisabled) {
-                    val plusButtonPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, entry.bitmap)
-                    if (plusButtonPoint != null) {
-                        MessageLog.i(TAG, "[INFO] Queuing specific item for use: \"$name\".")
-                        // Tap the plus button to use the item.
-                        game.tap(entry.bbox.x + plusButtonPoint.x, entry.bbox.y + plusButtonPoint.y)
-                        successfullyUsedNames.add(name)
+                        // Re-check for disabled state after clicks if bUseAll is active.
+                        val bitmapToUse: Bitmap =
+                            if (clicks > 0) {
+                                val source = game.imageUtils.getSourceBitmap()
+                                game.imageUtils.createSafeBitmap(source, entry.bbox.x, entry.bbox.y, entry.bbox.w, entry.bbox.h, "recheck item")
+                            } else {
+                                entry.bitmap
+                            } ?: break
 
-                        // Stop processing if we only wanted to use one item.
-                        if (!bUseAll) return@processItemsWithFallback true
+                        if (ButtonSkillUp.checkDisabled(game.imageUtils, bitmapToUse) == true) {
+                            break
+                        }
+
+                        val plusPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmapToUse)
+                        if (plusPoint != null) {
+                            game.tap(entry.bbox.x + plusPoint.x, entry.bbox.y + plusPoint.y)
+                            successfullyUsed.add(itemName to useReason)
+                            clicks++
+                            if (!bUseAll || clicks >= 5) break
+                            game.wait(0.2)
+                        } else {
+                            break
+                        }
                     }
                 }
+                // Optimization: Stop the scan early if we found all requested items and aren't using all copies.
+                !bUseAll && itemsToUse.all { item -> successfullyUsed.any { it.first == item } }
             }
-            false
         }
 
-        if (successfullyUsedNames.isNotEmpty()) {
-            MessageLog.i(TAG, "[INFO] Successfully queued ${successfullyUsedNames.size} item(s) for usage.")
-        }
-        return successfullyUsedNames
+        // Log the summary of items queued for usage.
+        printItemUsageSummary(successfullyUsed)
+
+        return successfullyUsed.toList()
     }
 
     /**
@@ -496,7 +513,53 @@ class TrackblazerShopList(private val game: Game) {
         // Define the Megaphone priority from strongest to weakest.
         val megaphonePriority = listOf("Empowering Megaphone", "Motivating Megaphone", "Coaching Megaphone")
         val used = useSpecificItems(megaphonePriority, bUseAll = false, scannedItems = scannedItems, reason = "Best available megaphone for current turn.")
-        return used.firstOrNull()
+        return used.firstOrNull()?.first
+    }
+
+    /**
+     * Prints a formatted summary of items queued for usage.
+     *
+     * @param itemsUsedWithReasons List of item names and specific reasons for usage.
+     */
+    fun printItemUsageSummary(
+        itemsUsedWithReasons: List<Pair<String, String>>,
+        stateContext: String? = null,
+    ) {
+        val sb = StringBuilder()
+        sb.appendLine("\n============== Item Usage Summary ==============")
+
+        // Include the inventory summary from the callback if provided.
+        getInventorySummaryCallback?.invoke()?.let { summary ->
+            if (summary.isNotBlank()) {
+                sb.append(summary)
+                sb.appendLine("\n------------------------------------------------")
+            }
+        }
+
+        if (!stateContext.isNullOrBlank()) {
+            sb.appendLine(stateContext)
+        }
+
+        // Add a separator space if there's a header.
+        if (sb.length > 50) {
+            sb.appendLine("")
+        }
+
+        if (itemsUsedWithReasons.isEmpty()) {
+            sb.appendLine("No items were used this pass.")
+        } else {
+            sb.appendLine("Items Used:")
+            sb.appendLine("")
+            // Group the items used by name and reason and count them.
+            val groupedItems = itemsUsedWithReasons.groupBy { it }.mapValues { it.value.size }
+            groupedItems.forEach { (pair, count) ->
+                val (name, reason) = pair
+                sb.appendLine("- ${count}x $name: $reason")
+            }
+        }
+
+        sb.appendLine("================================================")
+        MessageLog.v(TAG, sb.toString())
     }
 
     /**
@@ -736,40 +799,61 @@ class TrackblazerShopList(private val game: Game) {
         }
 
         // Log the summary of proposed purchases.
-        MessageLog.v(TAG, "============== Shop Evaluation Summary ==============")
-        if (availableInShop.isNotEmpty()) {
-            MessageLog.v(TAG, "Identified ${availableInShop.size} items in shop.")
-            // Log the names of all identified items in the shop.
-            val identifiedItemsString = availableInShop.joinToString(", ") { it.first }
-            MessageLog.v(TAG, "Items found: $identifiedItemsString")
+        val sb = StringBuilder()
+        sb.appendLine("\n============== Shop Evaluation Summary ==============")
+
+        // Include the inventory summary from the callback if provided.
+        getInventorySummaryCallback?.invoke()?.let { summary ->
+            if (summary.isNotBlank()) {
+                sb.append(summary)
+                sb.appendLine("\n------------------------------------------------")
+            }
         }
+
+        if (availableInShop.isNotEmpty()) {
+            sb.appendLine("Identified ${availableInShop.size} items in shop.")
+            // Log the names of all identified items in the shop.
+            sb.appendLine("Items found:")
+            sb.appendLine("")
+            availableInShop.forEach { (name, _, _) ->
+                sb.appendLine("  - $name")
+            }
+        }
+
+        sb.appendLine("")
+
         if (bForcePurchase) {
-            MessageLog.v(TAG, "Force purchase mode enabled. Temporarily setting Shop Coin balance to 9999.")
+            sb.appendLine("Force purchase mode enabled. Temporarily setting Shop Coin balance to 9999.")
+            sb.appendLine("")
         }
 
         if (itemsToBuy.isEmpty()) {
-            MessageLog.v(TAG, "No items from the filtered priority list will be bought. Current coins: $currentCoins.")
+            sb.appendLine("No items from the filtered priority list will be bought. Current coins: $currentCoins.")
             if (skippedItemsReasons.isNotEmpty()) {
-                MessageLog.v(TAG, "Evaluation reasons for first 10 priority items:")
+                sb.appendLine("Evaluation reasons for first 10 priority items:")
                 priorityList.take(10).forEach { item ->
                     val reason = skippedItemsReasons[item] ?: "Eligible but somehow skipped"
-                    MessageLog.v(TAG, "\t- $item: $reason")
+                    sb.appendLine("  - $item: $reason")
                 }
             }
-            // Exit early if not a dry run.
-            if (!bDryRun) {
-                MessageLog.v(TAG, "==========================================")
-                return emptyList()
+        } else {
+            // Log each item planned to be bought.
+            sb.appendLine("Items to buy:")
+            sb.appendLine("")
+            itemsToBuy.forEach { (name, price, _) ->
+                sb.appendLine("  - $name: $price coins (Reason: ${shopItems[name]?.effect})")
             }
+            val totalCost = effectiveCoins - remainingCoinsAfterProposed
+            sb.appendLine("")
+            sb.appendLine("TOTAL: $totalCost / $effectiveCoins coins with $remainingCoinsAfterProposed left over coins")
         }
 
-        // Log each item planned to be bought.
-        for (boughtItem in itemsToBuy) {
-            MessageLog.v(TAG, "\t${boughtItem.first}: ${boughtItem.second} coins (Reason: ${shopItems[boughtItem.first]?.effect})")
+        sb.append("==========================================")
+        MessageLog.v(TAG, sb.toString())
+
+        if (itemsToBuy.isEmpty() && !bDryRun) {
+            return emptyList()
         }
-        val totalCost = effectiveCoins - remainingCoinsAfterProposed
-        MessageLog.v(TAG, "\n\tTOTAL: $totalCost / $effectiveCoins coins with $remainingCoinsAfterProposed left over coins")
-        MessageLog.v(TAG, "==========================================")
 
         if (bDryRun) {
             // Return early for the dry run test.
