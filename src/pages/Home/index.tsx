@@ -15,7 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/too
 import PageHeader from "../../components/PageHeader"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 import SelectButton from "../../components/SelectButton"
-import scenarios from "../../data/scenarios.json"
 import { useNavigation } from "@react-navigation/native"
 
 const styles = StyleSheet.create({
@@ -35,6 +34,27 @@ const styles = StyleSheet.create({
         width: 100,
     },
 })
+
+/**
+ * List of scenarios that are supported by the app.
+ */
+const scenarios = [
+    {
+        value: "URA Finale",
+        label: "URA Finale",
+        disabled: false,
+    },
+    {
+        value: "Unity Cup",
+        label: "Unity Cup",
+        disabled: false,
+    },
+    {
+        value: "Trackblazer",
+        label: "Trackblazer",
+        disabled: false,
+    },
+]
 
 /**
  * The main Home page of the application.

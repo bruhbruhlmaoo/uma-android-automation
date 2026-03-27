@@ -539,6 +539,31 @@ const searchConfig: SearchOption[] = [
         description: "Sets the maximum number of retries allowed for a single race in the Trackblazer scenario.",
         page: "ScenarioOverridesSettings",
     },
+    {
+        id: "trackblazer-whistle-forces-training",
+        title: "Trackblazer Reset Whistle Forces Training",
+        description:
+            "Whether or not using a Reset Whistle means it can ignore the failure chance thresholds in the Training Settings page. If enabled, the bot will pick the best available training after usage even if it's risky.",
+        page: "ScenarioOverridesSettings",
+    },
+    {
+        id: "trackblazer-retry-races-before-final-grades",
+        title: "Trackblazer Race Grades to use Race Retries on",
+        description: "Select which race grades should allow using a Race Retry in the Trackblazer scenario.",
+        page: "ScenarioOverridesSettings",
+    },
+    {
+        id: "trackblazer-enable-irregular-training",
+        title: "Trackblazer Enable Irregular Training",
+        description: "When enabled, the bot will check for highly profitable training sessions before opting for extra races.",
+        page: "ScenarioOverridesSettings",
+    },
+    {
+        id: "trackblazer-irregular-training-min-stat-gain",
+        title: "Trackblazer Irregular Training Minimum Stat Gain",
+        description: "Sets the minimum main stat gain required to skip racing and perform Irregular Training instead.",
+        page: "ScenarioOverridesSettings",
+    },
 
     // ============================================================
     // Debug Settings

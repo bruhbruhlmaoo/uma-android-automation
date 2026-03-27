@@ -82,6 +82,7 @@ export interface Settings {
         specialEventOverrides: Record<string, { selectedOption: string; requiresConfirmation: boolean }>
         characterEventOverrides: Record<string, number>
         supportEventOverrides: Record<string, number>
+        scenarioEventOverrides: Record<string, number>
     }
 
     // Misc settings
@@ -193,6 +194,10 @@ export interface Settings {
         trackblazerShopCheckGrades: string[]
         trackblazerMinStatGainForCharm: number
         trackblazerMaxRetriesPerRace: number
+        trackblazerWhistleForcesTraining: boolean
+        trackblazerRetryRacesBeforeFinalGrades: string[]
+        trackblazerEnableIrregularTraining: boolean
+        trackblazerIrregularTrainingMinStatGain: number
     }
 }
 
@@ -311,6 +316,7 @@ export const defaultSettings: Settings = {
         },
         characterEventOverrides: {},
         supportEventOverrides: {},
+        scenarioEventOverrides: {},
     },
     misc: {
         enableSettingsDisplay: false,
@@ -401,6 +407,10 @@ export const defaultSettings: Settings = {
         trackblazerShopCheckGrades: ["G1", "G2", "G3"],
         trackblazerMinStatGainForCharm: 30,
         trackblazerMaxRetriesPerRace: 1,
+        trackblazerWhistleForcesTraining: true,
+        trackblazerRetryRacesBeforeFinalGrades: ["G1", "G2", "G3"],
+        trackblazerEnableIrregularTraining: false,
+        trackblazerIrregularTrainingMinStatGain: 30,
     },
 }
 

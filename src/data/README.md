@@ -49,4 +49,4 @@ This script is used to help find screen coordinates for new UI elements. It prov
 - `races.json`: Race calendar data.
 - `skills.json`: Skill IDs, names, costs, and tier rankings.
 - `supports.json`: Support card event data.
-- `scenarios.json`: Scenario-specific data (e.g., URA, Unity Cup). This is updated manually whenever support for a new scenario is added.
+- `scenarios.json`: Scenario-specific event data (e.g., URA, Unity Cup, Trackblazer). This is updated manually to include special event overrides and logic for each scenario.

@@ -28,10 +28,13 @@ import com.steve1316.uma_android_automation.components.IconGoalRibbon
 import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
 import com.steve1316.uma_android_automation.components.IconUnityCupTutorialHeader
+import com.steve1316.uma_android_automation.components.LabelScheduledRace
 import com.steve1316.uma_android_automation.types.DateMonth
 import com.steve1316.uma_android_automation.types.DatePhase
 import com.steve1316.uma_android_automation.types.DateYear
 import com.steve1316.uma_android_automation.types.Mood
+import com.steve1316.uma_android_automation.types.NegativeStatus
+import com.steve1316.uma_android_automation.types.PositiveStatus
 import com.steve1316.uma_android_automation.types.RaceGrade
 import com.steve1316.uma_android_automation.types.ScannedItem
 import com.steve1316.uma_android_automation.types.StatName
@@ -53,11 +56,35 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Representation of the item shop list along with the mapping of items to their price and effect. */
     private val shopList: TrackblazerShopList = TrackblazerShopList(game)
 
+    init {
+        shopList.getInventorySummaryCallback = { getInventorySummary() }
+    }
+
     /** Current number of coins available to spend in the shop. */
     var shopCoins: Int = 0
 
     /** Map representing the current inventory of items. */
     var currentInventory: Map<String, Int> = mapOf()
+
+    /** Map representing the mapping of bad condition items to their enums. */
+    val badConditionMap =
+        mapOf(
+            "Fluffy Pillow" to NegativeStatus.NIGHT_OWL.statusName,
+            "Pocket Planner" to NegativeStatus.SLACKER.statusName,
+            "Rich Hand Cream" to NegativeStatus.SKIN_OUTBREAK.statusName,
+            "Smart Scale" to NegativeStatus.SLOW_METABOLISM.statusName,
+            "Aroma Diffuser" to NegativeStatus.MIGRAINE.statusName,
+            "Practice Drills DVD" to NegativeStatus.PRACTICE_POOR.statusName,
+        )
+
+    /** Map representing the mapping of good condition items to their enums. */
+    val goodConditionMap =
+        mapOf(
+            "Pretty Mirror" to PositiveStatus.CHARMING.statusName,
+            "Reporter's Binoculars" to PositiveStatus.HOT_TOPIC.statusName,
+            "Master Practice Guide" to PositiveStatus.PRACTICE_PERFECT.statusName,
+            "Scholar's Hat" to PositiveStatus.FAST_LEARNER.statusName,
+        )
 
     /** The limit for consecutive races before the bot should stop and recover. */
     private val consecutiveRacesLimit: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerConsecutiveRacesLimit", 5)
@@ -96,6 +123,9 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Whether a race hammer has been used this turn. */
     private var bUsedHammerToday: Boolean = false
 
+    /** Flag indicating that the bot decided to train instead of running extra races due to high stat gains. */
+    private var bIsIrregularTraining: Boolean = false
+
     /** Tracks whether the inventory has been synced at least once during this session. */
     private var bInventorySynced: Boolean = false
 
@@ -105,8 +135,23 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Flag to track when a shop check should be performed after a race. */
     private var bShouldCheckShop: Boolean = false
 
+    /** Mapping of energy-restoring items to their gain values. */
+    private val energyGains =
+        mapOf(
+            "Royal Kale Juice" to 100,
+            "Vita 65" to 65,
+            "Vita 40" to 40,
+            "Vita 20" to 20,
+        )
+
     /** Threshold for energy level to use energy items. */
     private var energyThresholdToUseEnergyItems: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerEnergyThreshold", 40)
+
+    /** Whether the Reset Whistle forces training. */
+    private val whistleForcesTraining: Boolean = SettingsHelper.getBooleanSetting("scenarioOverrides", "trackblazerWhistleForcesTraining", true)
+
+    /** Whether to enable Irregular Training in between races during Trackblazer. */
+    private val enableIrregularTraining: Boolean = SettingsHelper.getBooleanSetting("scenarioOverrides", "trackblazerEnableIrregularTraining", false)
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -262,8 +307,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 
                 if (quickUseItemsOnly.isNotEmpty()) {
                     MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were purchased. Navigating and queuing for usage...")
-                    val usedItems = shopList.useSpecificItems(quickUseItemsOnly, bUseAll = true)
-                    usedItems.forEach { useInventoryItem(it) }
+                    val usedItems = shopList.useSpecificItems(quickUseItemsOnly, bUseAll = true, reason = "Quick-use after purchase.")
+                    usedItems.forEach { useInventoryItem(it.first) }
 
                     // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
                     if (detectedDialog.ok(game.imageUtils)) {
@@ -357,9 +402,14 @@ class Trackblazer(game: Game) : Campaign(game) {
                 val onlyOneTurnLeft = turnsRemaining == 1
 
                 if (forceRace) {
-                    MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing.")
-                    detectedDialog.ok(game.imageUtils)
-                    game.wait(1.0, skipWaitingForLoading = true)
+                    if (!bHasCheckedDateThisTurn) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning detected before turn-start updates. Closing it to perform checks first.")
+                        detectedDialog.close(game.imageUtils)
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing.")
+                        detectedDialog.ok(game.imageUtils)
+                        game.wait(2.0)
+                    }
                 } else {
                     // A -30 stat penalty can apply starting from 3 consecutive races.
                     if (consecutiveRaceCount >= 3) {
@@ -375,8 +425,14 @@ class Trackblazer(game: Game) : Campaign(game) {
                         } else {
                             MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < ${consecutiveRacesLimit + 1}. Continuing.")
                         }
-                        detectedDialog.ok(game.imageUtils)
-                        game.wait(1.0, skipWaitingForLoading = true)
+
+                        if (!bHasCheckedDateThisTurn) {
+                            MessageLog.i(TAG, "[TRACKBLAZER] Deferring race acknowledgment until turn-start updates are performed.")
+                            detectedDialog.close(game.imageUtils)
+                        } else {
+                            detectedDialog.ok(game.imageUtils)
+                            game.wait(2.0)
+                        }
                     } else {
                         MessageLog.w(TAG, "[WARN] handleDialogs:: Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}. Aborting racing.")
                         racing.encounteredRacingPopup = false
@@ -396,8 +452,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                         game.wait(1.0)
                     }
                     return DialogHandlerResult.Handled(detectedDialog)
-                } else if (racing.lastRaceGrade == RaceGrade.G1 && racing.raceRetries >= 0) {
-                    MessageLog.i(TAG, "[TRACKBLAZER] G1 race retry button is available. Retrying.")
+                } else if (racing.lastRaceGrade != null && racing.trackblazerRetryGrades.contains(racing.lastRaceGrade) && racing.raceRetries >= 0) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] ${racing.lastRaceGrade} race retry button is available. Retrying.")
                     racing.raceRetries--
                     if (detectedDialog.ok(game.imageUtils)) {
                         game.wait(1.0)
@@ -522,9 +578,13 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
 
             // Check if we should perform a shop check after this race.
-            // Any graded race defined in the settings should trigger a shop check.
-            if (shopCheckGrades.contains(racing.lastRaceGrade)) {
-                MessageLog.i(TAG, "[TRACKBLAZER] Graded race detected (${racing.lastRaceGrade}). Shop check will be performed on main screen.")
+            // Any graded race defined in the settings or any scheduled race should trigger a shop check.
+            if (isScheduledRace || shopCheckGrades.contains(racing.lastRaceGrade)) {
+                if (isScheduledRace) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Scheduled race completed. Shop check will be performed on main screen.")
+                } else {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Graded race detected (${racing.lastRaceGrade}). Shop check will be performed on main screen.")
+                }
                 bShouldCheckShop = true
             }
         }
@@ -535,6 +595,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         bUsedWhistleToday = false
         bUsedCharmToday = false
         bUsedHammerToday = false
+        bIsIrregularTraining = false
     }
 
     override fun onBeforeMainScreenUpdate() {
@@ -589,6 +650,38 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (date.bIsFinaleSeason && date.day >= 73) {
             MessageLog.i(TAG, "[TRACKBLAZER] It is the Finale. Prioritizing training.")
             return MainScreenAction.TRAIN
+        }
+
+        if (enableIrregularTraining && date.year > DateYear.JUNIOR) {
+            val isScheduledRace = LabelScheduledRace.check(game.imageUtils)
+            val isMandatoryRace = IconRaceDayRibbon.check(game.imageUtils) || IconGoalRibbon.check(game.imageUtils)
+
+            if (!isScheduledRace && !isMandatoryRace) {
+                MessageLog.i(TAG, "[TRACKBLAZER] Evaluating for Irregular Training...")
+
+                if (ButtonTraining.click(game.imageUtils)) {
+                    game.wait(game.dialogWaitDelay)
+
+                    val isIrregularEvaluation = true
+                    val hasCharm = !bUsedCharmToday && (currentInventory["Good-Luck Charm"] ?: 0) > 0
+                    training.analyzeTrainings(mapOf("ignoreFailureChance" to hasCharm, "isIrregularEvaluation" to isIrregularEvaluation))
+
+                    val bestTraining = training.recommendTraining(isIrregularEvaluation = isIrregularEvaluation)
+
+                    if (bestTraining != null) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Valid Irregular Training found ($bestTraining). Hijacking turn.")
+                        ButtonBack.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay)
+
+                        bIsIrregularTraining = true
+                        return MainScreenAction.TRAIN
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] No valid Irregular Training found. Backing out to resume racing logic.")
+                        ButtonBack.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay)
+                    }
+                }
+            }
         }
 
         // Otherwise, use base class decision logic.
@@ -653,6 +746,7 @@ class Trackblazer(game: Game) : Campaign(game) {
      */
     fun updateShopCoins(): Int {
         MessageLog.i(TAG, "[TRACKBLAZER] Updating current amount of Shop Coins...")
+        game.wait(2.0)
         val (trainingItemsButtonLocation, sourceBitmap) = ButtonTrainingItems.find(game.imageUtils)
         if (trainingItemsButtonLocation == null) {
             MessageLog.e(TAG, "[ERROR] updateShopCoins:: Failed to find Training Items button.")
@@ -705,29 +799,65 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Update current coins via OCR before buying.
         updateShopCoins()
+        MessageLog.i(TAG, "[TRACKBLAZER] Initial Shop Coins: $shopCoins")
 
-        // Buy items from the shop.
-        // Rule: Each item is limited to 5 in the inventory.
-        // Bad Condition items except Rich Hand Cream and Miracle Cure will be limited to 1 in our current inventory.
-        val nonPriorityBadConditions = listOf("Fluffy Pillow", "Pocket Planner", "Smart Scale", "Aroma Diffuser", "Practice Drills DVD")
+        // If the shop coins are 0, it is possible that the OCR failed to read them correctly.
+        // In this case, we will initiate a "Force Purchase" process to attempt to buy items until we can't anymore.
+        val bForcePurchase = shopCoins == 0
+        if (bForcePurchase) {
+            MessageLog.i(TAG, "[TRACKBLAZER] Shop coins read as 0. This may be an OCR failure. Initiating Force Purchase mode.")
+        }
+
         val inventoryLimits =
             finalPriorityList.associateWith { itemName ->
                 val itemCount = currentInventory[itemName] ?: 0
-                val maxLimit = if (nonPriorityBadConditions.contains(itemName)) 1 else 5
+                val isBadConditionItem = badConditionMap.containsKey(itemName) || itemName == "Miracle Cure"
+                val isGoodConditionItem = goodConditionMap.containsKey(itemName)
+
+                val maxLimit =
+                    if (isBadConditionItem || isGoodConditionItem) {
+                        // Check if we already have the item in inventory.
+                        if (itemCount >= 1) {
+                            0
+                        } else {
+                            // Check if the condition is active/inactive.
+                            if (isBadConditionItem) {
+                                val condition = badConditionMap[itemName]
+                                if (itemName == "Miracle Cure" || itemName == "Rich Hand Cream") {
+                                    // We want to buy as many of these when possible as we will be racing above the consecutive race limit often.
+                                    5
+                                } else if (condition != null && trainee.currentNegativeStatuses.contains(condition)) {
+                                    1
+                                } else {
+                                    0
+                                }
+                            } else {
+                                val condition = goodConditionMap[itemName]
+                                if (condition != null && !trainee.currentPositiveStatuses.contains(condition)) {
+                                    1
+                                } else {
+                                    0
+                                }
+                            }
+                        }
+                    } else {
+                        5
+                    }
+
                 (maxLimit - itemCount).coerceAtLeast(0)
             }
 
         val filteredPriorityList = finalPriorityList.filter { (inventoryLimits[it] ?: 0) > 0 }
 
         if (filteredPriorityList.isEmpty()) {
-            printCurrentInventory()
+            MessageLog.v(TAG, getInventorySummary(withDividers = true))
         } else if (bDryRun) {
             MessageLog.i(TAG, "[TEST] Dry Run: Identified items that would be bought: ${filteredPriorityList.joinToString(", ")}")
-            shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bDryRun = true)
+            shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bDryRun = true, bForcePurchase = bForcePurchase)
             return
         }
 
-        val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits)
+        val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bForcePurchase = bForcePurchase)
         if (itemsBought.isNotEmpty()) {
             // Update internal inventory.
             val nextInventory = currentInventory.toMutableMap()
@@ -742,6 +872,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
                 // Update internal coins count via OCR after purchase.
                 updateShopCoins()
+                MessageLog.i(TAG, "[TRACKBLAZER] Remaining Shop Coins: $shopCoins")
 
                 ButtonBack.click(game.imageUtils)
                 game.wait(2.0)
@@ -879,9 +1010,10 @@ class Trackblazer(game: Game) : Campaign(game) {
      * @param logMessage The message to log when clicking.
      * @param nextInventory The current inventory map being updated during this pass.
      * @param recheck If true, captures a fresh crop of the entry to re-verify the button state.
+     * @param reason Optional reason for using the item.
      * @return True if the button was clicked, false otherwise.
      */
-    private fun clickItemPlusButton(itemName: String, entry: ScrollListEntry, logMessage: String, nextInventory: MutableMap<String, Int>, recheck: Boolean = false): Boolean {
+    private fun clickItemPlusButton(itemName: String, entry: ScrollListEntry, logMessage: String, nextInventory: MutableMap<String, Int>, recheck: Boolean = false, reason: String? = null): Boolean {
         val bitmapToUse: Bitmap =
             if (recheck) {
                 val source = game.imageUtils.getSourceBitmap()
@@ -924,7 +1056,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Initial Training Analysis.
         val hasCharm = date.day >= 13 && !bUsedCharmToday && (currentInventory["Good-Luck Charm"] ?: 0) > 0
-        training.analyzeTrainings(ignoreFailureChance = hasCharm)
+        training.analyzeTrainings(mapOf("ignoreFailureChance" to hasCharm))
         var trainingSelected: StatName? = training.recommendTraining()
 
         // Finally, perform a consolidated item usage pass after the training is finalized.
@@ -934,12 +1066,13 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Reset Whistle Check: Use if recommendations are poor.
         // We define "poor" as no training being selected or certain other conditions.
-        if (date.day >= 13 && !bUsedWhistleToday && trainingSelected == null) {
+        // Block whistling during irregular training evaluations.
+        if (date.day >= 13 && !bUsedWhistleToday && trainingSelected == null && !bIsIrregularTraining) {
             val hasWhistle = (currentInventory["Reset Whistle"] ?: 0) > 0 && !disabledItems.contains("Reset Whistle")
             if (hasWhistle) {
                 MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Using Reset Whistle.")
                 if (shopList.openTrainingItemsDialog()) {
-                    if (shopList.useSpecificItems(listOf("Reset Whistle")).isNotEmpty()) {
+                    if (shopList.useSpecificItems(listOf("Reset Whistle"), reason = "No suitable training found.").isNotEmpty()) {
                         confirmAndCloseItemDialog(1)
 
                         useInventoryItem("Reset Whistle")
@@ -948,7 +1081,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         // Re-analyze after shuffle.
                         MessageLog.i(TAG, "[TRACKBLAZER] Re-analyzing trainings after Reset Whistle.")
                         training.analyzeTrainings()
-                        trainingSelected = training.recommendTraining()
+                        trainingSelected = training.recommendTraining(forceSelection = whistleForcesTraining)
 
                         // Perform another consolidated item usage pass if needed after shuffle.
                         useItems(trainee, trainingSelected)
@@ -974,6 +1107,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                 recoverEnergy()
             }
         }
+
+        bIsIrregularTraining = false
     }
 
     /**
@@ -990,9 +1125,13 @@ class Trackblazer(game: Game) : Campaign(game) {
             return
         }
 
-        val hasMasterHammer = (currentInventory["Master Cleat Hammer"] ?: 0) > 0 && !disabledItems.contains("Master Cleat Hammer")
-        val hasArtisanHammer = (currentInventory["Artisan Cleat Hammer"] ?: 0) > 0 && !disabledItems.contains("Artisan Cleat Hammer")
-        val hasGlowSticks = (currentInventory["Glow Sticks"] ?: 0) > 0 && !disabledItems.contains("Glow Sticks")
+        val masterHammerCount = if (disabledItems.contains("Master Cleat Hammer")) 0 else (currentInventory["Master Cleat Hammer"] ?: 0)
+        val artisanHammerCount = if (disabledItems.contains("Artisan Cleat Hammer")) 0 else (currentInventory["Artisan Cleat Hammer"] ?: 0)
+        val glowSticksCount = if (disabledItems.contains("Glow Sticks")) 0 else (currentInventory["Glow Sticks"] ?: 0)
+
+        val hasMasterHammer = masterHammerCount > 0
+        val hasArtisanHammer = artisanHammerCount > 0
+        val hasGlowSticks = glowSticksCount > 0
 
         val hammerToUse =
             if (grade == RaceGrade.G1) {
@@ -1010,41 +1149,28 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
 
         val useGlowSticks = grade == RaceGrade.G1 && fans >= 20000 && hasGlowSticks
-        val glowSticksStatus =
-            if (!useGlowSticks && hasGlowSticks && grade == RaceGrade.G1) {
-                "false (does not meet the fan amount requirement of 20000)"
-            } else {
-                useGlowSticks.toString()
-            }
 
         if (hammerToUse != null || useGlowSticks) {
-            MessageLog.i(TAG, "[TRACKBLAZER] Suitable race items found in inventory (Hammer: $hammerToUse, Glow Sticks: $glowSticksStatus). Opening Training Items dialog.")
+            MessageLog.i(TAG, "[TRACKBLAZER] Suitable race items found in inventory (Hammer: $hammerToUse, Glow Sticks: $useGlowSticks). Opening Training Items dialog.")
             if (shopList.openTrainingItemsDialog()) {
-                var itemsUsedCount = 0
+                val itemsToUseList = mutableListOf<String>()
+                if (hammerToUse != null) itemsToUseList.add(hammerToUse)
+                if (useGlowSticks) itemsToUseList.add("Glow Sticks")
 
-                if (hammerToUse != null) {
-                    if (shopList.useSpecificItems(listOf(hammerToUse)).isNotEmpty()) {
-                        useInventoryItem(hammerToUse)
-                        itemsUsedCount++
-                    }
+                // Pass the reasoning and trigger a single consolidated usage summary.
+                val itemsUsed = shopList.useSpecificItems(itemsToUseList, bUseAll = false, reason = "Race bonus for $grade.")
+                itemsUsed.forEach { (name, _) ->
+                    useInventoryItem(name)
                 }
 
-                if (useGlowSticks) {
-                    if (shopList.useSpecificItems(listOf("Glow Sticks")).isNotEmpty()) {
-                        useInventoryItem("Glow Sticks")
-                        itemsUsedCount++
-                    }
-                }
-
-                if (itemsUsedCount > 0) {
-                    MessageLog.i(TAG, "[TRACKBLAZER] Queued $itemsUsedCount race items for $grade ($fans fans). Confirming usage.")
-                    confirmAndCloseItemDialog(itemsUsedCount)
-
+                if (itemsUsed.isNotEmpty()) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Queued ${itemsUsed.size} race items for $grade ($fans fans). Confirming usage.")
+                    confirmAndCloseItemDialog(itemsUsed.size)
                     bUsedHammerToday = true
                 } else {
-                    MessageLog.i(TAG, "[TRACKBLAZER] No suitable race items found for grade $grade.")
-                    ButtonClose.click(game.imageUtils)
-                    game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+                    if (ButtonClose.click(game.imageUtils)) {
+                        game.wait(game.dialogWaitDelay)
+                    }
                 }
             }
         } else {
@@ -1065,6 +1191,9 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (date.day < 13 && !bDryRun) return
 
         MessageLog.i(TAG, "[TRACKBLAZER] Starting inventory management pass.")
+        val initialEnergy = trainee?.energy ?: 0
+        val initialMood = trainee?.mood ?: Mood.NORMAL
+        val initialMegaphoneTurnCounter = trainee?.megaphoneTurnCounter ?: 0
         val nextInventory = currentInventory.toMutableMap()
         val currentDisabledItems = mutableSetOf<String>()
         val scannedItemsList = mutableListOf<ScannedItem>()
@@ -1114,6 +1243,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             MessageLog.i(TAG, "[TRACKBLAZER] Items of interest for this pass: ${remainingItemsOfInterest.joinToString(", ")}.")
         }
 
+        val itemsUsedWithReasons = mutableListOf<Pair<String, String>>()
         val itemNameMapInManage = mutableMapOf<Int, String>()
         shopList.processItemsWithFallback(
             keyExtractor = { entry ->
@@ -1149,15 +1279,25 @@ class Trackblazer(game: Game) : Campaign(game) {
                         if (isQuick && !isDisabled) {
                             if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Using quick-use item: \"$itemName\".", nextInventory)) {
                                 itemsUsedCount++
+                                val reason =
+                                    when {
+                                        isStat -> "Marked as quick-use."
+                                        itemInfo?.category == "Bond" -> "Marked as quick-use."
+                                        itemInfo?.category == "Get Good Conditions" -> "Acquired good condition: ${getStatusEffectName(itemName)}."
+                                        else -> "Marked as quick-use."
+                                    }
+                                itemsUsedWithReasons.add(itemName to reason)
                             }
                         }
                     } else {
                         if (isStat && !isDisabled) {
                             var clicks = 0
                             while (true) {
-                                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing stat item: \"$itemName\".", nextInventory, recheck = clicks > 0)) {
+                                val reason = "Marked as quick-use."
+                                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing stat item: \"$itemName\".", nextInventory, recheck = clicks > 0, reason = reason)) {
                                     itemsUsedCount++
                                     clicks++
+                                    itemsUsedWithReasons.add(itemName to reason)
                                     if (clicks >= 5) break
                                     game.wait(0.2)
                                 } else {
@@ -1165,17 +1305,31 @@ class Trackblazer(game: Game) : Campaign(game) {
                                 }
                             }
                         } else if (isBad && !isDisabled && trainee?.currentNegativeStatuses?.isNotEmpty() == true) {
-                            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing bad condition item: \"$itemName\".", nextInventory)) {
+                            val reason = "Healed status effect: ${trainee.currentNegativeStatuses.joinToString(", ")}."
+                            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing bad condition item: \"$itemName\".", nextInventory, reason = reason)) {
                                 itemsUsedCount++
+                                itemsUsedWithReasons.add(itemName to reason)
                             }
                         } else if (isQuick && !isDisabled) {
-                            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing quick-use item: \"$itemName\".", nextInventory)) {
+                            val reason =
+                                when {
+                                    itemInfo?.category == "Bond" -> "Marked as quick-use."
+                                    itemInfo?.category == "Get Good Conditions" -> "Acquired status effect: ${getStatusEffectName(itemName)}."
+                                    else -> "Marked as quick-use."
+                                }
+                            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing quick-use item: \"$itemName\".", nextInventory, reason = reason)) {
                                 itemsUsedCount++
+                                itemsUsedWithReasons.add(itemName to reason)
+                                if (itemName == "Energy Drink MAX") {
+                                    trainee?.energy = (trainee?.energy ?: 100) + 5
+                                }
                             }
                         } else if (trainee != null) {
                             // Handle Energy, Mood, Ankle Weights, Charm, Megaphones, etc.
-                            if (handleInlineUsage(trainee, itemName, entry, isDisabled, trainingSelected, nextInventory, remainingItemsOfInterest)) {
+                            val reason = handleInlineUsage(trainee, itemName, entry, isDisabled, trainingSelected, nextInventory, remainingItemsOfInterest)
+                            if (reason != null) {
                                 itemsUsedCount++
+                                itemsUsedWithReasons.add(itemName to reason)
                             }
                         }
                     }
@@ -1212,16 +1366,43 @@ class Trackblazer(game: Game) : Campaign(game) {
         disabledItems = currentDisabledItems.toSet()
         bInventorySynced = true
 
-        // Print the categorized inventory summary.
-        printCurrentInventory()
+        // Log reasoning for item usage decisions made during this pass, incorporating the inventory summary.
+        if (trainee != null) {
+            val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
+            val stateContext =
+                buildString {
+                    val stateList = listOf("Energy=$initialEnergy%", "Mood=$initialMood", "Megaphone Turn=$initialMegaphoneTurnCounter", "Coins=$shopCoins")
+                    appendLine("Current State: ${stateList.joinToString(", ")}")
+                    if (trainingSelected != null) {
+                        val failureInfo = if (failureChance > 0) " (Fail: $failureChance%)" else ""
+                        append("Selected Training: $trainingSelected$failureInfo")
+                    }
+                }.trimEnd()
+            shopList.printItemUsageSummary(itemsUsedWithReasons, stateContext)
+        }
 
         if (itemsUsedCount > 0 && !bDryRun) {
             confirmAndCloseItemDialog(itemsUsedCount)
         } else if (!bDryRun) {
-            MessageLog.i(TAG, "[TRACKBLAZER] No items were suited for use. Closing training items dialog.")
             if (ButtonClose.click(game.imageUtils, tries = 30)) {
                 game.wait(game.dialogWaitDelay)
             }
+        }
+    }
+
+    /**
+     * Map item names to their specific good status effect names.
+     *
+     * @param itemName The name of the item.
+     * @return The status effect name.
+     */
+    private fun getStatusEffectName(itemName: String): String {
+        return when (itemName) {
+            "Pretty Mirror" -> "Charming ○"
+            "Reporter's Binoculars" -> "Hot Topic"
+            "Master Practice Guide" -> "Practice Perfect ○"
+            "Scholar's Hat" -> "Fast Learner"
+            else -> "null"
         }
     }
 
@@ -1235,7 +1416,7 @@ class Trackblazer(game: Game) : Campaign(game) {
      * @param trainingSelected The stat name of the selected training.
      * @param nextInventory The updated inventory map reflecting changes in this pass.
      * @param remainingItemsOfInterest The set of items we are still looking for.
-     * @return True if an item was successfully queued for use, false otherwise.
+     * @return The specific reason why the item was used, or null if not used.
      */
     private fun handleInlineUsage(
         trainee: Trainee,
@@ -1245,8 +1426,8 @@ class Trackblazer(game: Game) : Campaign(game) {
         trainingSelected: StatName?,
         nextInventory: MutableMap<String, Int>,
         remainingItemsOfInterest: Set<String>,
-    ): Boolean {
-        if (isDisabled) return false
+    ): String? {
+        if (isDisabled) return null
 
         // Ankle Weights Check.
         if (date.day >= 13 && trainingSelected != null) {
@@ -1259,8 +1440,9 @@ class Trackblazer(game: Game) : Campaign(game) {
                     else -> ""
                 }
             if (itemName == neededWeight) {
-                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName via inline pass.", nextInventory)) {
-                    return true
+                val reason = "Boosting $trainingSelected training gains."
+                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName via inline pass.", nextInventory, reason = reason)) {
+                    return reason
                 }
             }
         }
@@ -1268,20 +1450,21 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Good-Luck Charm Check.
         val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
         if (date.day >= 13 && !bUsedCharmToday && failureChance >= 20 && itemName == "Good-Luck Charm") {
-            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing Good-Luck Charm via inline pass.", nextInventory)) {
+            val reason = "Setting training failure chance to 0%."
+            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing Good-Luck Charm via inline pass.", nextInventory, reason = reason)) {
                 bUsedCharmToday = true
-                return true
+                return reason
             }
         }
 
-        // Energy Items Check (Only one per pass).
+        // Energy Items Check.
         if (trainee.energy <= energyThresholdToUseEnergyItems && shopList.energyItemNames.contains(itemName)) {
-            val gainMap = mapOf("Vita 65" to 65, "Vita 40" to 40, "Vita 20" to 20)
-            val gain = gainMap[itemName] ?: 0
-            if (trainee.energy + gain <= 100) {
-                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for use (Energy: ${trainee.energy}%, Gain: +$gain).", nextInventory)) {
+            if (isBestEnergyItemToUse(trainee, itemName, nextInventory, remainingItemsOfInterest)) {
+                val gain = energyGains[itemName] ?: 0
+                val reason = "Restored energy (current: ${trainee.energy}%) because it fell below the $energyThresholdToUseEnergyItems% threshold."
+                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for use (Energy: ${trainee.energy}%, Gain: +$gain).", nextInventory, reason = reason)) {
                     trainee.energy += gain
-                    return true
+                    return reason
                 }
             }
         }
@@ -1289,20 +1472,21 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Royal Kale Juice Check.
         if (itemName == "Royal Kale Juice") {
             val hasMoodItems = nextInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
-            val shouldUse =
-                if (trainee.energy <= 20) {
-                    true
-                } else if (trainee.energy <= energyThresholdToUseEnergyItems) {
-                    hasMoodItems || trainee.mood == Mood.AWFUL
-                } else {
-                    false
-                }
+            val moodConditionMet = trainee.energy <= 20 || hasMoodItems || trainee.mood == Mood.AWFUL
+            val shouldUse = isBestEnergyItemToUse(trainee, itemName, nextInventory, remainingItemsOfInterest) && moodConditionMet
 
             if (shouldUse) {
-                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for use (Energy: ${trainee.energy}%, Mood: ${trainee.mood}).", nextInventory)) {
+                val oldEnergy = trainee.energy
+                val reason =
+                    if (oldEnergy <= 20) {
+                        "Restored energy (current: $oldEnergy%) as a last resort (below 20%)."
+                    } else {
+                        "Restored energy (current: $oldEnergy%) while having mood recovery items available to offset the Mood decrease."
+                    }
+                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for use (Energy: ${trainee.energy}%, Mood: ${trainee.mood}).", nextInventory, reason = reason)) {
                     trainee.energy = (trainee.energy + 100).coerceAtMost(100)
                     trainee.mood = trainee.mood.decrement()
-                    return true
+                    return reason
                 }
             }
         }
@@ -1310,9 +1494,10 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Mood Items Check.
         if (trainee.mood.ordinal <= Mood.BAD.ordinal && (itemName == "Berry Sweet Cupcake" || itemName == "Plain Cupcake")) {
             // Very simple inline mood: use the first one seen.
-            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for mood recovery.", nextInventory)) {
+            val reason = "Recovering mood (current: ${trainee.mood})."
+            if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for mood recovery.", nextInventory, reason = reason)) {
                 trainee.mood = if (itemName == "Berry Sweet Cupcake") Mood.GOOD else Mood.NORMAL
-                return true
+                return reason
             }
         }
 
@@ -1335,7 +1520,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                 }
 
             if (!hasBetterAvailable) {
-                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing best available megaphone: \"$itemName\".", nextInventory)) {
+                val reason = "Increasing training gains for the next few turns."
+                if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing best available megaphone: \"$itemName\".", nextInventory, reason = reason)) {
                     trainee.megaphoneTurnCounter =
                         when (itemName) {
                             "Empowering Megaphone" -> 2
@@ -1343,12 +1529,12 @@ class Trackblazer(game: Game) : Campaign(game) {
                             "Coaching Megaphone" -> 4
                             else -> 0
                         }
-                    return true
+                    return reason
                 }
             }
         }
 
-        return false
+        return null
     }
 
     /**
@@ -1427,16 +1613,25 @@ class Trackblazer(game: Game) : Campaign(game) {
     }
 
     /**
-     * Prints the current inventory categorized with item amounts.
+     * Returns a formatted summary of the current inventory categorized with item amounts.
+     *
+     * @param withDividers If true, includes the standard "Current Inventory" dividers and footer.
+     * @return Formatted inventory summary string.
      */
-    fun printCurrentInventory() {
+    fun getInventorySummary(withDividers: Boolean = false): String {
         // Group items by category from the central shopItems mapping.
         val inventoryByCategory =
             currentInventory.filter { it.value > 0 }.keys.groupBy { itemName ->
                 shopList.shopItems[itemName]?.category ?: "Other"
             }
 
-        val summary = StringBuilder("\n============== Current Inventory ==============\n")
+        val summary =
+            if (withDividers) {
+                StringBuilder("\n============== Current Inventory ==============\n")
+            } else {
+                StringBuilder("\n[Current Inventory]\n")
+            }
+
         var hasItems = false
 
         // Sort categories to maintain consistent order (Stats first, then others).
@@ -1452,7 +1647,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         sortedCategories.forEach { category ->
             val items = inventoryByCategory[category] ?: emptyList()
             if (items.isNotEmpty()) {
-                summary.append("\n[$category]\n")
+                summary.append("\n$category\n")
                 items.sorted().forEach { name ->
                     summary.append("- $name: ${currentInventory[name]}\n")
                 }
@@ -1463,7 +1658,73 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (!hasItems) {
             summary.append("\nInventory is empty.\n")
         }
-        summary.append("\n===============================================")
-        MessageLog.v(TAG, summary.toString())
+
+        if (withDividers) {
+            summary.append("\n===============================================")
+        }
+
+        return summary.toString()
+    }
+
+    /**
+     * Determines if using the current energy item is part of the best possible combination of available energy items.
+     * This follows a greedy approach to maximize energy gain while staying at or below 100%.
+     *
+     * @param trainee The trainee's current state.
+     * @param itemName The name of the item being considered.
+     * @param nextInventory The current inventory counts reflecting changes in this pass.
+     * @param remainingItemsOfInterest The set of items we still expect to encounter in the current pass.
+     * @return True if this item should be used, false otherwise.
+     */
+    private fun isBestEnergyItemToUse(trainee: Trainee, itemName: String, nextInventory: Map<String, Int>, remainingItemsOfInterest: Set<String>): Boolean {
+        val currentGain = energyGains[itemName] ?: return false
+        val currentEnergy = trainee.energy
+
+        val hasMoodItems = nextInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
+        val isKaleJuiceUsable = currentEnergy <= 20 || hasMoodItems || trainee.mood == Mood.AWFUL
+
+        // Royal Kale Juice "Last Resort" logic: If energy is very low, we prioritize Kale Juice over everything.
+        // It gives 100, so any other energy item used first would be wasted.
+        if (currentEnergy <= 20 && isKaleJuiceUsable) {
+            val hasKaleJuice =
+                (itemName == "Royal Kale Juice") ||
+                    (nextInventory["Royal Kale Juice"] ?: 0) > 0 ||
+                    (remainingItemsOfInterest.contains("Royal Kale Juice") && !disabledItems.contains("Royal Kale Juice"))
+            if (hasKaleJuice) {
+                return itemName == "Royal Kale Juice"
+            }
+        }
+
+        // Collect all available energy items from this scan pass.
+        val availableEnergyItems = mutableListOf<Int>()
+        remainingItemsOfInterest.forEach { name ->
+            val gain = energyGains[name]
+            if (gain != null) {
+                // If this is Kale Juice, only include it if it's usable.
+                if (name == "Royal Kale Juice" && !isKaleJuiceUsable) return@forEach
+
+                val count = (nextInventory[name] ?: 0)
+                repeat(count) { availableEnergyItems.add(gain) }
+            }
+        }
+
+        // Current item (we know we have at least one because we are looking at it).
+        availableEnergyItems.add(currentGain)
+
+        // Sort gains descending for greedy selection.
+        availableEnergyItems.sortDescending()
+
+        // Find the combination that provides max gain <= (100 - currentEnergy).
+        var simulatedEnergy = currentEnergy
+        val pickedEnergyItems = mutableListOf<Int>()
+        for (gain in availableEnergyItems) {
+            if (simulatedEnergy + gain <= 100) {
+                simulatedEnergy += gain
+                pickedEnergyItems.add(gain)
+            }
+        }
+
+        // If currentGain was one of the picked items, use it.
+        return pickedEnergyItems.contains(currentGain)
     }
 }

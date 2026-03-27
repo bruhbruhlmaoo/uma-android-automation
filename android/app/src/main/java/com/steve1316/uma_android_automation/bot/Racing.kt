@@ -197,6 +197,24 @@ class Racing(private val game: Game, private val campaign: Campaign) {
     /** The maximum number of retries allowed per race. */
     private val maxRetriesPerRace = if (game.scenario == "Trackblazer") SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerMaxRetriesPerRace", 1) else 1
 
+    /** The list of race grades that are eligible for retries in Trackblazer. */
+    internal val trackblazerRetryGrades: List<RaceGrade> =
+        try {
+            val gradesString = SettingsHelper.getStringSetting("scenarioOverrides", "trackblazerRetryRacesBeforeFinalGrades", "[\"G1\",\"G2\",\"G3\"]")
+            val jsonArray = JSONArray(gradesString)
+            val grades = mutableListOf<RaceGrade>()
+            for (i in 0 until jsonArray.length()) {
+                val gradeName = jsonArray.getString(i)
+                val grade = RaceGrade.fromName(gradeName)
+                if (grade != null) {
+                    grades.add(grade)
+                }
+            }
+            grades
+        } catch (e: Exception) {
+            listOf(RaceGrade.G1, RaceGrade.G2, RaceGrade.G3)
+        }
+
     /**
      * Stores comprehensive information about a specific race.
      *
@@ -836,6 +854,12 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         val turnsRemaining = game.imageUtils.determineTurnsRemainingBeforeNextGoal()
         MessageLog.i(TAG, "[RACE] Current remaining number of days before the next mandatory race: $turnsRemaining.")
 
+        // Don't bother looking for races on Junior Year Early July (Turn 13) since they only start showing up on Turn 14.
+        if (campaign.date.day == 13) {
+            MessageLog.i(TAG, "[RACE] Junior Year Early July (Turn 13) detected. No races available until Turn 14. Skipping extra race check.")
+            return false
+        }
+
         // If the setting to force racing extra races is enabled or we have a specific requirement, always return true.
         if (enableForceRacing || hasFanRequirement || hasTrophyRequirement || hasInsufficientGoalRacePtsRequirement) {
             Log.d(TAG, "[DEBUG] checkEligibilityToStartExtraRacingProcess:: Force racing or requirement is active so eligibility will be true.")
@@ -1249,9 +1273,14 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                     campaign.onRaceWin()
                     game.wait(1.0)
 
-                    // After closing the popup, check if we can retry a G1 race.
-                    if (lastRaceGrade == RaceGrade.G1 && raceRetries > 0 && retriesThisRace < maxRetriesPerRace && ButtonTryAgainAlt.checkDisabled(game.imageUtils) == false) {
-                        MessageLog.i(TAG, "[TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
+                    // After closing the popup, check if we can retry a specific race grade.
+                    if (lastRaceGrade != null &&
+                        trackblazerRetryGrades.contains(lastRaceGrade) &&
+                        raceRetries > 0 &&
+                        retriesThisRace < maxRetriesPerRace &&
+                        ButtonTryAgainAlt.checkDisabled(game.imageUtils) == false
+                    ) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] $lastRaceGrade race detected and retry button is available. Retrying...")
                         if (ButtonTryAgainAlt.click(game.imageUtils)) {
                             game.wait(3.0)
                             retriesThisRace++
@@ -1267,20 +1296,21 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                             raceRetries--
                         }
                     } else {
-                        MessageLog.i(TAG, "[TRACKBLAZER] No retries remaining or G1/Rival race conditions not met.")
+                        MessageLog.i(TAG, "[TRACKBLAZER] No retries remaining or G1/G2/G3/Rival race conditions not met.")
                     }
                 }
 
                 game.scenario == "Trackblazer" &&
-                    lastRaceGrade == RaceGrade.G1 &&
+                    lastRaceGrade != null &&
+                    trackblazerRetryGrades.contains(lastRaceGrade) &&
                     raceRetries > 0 &&
                     retriesThisRace < maxRetriesPerRace &&
                     ButtonTryAgainAlt.checkDisabled(
                         game.imageUtils,
                         sourceBitmap = bitmap,
                     ) == false -> {
-                    // Check if we can retry a G1 race even if no popup appeared.
-                    MessageLog.i(TAG, "[TRACKBLAZER] G1 race detected and retry button is available. Retrying...")
+                    // Check if we can retry a specific race grade even if no popup appeared.
+                    MessageLog.i(TAG, "[TRACKBLAZER] $lastRaceGrade race detected and retry button is available. Retrying...")
                     if (ButtonTryAgainAlt.click(game.imageUtils, sourceBitmap = bitmap)) {
                         game.wait(3.0)
                         retriesThisRace++
@@ -2158,21 +2188,21 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             lastRaceIsRival = false
             bRetriedCurrentRace = false
         }
-        MessageLog.i(TAG, "\n********************")
-        MessageLog.i(TAG, "[RACE] Starting Racing process on ${campaign.date}.")
+        MessageLog.v(TAG, "\n********************")
+        MessageLog.v(TAG, "[RACE] Starting Racing process on ${campaign.date}.")
 
         // If the races button exists AND is disabled, we can exit early since we know that we're at the home screen and the bot cannot race.
         if (ButtonRaces.checkDisabled(game.imageUtils) == true) {
-            MessageLog.i(TAG, "[RACE] Races are locked. Canceling the racing process and doing something else.")
+            MessageLog.v(TAG, "[RACE] Races are locked. Canceling the racing process and doing something else.")
             clearRacingRequirementFlags()
-            MessageLog.i(TAG, "********************")
+            MessageLog.v(TAG, "********************")
             return false
         }
 
         // If there are no races available, cancel the racing process.
         if (LabelThereAreNoRacesToCompeteIn.check(game.imageUtils)) {
-            MessageLog.i(TAG, "[RACE] There are no races to compete in. Canceling the racing process and doing something else.")
-            MessageLog.i(TAG, "********************")
+            MessageLog.v(TAG, "[RACE] There are no races to compete in. Canceling the racing process and doing something else.")
+            MessageLog.v(TAG, "********************")
             // Clear requirement flags since we cannot proceed with racing.
             clearRacingRequirementFlags()
             return false
@@ -2196,8 +2226,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             return handleMaidenRace()
         } else if ((!campaign.date.bIsPreDebut && ButtonRaces.click(game.imageUtils)) || isScheduledRace) {
             var overrideIgnore = false
-            if (hasFanRequirement || hasTrophyRequirement) {
-                MessageLog.i(TAG, "[RACE] Racing requirement is active. Ignoring consecutive race warning.")
+            if (isScheduledRace || hasFanRequirement || hasTrophyRequirement || hasInsufficientGoalRacePtsRequirement) {
+                MessageLog.v(TAG, "[RACE] Racing requirement is active. Ignoring consecutive race warning.")
                 overrideIgnore = true
             }
             game.wait(0.5, skipWaitingForLoading = true)
@@ -2207,12 +2237,12 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                 result.dialog.name == "consecutive_race_warning" &&
                 !(overrideIgnore || enableForceRacing || ignoreConsecutiveRaceWarning)
             ) {
-                MessageLog.i(TAG, "[RACE] Consecutive race warning but conditions dictate to not race. Skipping...")
+                MessageLog.v(TAG, "[RACE] Consecutive race warning but conditions dictate to not race. Skipping...")
                 return false
             }
             return handleExtraRace(isScheduledRace = isScheduledRace)
         } else if (ButtonRace.check(game.imageUtils)) {
-            MessageLog.i(TAG, "[RACE] The bot is already at the Race List screen and a race has already been selected.")
+            MessageLog.v(TAG, "[RACE] The bot is already at the Race List screen and a race has already been selected.")
             return handleSelectedRace()
         } else if (ButtonChangeRunningStyle.check(game.imageUtils)) {
             MessageLog.i(TAG, "[RACE] The bot is currently sitting on the race screen. Most likely here for a scheduled race.")
@@ -2222,21 +2252,21 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
         // Clear requirement flags if no race selection buttons were found.
         clearRacingRequirementFlags()
-        MessageLog.i(TAG, "********************")
+        MessageLog.v(TAG, "********************")
         return false
     }
 
     /** The entry point for handling standalone races if the user started the bot on the Racing screen. */
     fun handleStandaloneRace() {
-        MessageLog.i(TAG, "\n********************")
-        MessageLog.i(TAG, "[RACE] Starting Standalone Racing process...")
+        MessageLog.v(TAG, "\n********************")
+        MessageLog.v(TAG, "[RACE] Starting Standalone Racing process...")
 
         // Skip the race if possible, otherwise run it manually.
         runRaceWithRetries()
         finalizeRaceResults()
 
-        MessageLog.i(TAG, "[RACE] Racing process for Standalone Race is completed.")
-        MessageLog.i(TAG, "********************")
+        MessageLog.v(TAG, "[RACE] Racing process for Standalone Race is completed.")
+        MessageLog.v(TAG, "********************")
     }
 
     /**
@@ -2245,7 +2275,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
      * @return True if the race was completed successfully, false otherwise.
      */
     private fun handleSelectedRace(): Boolean {
-        MessageLog.i(TAG, "[RACE] Starting process for a race that is already selected.")
+        MessageLog.v(TAG, "[RACE] Starting process for a race that is already selected.")
 
         // Confirm the selection and the resultant popup and then wait for the game to load.
         ButtonRace.click(game.imageUtils, tries = 30)
@@ -2262,8 +2292,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Clear the next smart race day tracker since we just completed a race.
         nextSmartRaceDay = null
 
-        MessageLog.i(TAG, "[RACE] Racing process for already selected race is completed.")
-        MessageLog.i(TAG, "********************")
+        MessageLog.v(TAG, "[RACE] Racing process for already selected race is completed.")
+        MessageLog.v(TAG, "********************")
         return true
     }
 
@@ -2273,10 +2303,10 @@ class Racing(private val game: Game, private val campaign: Campaign) {
      * @return True if the mandatory race process was completed successfully, false otherwise.
      */
     private fun handleMandatoryRace(): Boolean {
-        MessageLog.i(TAG, "[RACE] Starting process for handling a mandatory race.")
+        MessageLog.v(TAG, "[RACE] Starting process for handling a mandatory race.")
 
         if (enableStopOnMandatoryRace) {
-            MessageLog.i(TAG, "********************")
+            MessageLog.v(TAG, "********************")
             detectedMandatoryRaceCheck = true
             return false
         }
@@ -2286,7 +2316,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             game.wait(2.0)
         }
 
-        MessageLog.i(TAG, "[RACE] Confirming the mandatory race selection.")
+        MessageLog.v(TAG, "[RACE] Confirming the mandatory race selection.")
         ButtonRace.click(game.imageUtils, tries = 3)
         game.wait(1.0)
         MessageLog.i(TAG, "[RACE] Confirming any popup from the mandatory race selection.")
@@ -2299,8 +2329,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         runRaceWithRetries()
         finalizeRaceResults()
 
-        MessageLog.i(TAG, "[RACE] Racing process for Mandatory Race is completed.")
-        MessageLog.i(TAG, "********************")
+        MessageLog.v(TAG, "[RACE] Racing process for Mandatory Race is completed.")
+        MessageLog.v(TAG, "********************")
         return true
     }
 
@@ -2470,7 +2500,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
      * @return True if the maiden race process was completed successfully, false otherwise.
      */
     private fun handleMaidenRace(): Boolean {
-        MessageLog.i(TAG, "[RACE] Starting process for handling a maiden race.")
+        MessageLog.v(TAG, "[RACE] Starting process for handling a maiden race.")
 
         if (!ButtonRaceListFullStats.check(game.imageUtils, tries = 30)) {
             MessageLog.e(TAG, "[ERROR] handleMaidenRace:: Not at race list screen. Aborting racing...")
@@ -2483,15 +2513,15 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         if (IconRaceListMaidenPill.check(game.imageUtils)) {
             MessageLog.i(TAG, "[RACE] Detected maiden races in race list.")
             if (selectMaidenRace()) {
-                MessageLog.i(TAG, "[RACE] Found maiden race with good aptitudes. Racing...")
+                MessageLog.v(TAG, "[RACE] Found maiden race with good aptitudes. Racing...")
             } else {
-                MessageLog.i(TAG, "[RACE] Could not find any maiden races with good aptitudes. Aborting racing...")
+                MessageLog.v(TAG, "[RACE] Could not find any maiden races with good aptitudes. Aborting racing...")
                 ButtonBack.click(game.imageUtils)
                 return false
             }
         } else {
             // No maiden races available on this day. Check for extra races instead.
-            MessageLog.i(TAG, "[RACE] No maiden races available on this day. Checking for extra races instead...")
+            MessageLog.v(TAG, "[RACE] No maiden races available on this day. Checking for extra races instead...")
             return handleExtraRace()
         }
 
@@ -2512,8 +2542,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Clear the next smart race day tracker since we just completed a race.
         nextSmartRaceDay = null
 
-        MessageLog.i(TAG, "[RACE] Racing process for Maiden Race is completed.")
-        MessageLog.i(TAG, "********************")
+        MessageLog.v(TAG, "[RACE] Racing process for Maiden Race is completed.")
+        MessageLog.v(TAG, "********************")
         return true
     }
 
@@ -2524,7 +2554,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
      * @return True if the extra race process was completed successfully, false otherwise.
      */
     private fun handleExtraRace(isScheduledRace: Boolean = false): Boolean {
-        MessageLog.i(TAG, "[RACE] Starting process for handling a extra race${if (isScheduledRace) " (scheduled)" else ""}.")
+        MessageLog.v(TAG, "[RACE] Starting process for handling a extra race${if (isScheduledRace) " (scheduled)" else ""}.")
 
         // If there is a scheduled race pending, proceed to run it immediately.
         if (!isScheduledRace) {
@@ -2544,24 +2574,24 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                     // Get the trainee's aptitude for this race's track surface/distance.
                     val trackSurfaceAptitude: Aptitude = campaign.trainee.checkTrackSurfaceAptitude(mandatoryExtraRaceData.trackSurface)
                     val trackDistanceAptitude: Aptitude = campaign.trainee.checkTrackDistanceAptitude(mandatoryExtraRaceData.trackDistance)
-                    MessageLog.i(
+                    MessageLog.v(
                         TAG,
                         "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" aptitudes don't match requirements (TrackSurface: $trackSurfaceAptitude, TrackDistance: $trackDistanceAptitude). Both must be B or greater.",
                     )
                     return false
                 } else {
-                    MessageLog.i(TAG, "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" aptitudes match requirements. Proceeding to navigate to the Extra Races screen.")
+                    MessageLog.v(TAG, "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" aptitudes match requirements. Proceeding to navigate to the Extra Races screen.")
                 }
             }
 
             // Check for the consecutive race dialog before proceeding.
-            val overrideIgnore: Boolean = enableForceRacing || enableMandatoryRacingPlan || hasInsufficientGoalRacePtsRequirement
+            val overrideIgnore: Boolean = isScheduledRace || enableForceRacing || enableMandatoryRacingPlan || hasInsufficientGoalRacePtsRequirement
             val result: DialogHandlerResult = campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to overrideIgnore))
             if (result is DialogHandlerResult.Handled &&
                 result.dialog.name == "consecutive_race_warning" &&
                 !overrideIgnore
             ) {
-                MessageLog.i(TAG, "[RACE] Consecutive race warning but conditions dictate to not race. Skipping...")
+                MessageLog.v(TAG, "[RACE] Consecutive race warning but conditions dictate to not race. Skipping...")
                 return false
             }
 
@@ -2571,7 +2601,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                 MessageLog.e(TAG, "[ERROR] handleExtraRace:: Unable to determine existence of list of extra races. Canceling the racing process and doing something else.")
                 // Clear requirement flags since we cannot proceed with racing.
                 clearRacingRequirementFlags()
-                MessageLog.i(TAG, "********************")
+                MessageLog.v(TAG, "********************")
                 return false
             }
 
@@ -2579,32 +2609,32 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             if (maxCount == 0) {
                 // If there is a fan/trophy/goal pts requirement but no races available, reset the flags and proceed with training to advance the day.
                 if (hasFanRequirement || hasTrophyRequirement || hasInsufficientGoalRacePtsRequirement) {
-                    MessageLog.i(TAG, "[RACE] Requirement detected but no extra races available. Clearing requirement flags and proceeding with training to advance the day.")
+                    MessageLog.v(TAG, "[RACE] Requirement detected but no extra races available. Clearing requirement flags and proceeding with training to advance the day.")
                 } else {
                     MessageLog.e(TAG, "[ERROR] handleExtraRace:: Was unable to find any extra races to select. Canceling the racing process and doing something else.")
                 }
                 // Always clear requirement flags when no races are available.
                 clearRacingRequirementFlags()
-                MessageLog.i(TAG, "********************")
+                MessageLog.v(TAG, "********************")
                 return false
             } else {
                 MessageLog.i(TAG, "[RACE] There are $maxCount extra race options currently on screen.")
             }
 
-            if (hasFanRequirement) MessageLog.i(TAG, "[RACE] Fan requirement criteria detected. This race must be completed to meet the requirement.")
-            if (hasInsufficientGoalRacePtsRequirement) MessageLog.i(TAG, "[RACE] Goal race result pts requirement criteria detected. This race must be completed to meet the requirement.")
+            if (hasFanRequirement) MessageLog.v(TAG, "[RACE] Fan requirement criteria detected. This race must be completed to meet the requirement.")
+            if (hasInsufficientGoalRacePtsRequirement) MessageLog.v(TAG, "[RACE] Goal race result pts requirement criteria detected. This race must be completed to meet the requirement.")
             if (hasTrophyRequirement) {
                 when {
                     hasPreOpOrAboveRequirement -> {
-                        MessageLog.i(TAG, "[RACE] Trophy requirement with Pre-OP or above criteria detected. Any race can be selected to meet the requirement.")
+                        MessageLog.v(TAG, "[RACE] Trophy requirement with Pre-OP or above criteria detected. Any race can be selected to meet the requirement.")
                     }
 
                     hasG3OrAboveRequirement -> {
-                        MessageLog.i(TAG, "[RACE] Trophy requirement with G3 or above criteria detected. Any race can be selected to meet the requirement.")
+                        MessageLog.v(TAG, "[RACE] Trophy requirement with G3 or above criteria detected. Any race can be selected to meet the requirement.")
                     }
 
                     else -> {
-                        MessageLog.i(TAG, "[RACE] Trophy requirement criteria detected. Only G1 races will be selected to meet the requirement.")
+                        MessageLog.v(TAG, "[RACE] Trophy requirement criteria detected. Only G1 races will be selected to meet the requirement.")
                     }
                 }
             }
@@ -2628,7 +2658,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             val success =
                 if (useSmartRacing && campaign.date.year != DateYear.JUNIOR) {
                     // Use the smart racing logic.
-                    MessageLog.i(TAG, "[RACE] Using smart racing for Year ${campaign.date.year}.")
+                    MessageLog.v(TAG, "[RACE] Using smart racing for Year ${campaign.date.year}.")
                     processSmartRacing(mandatoryExtraRaceData)
                 } else {
                     // Use the standard racing logic.
@@ -2661,7 +2691,20 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                 campaign.updateDate(isOnMainScreen = false)
             }
 
-            MessageLog.i(TAG, "[RACE] Confirming the scheduled race dialog...")
+            // For scheduled races, we still want to detect the grade to determine when to check the Shop during Trackblazer.
+            if (game.scenario == "Trackblazer") {
+                val doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
+                if (doublePredictionLocations.isNotEmpty()) {
+                    val raceName = game.imageUtils.extractRaceName(doublePredictionLocations[0])
+                    val raceDataList = lookupRaceInDatabase(campaign.date.day, raceName)
+                    if (raceDataList.isNotEmpty()) {
+                        lastRaceGrade = raceDataList[0].grade
+                        MessageLog.i(TAG, "[RACE] Detected scheduled race grade: $lastRaceGrade for Trackblazer Shop logic.")
+                    }
+                }
+            }
+
+            MessageLog.v(TAG, "[RACE] Confirming the scheduled race dialog...")
             ButtonRace.click(game.imageUtils, tries = 30)
             game.wait(game.dialogWaitDelay)
         }
@@ -2679,8 +2722,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Clear the next smart race day tracker since we just completed a race.
         nextSmartRaceDay = null
 
-        MessageLog.i(TAG, "[RACE] Racing process for Extra Race${if (isScheduledRace) " (scheduled) " else " "}is completed.")
-        MessageLog.i(TAG, "********************")
+        MessageLog.v(TAG, "[RACE] Racing process for Extra Race${if (isScheduledRace) " (scheduled) " else " "}is completed.")
+        MessageLog.v(TAG, "********************")
         return true
     }
 
@@ -2691,13 +2734,10 @@ class Racing(private val game: Game, private val campaign: Campaign) {
      * @return True if a race was successfully selected and ready to run, false if the process was canceled.
      */
     private fun processSmartRacing(mandatoryExtraRaceData: RaceData? = null): Boolean {
-        MessageLog.i(TAG, "[RACE] Using Smart Racing Plan logic...")
+        MessageLog.v(TAG, "[RACE] Using Smart Racing Plan logic...")
 
         // Update the current date and aptitudes for accurate scoring.
         campaign.updateDate()
-
-        // Use cached user planned races and race plan data.
-        MessageLog.i(TAG, "[RACE] Loaded ${userPlannedRaces.size} user-selected races and ${raceData.size} race entries.")
 
         // Detect all double-star race predictions on screen.
         val doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
@@ -2726,7 +2766,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
         // If mandatory extra race data is provided, immediately find and select it on screen.
         if (mandatoryExtraRaceData != null) {
-            MessageLog.i(TAG, "[RACE] Mandatory mode for extra races enabled. Looking for planned race \"${mandatoryExtraRaceData.name}\" on screen for turn ${campaign.date.day}.")
+            MessageLog.v(TAG, "[RACE] Mandatory mode for extra races enabled. Looking for planned race \"${mandatoryExtraRaceData.name}\" on screen for turn ${campaign.date.day}.")
 
             // Check if there are multiple races with the same formatted name but different fan counts.
             val raceVariants = currentRaces.filter { it.nameFormatted == mandatoryExtraRaceData.nameFormatted }
@@ -2778,7 +2818,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                         }
                     }
 
-                    MessageLog.i(
+                    MessageLog.v(
                         TAG,
                         "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" found on screen with double predictions${if (scrollAttempt > 0) " after $scrollAttempt scroll(s)" else ""}. Selecting it immediately (skipping opportunity cost analysis).",
                     )
@@ -2805,7 +2845,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                 }
             }
 
-            MessageLog.i(TAG, "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" not found on screen after $maxScrollAttempts scroll(s). Canceling racing process.")
+            MessageLog.v(TAG, "[RACE] Mandatory extra race \"${mandatoryExtraRaceData.name}\" not found on screen after $maxScrollAttempts scroll(s). Canceling racing process.")
             return false
         }
 
@@ -2823,7 +2863,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                 val g1Races = currentRaces.filter { it.grade == RaceGrade.G1 }
                 if (g1Races.isEmpty()) {
                     // No G1 races available. Cancel since trophy requirement specifically needs G1 races.
-                    MessageLog.i(TAG, "[RACE] Trophy requirement active but no G1 races available. Canceling racing process (independent of racing plan/farming fans).")
+                    MessageLog.v(TAG, "[RACE] Trophy requirement active but no G1 races available. Canceling racing process (independent of racing plan/farming fans).")
                     return false
                 } else {
                     MessageLog.i(TAG, "[RACE] Trophy requirement active. Filtering to ${g1Races.size} G1 races: ${g1Races.map { it.name }}.")
@@ -2917,7 +2957,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         val sortedScoredRaces = scoredRaces.sortedByDescending { it.score }
         val bestRace = sortedScoredRaces.first()
 
-        MessageLog.i(TAG, "[RACE] Best race selected: ${bestRace.raceData.name} (score: ${game.decimalFormat.format(bestRace.score)}).")
+        MessageLog.v(TAG, "[RACE] Best race selected: ${bestRace.raceData.name} (score: ${game.decimalFormat.format(bestRace.score)}).")
         if (plannedRaces.contains(bestRace.raceData)) {
             MessageLog.i(TAG, "[RACE] Selected race is from user's planned races list.")
         } else {
@@ -2931,7 +2971,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         val hasMultipleFanVariants = targetRaceMatches.size > 1
 
         // Locates the best race on screen and selects it.
-        MessageLog.i(TAG, "[RACE] Looking for target race \"${bestRace.raceData.name}\" on screen...")
+        MessageLog.v(TAG, "[RACE] Looking for target race \"${bestRace.raceData.name}\" on screen...")
         var currentDoublePredictions = doublePredictionLocations
         var targetRaceLocation = findRaceLocationByName(currentDoublePredictions, bestRace.raceData.name, logMatch = true)
 
@@ -2973,11 +3013,11 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         }
 
         if (targetRaceLocation == null) {
-            MessageLog.i(TAG, "[RACE] Could not find target race \"${bestRace.raceData.name}\" on screen. Canceling racing process.")
+            MessageLog.v(TAG, "[RACE] Could not find target race \"${bestRace.raceData.name}\" on screen. Canceling racing process.")
             return false
         }
 
-        MessageLog.i(TAG, "[RACE] Selecting smart racing choice: ${bestRace.raceData.name} (score: ${game.decimalFormat.format(bestRace.score)}).")
+        MessageLog.v(TAG, "[RACE] Selecting smart racing choice: ${bestRace.raceData.name} (score: ${game.decimalFormat.format(bestRace.score)}).")
         game.tap(targetRaceLocation.x, targetRaceLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
         lastRaceGrade = bestRace.raceData.grade
         lastRaceIsRival = bestRace.raceData.isRival
@@ -2991,13 +3031,16 @@ class Racing(private val game: Game, private val campaign: Campaign) {
      * @return True if a race was successfully selected, false if the process was canceled.
      */
     private fun processStandardRacing(): Boolean {
-        MessageLog.i(TAG, "[RACE] Using traditional racing logic for extra races...")
+        MessageLog.v(TAG, "[RACE] Using traditional racing logic for extra races...")
 
         // Detect double-star races on screen.
         var doublePredictionLocations = IconRaceListPredictionDoubleStar.findAll(game.imageUtils)
 
         // If no double predictions found and fans/Pre-OP/G3/GoalPts requirement is active and is after Junior Year, scroll to find them.
-        if (doublePredictionLocations.isEmpty() && campaign.date.year != DateYear.JUNIOR && (hasFanRequirement || hasPreOpOrAboveRequirement || hasG3OrAboveRequirement || hasInsufficientGoalRacePtsRequirement)) {
+        if (doublePredictionLocations.isEmpty() &&
+            campaign.date.year != DateYear.JUNIOR &&
+            (hasFanRequirement || hasPreOpOrAboveRequirement || hasG3OrAboveRequirement || hasInsufficientGoalRacePtsRequirement)
+        ) {
             val maxScrollAttempts = 5
             MessageLog.i(TAG, "[RACE] No double-star predictions found on initial screen. Scrolling to find races to satisfy requirements...")
 
@@ -3124,12 +3167,12 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             Log.w(TAG, "[RACE] Failed to determine max fans. Aborting racing...")
             return false
         }
-        MessageLog.i(TAG, "[RACE] Number of fans detected for each extra race are: ${filteredRaces.joinToString(", ") { it.fans.toString() }}")
+        MessageLog.v(TAG, "[RACE] Number of fans detected for each extra race are: ${filteredRaces.joinToString(", ") { it.fans.toString() }}")
 
         // Evaluate which race to select based on Rival priority, maximum fans and double prediction priority.
         val index =
             if (filteredRaces.any { it.isRival }) {
-                MessageLog.i(TAG, "[RACE] Rival Race(s) detected. Prioritizing Rival Races.")
+                MessageLog.v(TAG, "[RACE] Rival Race(s) detected. Prioritizing Rival Races.")
                 val rivalRaces = filteredRaces.filter { it.isRival }
 
                 if (enableForceRacing) {
@@ -3165,7 +3208,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         lastRaceIsRival = filteredRaces[index].isRival
 
         // Selects the determined race on screen.
-        MessageLog.i(TAG, "[RACE] Selecting extra race at option #${index + 1}.")
+        MessageLog.v(TAG, "[RACE] Selecting extra race at option #${index + 1}.")
         val target = filteredLocations[index]
         game.tap(
             target.x - game.imageUtils.relWidth((100 * 1.36).toInt()),

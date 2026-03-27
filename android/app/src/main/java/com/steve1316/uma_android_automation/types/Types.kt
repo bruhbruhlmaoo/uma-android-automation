@@ -246,6 +246,42 @@ enum class DateYear(val longName: String) {
     }
 }
 
+/** Defines the positive status effects that a trainee can have. */
+enum class PositiveStatus(val statusName: String) {
+    CHARMING("Charming"),
+    FAST_LEARNER("Fast Learner"),
+    PRACTICE_PERFECT("Practice Perfect"),
+    HOT_TOPIC("Hot Topic"),
+    ;
+
+    companion object {
+        /** List of all positive status names. */
+        val names: List<String> = entries.map { it.statusName }
+
+        /** Returns the [PositiveStatus] for the given name, or null if not found. */
+        fun fromName(name: String): PositiveStatus? = entries.find { it.statusName == name }
+    }
+}
+
+/** Defines the negative status effects that a trainee can have. */
+enum class NegativeStatus(val statusName: String) {
+    PRACTICE_POOR("Practice Poor"),
+    MIGRAINE("Migraine"),
+    NIGHT_OWL("Night Owl"),
+    SLOW_METABOLISM("Slow Metabolism"),
+    SLACKER("Slacker"),
+    SKIN_OUTBREAK("Skin Outbreak"),
+    ;
+
+    companion object {
+        /** List of all negative status names. */
+        val names: List<String> = entries.map { it.statusName }
+
+        /** Returns the [NegativeStatus] for the given name, or null if not found. */
+        fun fromName(name: String): NegativeStatus? = entries.find { it.statusName == name }
+    }
+}
+
 // DATA CLASSES
 
 /** A simple class used to define a bounding box on the screen.

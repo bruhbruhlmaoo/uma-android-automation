@@ -4,6 +4,7 @@ import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext } from "../../context/BotStateContext"
 import { SearchPageProvider } from "../../context/SearchPageContext"
 import CustomSlider from "../../components/CustomSlider"
+import CustomCheckbox from "../../components/CustomCheckbox"
 import CustomTitle from "../../components/CustomTitle"
 import PageHeader from "../../components/PageHeader"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
@@ -135,6 +136,46 @@ const ScenarioOverridesSettings = () => {
                         </View>
 
                         <View style={styles.section}>
+                            <CustomCheckbox
+                                searchId="trackblazer-enable-irregular-training"
+                                checked={scenarioOverrides.trackblazerEnableIrregularTraining}
+                                onCheckedChange={(checked) => updateOverrideSetting("trackblazerEnableIrregularTraining", checked)}
+                                label="Enable Irregular Training"
+                                description="When enabled, the bot will occasionally check for highly profitable training sessions before opting for extra races."
+                            />
+                        </View>
+
+                        {scenarioOverrides.trackblazerEnableIrregularTraining && (
+                            <View style={styles.section}>
+                                <CustomSlider
+                                    searchId="trackblazer-irregular-training-min-stat-gain"
+                                    value={scenarioOverrides.trackblazerIrregularTrainingMinStatGain}
+                                    placeholder={bsc.defaultSettings.scenarioOverrides.trackblazerIrregularTrainingMinStatGain}
+                                    onValueChange={(value) => updateOverrideSetting("trackblazerIrregularTrainingMinStatGain", value)}
+                                    onSlidingComplete={(value) => updateOverrideSetting("trackblazerIrregularTrainingMinStatGain", value)}
+                                    min={20}
+                                    max={100}
+                                    step={5}
+                                    label="Minimum Main Stat Gain for Irregular Training"
+                                    labelUnit=""
+                                    showValue={true}
+                                    showLabels={true}
+                                    description="Sets the minimum main stat gain required to skip racing and perform Irregular Training instead."
+                                />
+                            </View>
+                        )}
+
+                        <View style={styles.section}>
+                            <CustomCheckbox
+                                searchId="trackblazer-whistle-forces-training"
+                                checked={scenarioOverrides.trackblazerWhistleForcesTraining}
+                                onCheckedChange={(checked) => updateOverrideSetting("trackblazerWhistleForcesTraining", checked)}
+                                label="Reset Whistle Forces Training"
+                                description="Whether or not using a Reset Whistle means it can ignore the failure chance thresholds in the Training Settings page. If enabled, the bot will pick the best available training after usage even if it's risky."
+                            />
+                        </View>
+
+                        <View style={styles.section}>
                             <Text style={{ fontSize: 16, color: colors.foreground, marginBottom: 8 }}>Race Grades to check Shop Afterwards</Text>
                             <Text style={{ fontSize: 14, color: colors.foreground, opacity: 0.7, marginBottom: 12 }}>
                                 Select which race grades should trigger a shop check after the race in the Trackblazer scenario.
@@ -167,6 +208,48 @@ const ScenarioOverridesSettings = () => {
                                                 fontSize: 14,
                                                 fontWeight: "600",
                                                 color: scenarioOverrides.trackblazerShopCheckGrades.includes(grade) ? colors.background : colors.foreground,
+                                            }}
+                                        >
+                                            {grade}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.section}>
+                            <Text style={{ fontSize: 16, color: colors.foreground, marginBottom: 8 }}>Race Grades to use Race Retries on</Text>
+                            <Text style={{ fontSize: 14, color: colors.foreground, opacity: 0.7, marginBottom: 12 }}>
+                                Select which race grades should allow using a Race Retry in the Trackblazer scenario.
+                            </Text>
+                            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                                {["G1", "G2", "G3"].map((grade) => (
+                                    <View
+                                        key={grade}
+                                        style={{
+                                            padding: 10,
+                                            borderRadius: 8,
+                                            marginRight: 8,
+                                            marginBottom: 8,
+                                            backgroundColor: scenarioOverrides.trackblazerRetryRacesBeforeFinalGrades.includes(grade) ? colors.primary : colors.card,
+                                        }}
+                                        onTouchEnd={() => {
+                                            const currentGrades = scenarioOverrides.trackblazerRetryRacesBeforeFinalGrades
+                                            if (currentGrades.includes(grade)) {
+                                                updateOverrideSetting(
+                                                    "trackblazerRetryRacesBeforeFinalGrades",
+                                                    currentGrades.filter((g) => g !== grade)
+                                                )
+                                            } else {
+                                                updateOverrideSetting("trackblazerRetryRacesBeforeFinalGrades", [...currentGrades, grade])
+                                            }
+                                        }}
+                                    >
+                                        <Text
+                                            style={{
+                                                fontSize: 14,
+                                                fontWeight: "600",
+                                                color: scenarioOverrides.trackblazerRetryRacesBeforeFinalGrades.includes(grade) ? colors.background : colors.foreground,
                                             }}
                                         >
                                             {grade}

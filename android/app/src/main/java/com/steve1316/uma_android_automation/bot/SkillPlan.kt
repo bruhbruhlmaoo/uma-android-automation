@@ -6,7 +6,6 @@ import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.MainActivity
 import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.types.RunningStyle
-import com.steve1316.uma_android_automation.types.SkillCommunityTier
 import com.steve1316.uma_android_automation.types.SkillList
 import com.steve1316.uma_android_automation.types.SkillListEntry
 import com.steve1316.uma_android_automation.types.TrackDistance
@@ -455,8 +454,6 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
         var i = 0
         var remainingSkills: Map<String, SkillListEntry> = getFilteredSkills(remainingSkillPoints)
         while (remainingSkills.any { it.value.screenPrice <= remainingSkillPoints }) {
-            MessageLog.v(TAG, "\nChecking skills. Iteration #$i.\n")
-
             // Group entries by community tier, with higher tiers prioritized.
             val groupedByCommunityTier: Map<Int?, List<SkillListEntry>> =
                 remainingSkills.values
@@ -469,15 +466,9 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
                     continue
                 }
 
-                MessageLog.v(TAG, "============ SKILL COMMUNITY TIER ${SkillCommunityTier.fromOrdinal(communityTier)} =============")
-
                 // Sort within the tier by evaluation point ratio.
                 val sortedByPointRatio: List<SkillListEntry> = group.sortedByDescending { it.evaluationPointRatio }
                 for (entry in sortedByPointRatio) {
-                    MessageLog.v(
-                        TAG,
-                        "\t${entry.name} -> price(shown): ${entry.price}(${entry.screenPrice}), rank(ratio): ${entry.evaluationPoints}(" + "%.2f".format(entry.evaluationPointRatio) + ")",
-                    )
                     // Don't add duplicate entries.
                     if (entry.name in result || entry.name in skillsToBuy) {
                         continue
@@ -498,7 +489,6 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
                 break
             }
         }
-        MessageLog.v(TAG, "================================================")
 
         // Spend remaining skill points using the Optimize Rank strategy.
         result +=
@@ -532,14 +522,11 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
         var i = 0
         var remainingSkills: Map<String, SkillListEntry> = skillList.getAvailableSkills()
         while (remainingSkills.any { it.value.screenPrice <= remainingSkillPoints }) {
-            MessageLog.v(TAG, "\nChecking skills. Iteration #$i.\n")
             val sortedByPointRatio: List<SkillListEntry> =
                 remainingSkills.values
                     .sortedByDescending { it.evaluationPointRatio }
 
-            MessageLog.v(TAG, "========= SKILLS SORTED BY POINT RATIO =========")
             for (entry in sortedByPointRatio) {
-                MessageLog.v(TAG, "\t${entry.name} -> price(shown): ${entry.price}(${entry.screenPrice}), rank(ratio): ${entry.evaluationPoints}(" + "%.2f".format(entry.evaluationPointRatio) + ")")
                 // Don't add duplicate entries.
                 if (entry.name in result || entry.name in skillsToBuy) {
                     continue
@@ -560,7 +547,6 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
                 break
             }
         }
-        MessageLog.v(TAG, "================================================")
 
         return result.toMap()
     }
@@ -580,16 +566,6 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
             MessageLog.i(TAG, "[SKILLS] Skill plan is disabled. No skills will be purchased.")
             return emptyMap()
         }
-
-        MessageLog.v(TAG, "======================= Skill Plan =======================")
-        MessageLog.v(TAG, "Spending Strategy: ${skillPlanSettings.strategy}")
-        MessageLog.v(TAG, "Buy Inherited Skills: ${skillPlanSettings.bEnableBuyInheritedUniqueSkills}")
-        MessageLog.v(TAG, "Buy Negative Skills: ${skillPlanSettings.bEnableBuyNegativeSkills}")
-        MessageLog.v(TAG, "User-Specified Skills:" + if (skillPlanSettings.skillNames.isEmpty()) " None" else "")
-        for (name in skillPlanSettings.skillNames) {
-            MessageLog.v(TAG, "\t$name")
-        }
-        MessageLog.v(TAG, "==========================================================")
 
         val result: MutableMap<String, Int> = mutableMapOf()
 
@@ -633,7 +609,7 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
                 }
             }
 
-        MessageLog.v(TAG, "============== Skills To Buy ==============")
+        MessageLog.v(TAG, "================ Skills To Buy =================")
         for ((name, price) in result) {
             MessageLog.v(TAG, "\t$name: $price")
         }
@@ -641,7 +617,7 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
             TAG,
             "\n\tTOTAL: ${result.values.sum()} / ${if (USE_MOCK_DATA) MOCK_SKILL_POINTS else skillList.skillPoints} pts with ${if (USE_MOCK_DATA) MOCK_SKILL_POINTS else skillList.skillPoints - result.values.sum()} left over pts",
         )
-        MessageLog.v(TAG, "===========================================")
+        MessageLog.v(TAG, "================================================")
 
         return result.toMap()
     }

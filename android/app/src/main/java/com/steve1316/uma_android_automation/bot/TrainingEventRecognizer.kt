@@ -66,6 +66,22 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
             null
         }
 
+    /** Scenario event data loaded from SQLite settings. This contains the mapping of scenario-specific events to their options and rewards. */
+    private val scenarioEventData: JSONObject? =
+        try {
+            val scenarioDataString = SettingsHelper.getStringSetting("trainingEvent", "scenarioEventData")
+            if (scenarioDataString.isNotEmpty()) {
+                val jsonObject = JSONObject(scenarioDataString)
+                if (game.debugMode) MessageLog.d(TAG, "[DEBUG] scenarioEventData:: Data length from SQLite: ${jsonObject.length()}.")
+                jsonObject
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            if (game.debugMode) MessageLog.d(TAG, "[DEBUG] scenarioEventData:: Failed to load scenario event data from SQLite: ${e.message}")
+            null
+        }
+
     /** Whether to hide OCR comparison results in the log output. */
     private val hideComparisonResults: Boolean = SettingsHelper.getBooleanSetting("debug", "enableHideOCRComparisonResults")
 
@@ -159,6 +175,47 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
 
         // Standardize the OCR result for comparison by removing progression symbols, newlines, and whitespaces.
         val processedResult = cleanTitle(ocrResult)
+
+        // Search for the most similar string within the scenario event data specifically for the current scenario.
+        scenarioEventData?.optJSONObject(game.scenario)?.let { scenarioEvents ->
+            scenarioEvents.keys().forEach { eventName ->
+                // Skip if this is a special event and the name does not match the detected pattern.
+                if (isSpecialEvent && eventName != matchedSpecialEvent) {
+                    return@forEach
+                }
+
+                val eventOptionsArray = scenarioEvents.getJSONArray(eventName)
+                val eventOptions = ArrayList<String>()
+                for (i in 0 until eventOptionsArray.length()) {
+                    eventOptions.add(eventOptionsArray.getString(i))
+                }
+
+                // Calculate similarity score between standardized OCR result and known event name.
+                val cleanedEventName = cleanTitle(eventName)
+                val score = stringSimilarityService.score(processedResult, cleanedEventName)
+                if (!hideComparisonResults) {
+                    MessageLog.i(
+                        TAG,
+                        "[SCENARIO] ${game.scenario} \"${processedResult}\" vs. \"${cleanedEventName}\" (from \"${eventName}\") confidence: ${game.decimalFormat.format(score)}",
+                    )
+                }
+
+                if (score >= confidence) {
+                    confidence = score
+                    eventTitle = eventName
+                    eventOptionRewards = eventOptions
+                    category = "character"
+                    character = game.scenario
+
+                    // Return early if we find a match that meets the minimum confidence criteria.
+                    if (score >= minimumConfidence) {
+                        val result = MatchingResult(confidence, category, eventTitle, supportCardTitle, eventOptionRewards, character)
+                        ocrMatchingCache[ocrResult] = result
+                        return result
+                    }
+                }
+            }
+        }
 
         // Search for the most similar string within the character event data.
         characterEventData?.keys()?.forEach { characterKey ->
@@ -271,8 +328,6 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
      * @return A [Quadruple] containing the event option rewards, confidence score, event title, and character/support name.
      */
     fun start(): Quadruple<ArrayList<String>, Double, String, String> {
-        MessageLog.i(TAG, "\n********************")
-
         // Initialize the best result found with default values.
         var bestResult = MatchingResult(0.0, "", "", "", arrayListOf(), "")
 
@@ -345,7 +400,6 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
 
         val endTime: Long = System.currentTimeMillis()
         Log.d(TAG, "[DEBUG] recognizeTrainingEvent:: Total Runtime for recognizing training event: ${endTime - startTime}ms")
-        MessageLog.i(TAG, "********************")
 
         // Determine the name of the character or support card associated with the best result.
         val characterOrSupportName =

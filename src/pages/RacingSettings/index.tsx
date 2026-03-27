@@ -289,6 +289,7 @@ const RacingSettings = () => {
                             ]}
                             value={racingSettings.selectedUserAgenda}
                             onValueChange={(value) => updateRacingSetting("selectedUserAgenda", value)}
+                            style={{ marginBottom: 16 }}
                         />
 
                         <NavigationLink

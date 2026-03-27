@@ -27,6 +27,8 @@ import com.steve1316.uma_android_automation.components.LabelStatTrackSurface
 import com.steve1316.uma_android_automation.types.Aptitude
 import com.steve1316.uma_android_automation.types.FanCountClass
 import com.steve1316.uma_android_automation.types.Mood
+import com.steve1316.uma_android_automation.types.NegativeStatus
+import com.steve1316.uma_android_automation.types.PositiveStatus
 import com.steve1316.uma_android_automation.types.RunningStyle
 import com.steve1316.uma_android_automation.types.StatName
 import com.steve1316.uma_android_automation.types.TrackDistance
@@ -160,12 +162,6 @@ class Trainee {
 
     /** The screen-space location of the track surface label used as an OCR reference point. */
     var statTrackLocation: Point? = null
-
-    /** List of all positive status names that can be detected. */
-    private val positiveStatusList = listOf("Charming", "Fast Learner", "Practice Perfect")
-
-    /** List of all negative status names that can be detected. */
-    private val negativeStatusList = listOf("Practice Poor", "Migraine", "Night Owl", "Slow Metabolism", "Slacker")
 
     /** The list of currently active positive statuses for the trainee. */
     val currentPositiveStatuses = mutableListOf<String>()
@@ -599,13 +595,13 @@ class Trainee {
                         cropHeight,
                         useThreshold = false,
                         useGrayscale = true,
-                        scale = 1.0,
+                        scale = 2.0,
                         ocrEngine = "tesseract",
                         debugName = "updateConditions_status_$i",
                     ).trim()
 
                 if (statusTitle.isNotEmpty()) {
-                    val expectedList = if (isBad) negativeStatusList else positiveStatusList
+                    val expectedList = if (isBad) NegativeStatus.names else PositiveStatus.names
                     val match = findClosestMatch(statusTitle, expectedList)
 
                     if (match != null) {

@@ -1012,7 +1012,7 @@ class SkillList(private val game: Game, private val campaign: Campaign) {
      */
     fun printSkillListEntries(skillListEntries: Map<String, SkillListEntry>? = null, verbose: Boolean = false) {
         val entriesToPrint: Map<String, SkillListEntry> = skillListEntries ?: getAvailableSkills()
-        MessageLog.v(TAG, "================= Skill List Entries =================")
+        MessageLog.v(TAG, "============== Skill List Entries =============")
         for ((name, entry) in entriesToPrint) {
             val entryString: String =
                 if (verbose) {
@@ -1023,6 +1023,6 @@ class SkillList(private val game: Game, private val campaign: Campaign) {
                 }
             MessageLog.v(TAG, "\t$name: $entryString")
         }
-        MessageLog.v(TAG, "======================================================")
+        MessageLog.v(TAG, "===============================================")
     }
 }

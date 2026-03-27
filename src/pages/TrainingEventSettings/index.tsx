@@ -16,6 +16,7 @@ import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 // Import the data files.
 import charactersData from "../../data/characters.json"
 import supportsData from "../../data/supports.json"
+import scenariosData from "../../data/scenarios.json"
 
 // List of events that are already covered in Special Event Overrides and should be excluded.
 const excludedEventNames = new Set([
@@ -55,12 +56,18 @@ const TrainingEventSettings = () => {
     const { settings, setSettings } = bsc
     // Merge current training event settings with defaults to handle missing properties.
     const trainingEventSettings = { ...defaultSettings.trainingEvent, ...settings.trainingEvent }
-    const { enablePrioritizeEnergyOptions, specialEventOverrides, characterEventOverrides, supportEventOverrides } = trainingEventSettings
+    const { enablePrioritizeEnergyOptions, specialEventOverrides, characterEventOverrides, supportEventOverrides, scenarioEventOverrides } = trainingEventSettings
 
     const [eventOverrideModalVisible, setEventOverrideModalVisible] = useState(false)
     const [eventOverrideSearchQuery, setEventOverrideSearchQuery] = useState("")
     const [optionSelectionModalVisible, setOptionSelectionModalVisible] = useState(false)
-    const [selectedEventForOption, setSelectedEventForOption] = useState<{ key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" } | null>(null)
+    const [selectedEventForOption, setSelectedEventForOption] = useState<{
+        key: string
+        characterOrSupport: string
+        eventName: string
+        options: string[]
+        type: "character" | "support" | "scenario"
+    } | null>(null)
 
     const acupunctureOptions = [
         { value: "Option 1: All stats +20", label: "Option 1: All stats +20" },
@@ -158,7 +165,7 @@ const TrainingEventSettings = () => {
      * Filters out excluded events and events with fewer than two options.
      */
     const allEvents = useMemo(() => {
-        const events: Array<{ key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" }> = []
+        const events: Array<{ key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" | "scenario" }> = []
 
         // Add all character events from the data file.
         Object.keys(charactersData).forEach((characterName) => {
@@ -171,7 +178,7 @@ const TrainingEventSettings = () => {
                         events.push({
                             key: `${characterName}|${eventName}`,
                             characterOrSupport: characterName,
-                            eventName,
+                            eventName: eventName.replace(/\n/g, " "),
                             options: eventOptions,
                             type: "character",
                         })
@@ -191,9 +198,29 @@ const TrainingEventSettings = () => {
                         events.push({
                             key: `${supportName}|${eventName}`,
                             characterOrSupport: supportName,
-                            eventName,
+                            eventName: eventName.replace(/\n/g, " "),
                             options: eventOptions,
                             type: "support",
+                        })
+                    }
+                })
+            }
+        })
+
+        // Add all scenario events from the data file.
+        Object.keys(scenariosData).forEach((scenarioName) => {
+            const scenarioEvents = scenariosData[scenarioName as keyof typeof scenariosData] as Record<string, string[]>
+            if (scenarioEvents) {
+                Object.keys(scenarioEvents).forEach((eventName) => {
+                    const eventOptions = scenarioEvents[eventName]
+                    // Skip events that are already covered in Special Event Overrides and that have fewer than 2 options.
+                    if (!excludedEventNames.has(eventName) && eventOptions && eventOptions.length >= 2) {
+                        events.push({
+                            key: `${scenarioName}|${eventName}`,
+                            characterOrSupport: scenarioName,
+                            eventName: eventName.replace(/\n/g, " "),
+                            options: eventOptions,
+                            type: "scenario",
                         })
                     }
                 })
@@ -214,8 +241,10 @@ const TrainingEventSettings = () => {
         let availableEvents = allEvents.filter((event) => {
             if (event.type === "character") {
                 return !(event.key in characterOverrides)
-            } else {
+            } else if (event.type === "support") {
                 return !(event.key in supportOverrides)
+            } else {
+                return !(event.key in (scenarioEventOverrides || {}))
             }
         })
 
@@ -233,9 +262,9 @@ const TrainingEventSettings = () => {
      * @param optionIndex The index of the selected option.
      */
     const updateEventOverride = (eventKey: string, optionIndex: number) => {
-        const isCharacter = allEvents.find((e) => e.key === eventKey)?.type === "character"
+        const eventType = allEvents.find((e) => e.key === eventKey)?.type
 
-        if (isCharacter) {
+        if (eventType === "character") {
             setSettings({
                 ...bsc.settings,
                 trainingEvent: {
@@ -246,13 +275,24 @@ const TrainingEventSettings = () => {
                     },
                 },
             })
-        } else {
+        } else if (eventType === "support") {
             setSettings({
                 ...bsc.settings,
                 trainingEvent: {
                     ...bsc.settings.trainingEvent,
                     supportEventOverrides: {
                         ...(bsc.settings.trainingEvent.supportEventOverrides || {}),
+                        [eventKey]: optionIndex,
+                    },
+                },
+            })
+        } else if (eventType === "scenario") {
+            setSettings({
+                ...bsc.settings,
+                trainingEvent: {
+                    ...bsc.settings.trainingEvent,
+                    scenarioEventOverrides: {
+                        ...(bsc.settings.trainingEvent.scenarioEventOverrides || {}),
                         [eventKey]: optionIndex,
                     },
                 },
@@ -268,9 +308,9 @@ const TrainingEventSettings = () => {
      * @param eventKey The unique key identifying the event to remove.
      */
     const removeEventOverride = (eventKey: string) => {
-        const isCharacter = allEvents.find((e) => e.key === eventKey)?.type === "character"
+        const eventType = allEvents.find((e) => e.key === eventKey)?.type
 
-        if (isCharacter) {
+        if (eventType === "character") {
             const newOverrides = { ...(bsc.settings.trainingEvent.characterEventOverrides || {}) }
             delete newOverrides[eventKey]
             setSettings({
@@ -280,7 +320,7 @@ const TrainingEventSettings = () => {
                     characterEventOverrides: newOverrides,
                 },
             })
-        } else {
+        } else if (eventType === "support") {
             const newOverrides = { ...(bsc.settings.trainingEvent.supportEventOverrides || {}) }
             delete newOverrides[eventKey]
             setSettings({
@@ -288,6 +328,16 @@ const TrainingEventSettings = () => {
                 trainingEvent: {
                     ...bsc.settings.trainingEvent,
                     supportEventOverrides: newOverrides,
+                },
+            })
+        } else if (eventType === "scenario") {
+            const newOverrides = { ...(bsc.settings.trainingEvent.scenarioEventOverrides || {}) }
+            delete newOverrides[eventKey]
+            setSettings({
+                ...bsc.settings,
+                trainingEvent: {
+                    ...bsc.settings.trainingEvent,
+                    scenarioEventOverrides: newOverrides,
                 },
             })
         }
@@ -325,14 +375,26 @@ const TrainingEventSettings = () => {
                 })
             }
         })
+        Object.keys(scenarioEventOverrides || {}).forEach((key) => {
+            const event = allEvents.find((e) => e.key === key)
+            if (event) {
+                overrides.push({
+                    key,
+                    characterOrSupport: event.characterOrSupport,
+                    eventName: event.eventName,
+                    optionIndex: scenarioEventOverrides[key],
+                    options: event.options,
+                })
+            }
+        })
         return overrides
-    }, [characterEventOverrides, supportEventOverrides, allEvents])
+    }, [characterEventOverrides, supportEventOverrides, scenarioEventOverrides, allEvents])
 
     /**
      * Render a single event item for the selection list.
      * @param event The event data to render.
      */
-    const renderEventItem = useCallback(({ item: event }: { item: { key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" } }) => {
+    const renderEventItem = useCallback(({ item: event }: { item: { key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" | "scenario" } }) => {
         return (
             <TouchableOpacity
                 style={styles.eventItem}
@@ -358,7 +420,7 @@ const TrainingEventSettings = () => {
      * @param item The event item.
      * @returns The unique key.
      */
-    const keyExtractor = useCallback((item: { key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" }) => item.key, [])
+    const keyExtractor = useCallback((item: { key: string; characterOrSupport: string; eventName: string; options: string[]; type: "character" | "support" | "scenario" }) => item.key, [])
 
     const styles = useMemo(
         () =>

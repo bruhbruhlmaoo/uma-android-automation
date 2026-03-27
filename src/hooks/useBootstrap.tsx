@@ -9,6 +9,7 @@ import racesData from "../data/races.json"
 import skillsData from "../data/skills.json"
 import charactersData from "../data/characters.json"
 import supportsData from "../data/supports.json"
+import scenariosData from "../data/scenarios.json"
 
 /**
  * Manages app initialization, settings persistence, and message handling.
@@ -156,6 +157,10 @@ export const useBootstrap = () => {
             // Save support event data to SQLite.
             await databaseManager.saveSetting("trainingEvent", "supportEventData", supportsData, true)
             logWithTimestamp(`[Bootstrap] Successfully saved support event data (${Object.keys(supportsData).length} supports) to SQLite`)
+
+            // Save scenario-specific event data to SQLite.
+            await databaseManager.saveSetting("trainingEvent", "scenarioEventData", scenariosData, true)
+            logWithTimestamp(`[Bootstrap] Successfully saved scenario-specific event data (${Object.keys(scenariosData).length} scenarios) to SQLite`)
 
             logWithTimestamp("[Bootstrap] Event data population complete")
         } catch (error) {

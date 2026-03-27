@@ -7,6 +7,8 @@ import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.components.ButtonClose
 import com.steve1316.uma_android_automation.components.ButtonNext
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
+import com.steve1316.uma_android_automation.types.NegativeStatus
+import com.steve1316.uma_android_automation.types.PositiveStatus
 import net.ricecode.similarity.JaroWinklerStrategy
 import net.ricecode.similarity.StringSimilarityServiceImpl
 import org.json.JSONObject
@@ -24,12 +26,6 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
 
     /** Whether to prioritize options that provide energy gains. */
     private val enablePrioritizeEnergyOptions: Boolean = SettingsHelper.getBooleanSetting("trainingEvent", "enablePrioritizeEnergyOptions")
-
-    /** List of positive status effects to look for in event rewards. */
-    private val positiveStatuses = listOf("Charming", "Fast Learner", "Practice Perfect")
-
-    /** List of negative status effects to look for in event rewards. */
-    private val negativeStatuses = listOf("Practice Poor", "Migraine", "Night Owl", "Slow Metabolism", "Slacker")
 
     /** Special event overrides loaded from SQLite settings. */
     private val specialEventOverrides: Map<String, EventOverride> =
@@ -93,6 +89,25 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
             emptyMap()
         }
 
+    /** Scenario event overrides loaded from SQLite settings. */
+    private val scenarioEventOverrides: Map<String, Int> =
+        try {
+            val overridesString = SettingsHelper.getStringSetting("trainingEvent", "scenarioEventOverrides")
+            if (overridesString.isNotEmpty()) {
+                val jsonObject = JSONObject(overridesString)
+                val overridesMap = mutableMapOf<String, Int>()
+                jsonObject.keys().forEach { eventKey ->
+                    overridesMap[eventKey] = jsonObject.getInt(eventKey)
+                }
+                overridesMap
+            } else {
+                emptyMap()
+            }
+        } catch (e: Exception) {
+            MessageLog.w(TAG, "[WARN] scenarioEventOverrides:: Could not parse scenario event overrides: ${e.message}")
+            emptyMap()
+        }
+
     /**
      * Store the override settings for a special Training Event.
      *
@@ -121,18 +136,18 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                 // Check if any pattern matches the event title.
                 val matches = patterns.any { pattern -> eventTitle.contains(pattern) }
                 if (matches) {
-                    MessageLog.i(TAG, "[TRAINING_EVENT] Detected special event: $eventName")
+                    MessageLog.v(TAG, "[TRAINING_EVENT] Detected special event: $eventName")
 
                     // Parse the option number from the setting (e.g., "Option 5: Energy +10" -> 5).
                     val optionIndex =
                         if (override.selectedOption == "Default") {
-                            MessageLog.i(TAG, "[TRAINING_EVENT] Selecting Option 1 according to special event override.")
+                            MessageLog.v(TAG, "[TRAINING_EVENT] Selecting Option 1 according to special event override.")
                             0
                         } else {
                             val optionMatch = Regex("Option (\\d+)").find(override.selectedOption)
                             if (optionMatch != null) {
                                 val optionNumber = optionMatch.groupValues[1].toInt()
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Using setting: ${override.selectedOption} (Option $optionNumber)")
+                                MessageLog.v(TAG, "[TRAINING_EVENT] Using setting: ${override.selectedOption} (Option $optionNumber)")
                                 optionNumber - 1
                             } else {
                                 MessageLog.w(TAG, "[WARN] checkSpecialEventOverride:: Could not parse option number from setting: ${override.selectedOption}. Using option 1 by default.")
@@ -161,7 +176,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
         val eventKey = "$characterName|$eventTitle"
         val override = characterEventOverrides[eventKey]
         if (override != null) {
-            MessageLog.i(TAG, "[TRAINING_EVENT] Detected character event override: $eventKey -> Option ${override + 1}")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Detected character event override: $eventKey -> Option ${override + 1}")
             return override
         }
 
@@ -181,7 +196,27 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
         val eventKey = "$supportName|$eventTitle"
         val override = supportEventOverrides[eventKey]
         if (override != null) {
-            MessageLog.i(TAG, "[TRAINING_EVENT] Detected support event override: $eventKey -> Option ${override + 1}")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Detected support event override: $eventKey -> Option ${override + 1}")
+            return override
+        }
+
+        return null
+    }
+
+    /**
+     * Check if the given scenario event matches any scenario event overrides.
+     *
+     * @param scenarioName The detected scenario name.
+     * @param eventTitle The detected event title from OCR.
+     * @return The 0-based option index if an override is found, otherwise null.
+     */
+    private fun checkScenarioEventOverride(scenarioName: String, eventTitle: String): Int? {
+        if (scenarioName.isEmpty()) return null
+
+        val eventKey = "$scenarioName|$eventTitle"
+        val override = scenarioEventOverrides[eventKey]
+        if (override != null) {
+            MessageLog.v(TAG, "[TRAINING_EVENT] Detected scenario event override: $eventKey -> Option ${override + 1}")
             return override
         }
 
@@ -198,11 +233,11 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
      */
     private fun selectUnityCupTeamNameEvent(optionLocations: ArrayList<Point>): Int {
         val numOptions = optionLocations.size
-        MessageLog.i(TAG, "[TRAINING_EVENT] Handling \"A Team at Last\" event with $numOptions option(s).")
+        MessageLog.v(TAG, "[TRAINING_EVENT] Handling \"A Team at Last\" event with $numOptions option(s).")
 
         // If zero or one options are detected, return the first option index (auto-completed or single option).
         if (numOptions <= 1) {
-            MessageLog.i(TAG, "[TRAINING_EVENT] Event has $numOptions option(s). Selecting first/only option.")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Event has $numOptions option(s). Selecting first/only option.")
             return 0
         }
 
@@ -213,13 +248,13 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
 
         // Return the first option index if the user preference is "Default".
         if (selectedPreference == "Default") {
-            MessageLog.i(TAG, "[TRAINING_EVENT] Using default preference, selecting first option.")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Using default preference, selecting first option.")
             return 0
         }
 
         // Return the last option index if the user preference is "Team Carrot (Last Option)".
         if (selectedPreference == "Team Carrot (Last Option)") {
-            MessageLog.i(TAG, "[TRAINING_EVENT] Using Team Carrot preference, selecting last option.")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Using Team Carrot preference, selecting last option.")
             return numOptions - 1
         }
 
@@ -272,7 +307,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                 // Perform exact containment check first.
                 if (ocrText.contains(teamName, ignoreCase = true) || teamName.contains(ocrText, ignoreCase = true)) {
                     if (teamName == selectedPreference) {
-                        MessageLog.i(TAG, "[TRAINING_EVENT] Found exact match for \"$selectedPreference\" at option ${optionIndex + 1}.")
+                        MessageLog.v(TAG, "[TRAINING_EVENT] Found exact match for \"$selectedPreference\" at option ${optionIndex + 1}.")
                         return optionIndex
                     }
                 }
@@ -292,12 +327,12 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
 
         // Return the best matching index if the similarity score is high enough.
         if (bestMatchScore >= 0.8) {
-            MessageLog.i(TAG, "[TRAINING_EVENT] Selected option ${bestMatchIndex + 1} based on similarity match (score: ${game.decimalFormat.format(bestMatchScore)}).")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Selected option ${bestMatchIndex + 1} based on similarity match (score: ${game.decimalFormat.format(bestMatchScore)}).")
             return bestMatchIndex
         }
 
         // Fallback to selecting the first option if no suitable match is found.
-        MessageLog.i(TAG, "[TRAINING_EVENT] No good match found for preference. Falling back to first option.")
+        MessageLog.v(TAG, "[TRAINING_EVENT] No good match found for preference. Falling back to first option.")
         return 0
     }
 
@@ -312,9 +347,16 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
      * @param confidence The OCR matching confidence.
      */
     private fun printEventSummary(eventTitle: String, ownerName: String, eventRewards: ArrayList<String>, weights: List<Int>?, selectedOption: Int, confidence: Double) {
+        val sb = StringBuilder()
+        sb.appendLine("\n========== Training Event Summary ==========")
+
         val ownerInfo = if (ownerName.isNotEmpty()) " ($ownerName)" else ""
-        MessageLog.i(TAG, "[TRAINING_EVENT] Event: \"$eventTitle\"$ownerInfo [Confidence: ${game.decimalFormat.format(confidence)}]")
-        MessageLog.i(TAG, "[TRAINING_EVENT] Options:")
+        val cleanedTitle = eventTitle.replace("\n", " ").replace("\r", "")
+        sb.appendLine("Event: \"$cleanedTitle\"$ownerInfo [Confidence: ${game.decimalFormat.format(confidence)}]")
+        sb.appendLine("Current Date: ${campaign.date}")
+        sb.appendLine("")
+
+        sb.appendLine("Options:")
 
         eventRewards.forEachIndexed { index, reward ->
             // Create a condensed reward summary by joining truncated lines.
@@ -328,10 +370,13 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
 
             val weightInfo = if (weights != null && index < weights.size) " [Weight: ${weights[index]}]" else ""
             val selectionMarker = if (index == selectedOption) " <---- SELECTED" else ""
-            MessageLog.i(TAG, "  Option ${index + 1}$weightInfo: $condensed$selectionMarker")
+            sb.appendLine("  Option ${index + 1}$weightInfo: $condensed$selectionMarker")
         }
 
-        MessageLog.i(TAG, "[TRAINING_EVENT] Selected: Option ${selectedOption + 1}")
+        sb.appendLine("")
+        sb.appendLine("Selected: Option ${selectedOption + 1}")
+        sb.appendLine("============================================")
+        MessageLog.v(TAG, sb.toString())
     }
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -344,13 +389,13 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
      * outcome.
      */
     fun handleTrainingEvent() {
-        MessageLog.i(TAG, "\n********************")
-        MessageLog.i(TAG, "[TRAINING_EVENT] Starting Training Event process on ${campaign.date}.")
+        MessageLog.v(TAG, "\n********************")
+        MessageLog.v(TAG, "[TRAINING_EVENT] Starting Training Event process on ${campaign.date}.")
 
         // Check if the bot is currently at the Main Screen.
         if (campaign.checkMainScreen()) {
-            MessageLog.i(TAG, "[TRAINING_EVENT] Bot is at the Main Screen. Ending the Training Event process.")
-            MessageLog.i(TAG, "********************")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Bot is at the Main Screen. Ending the Training Event process.")
+            MessageLog.v(TAG, "********************")
             return
         }
 
@@ -372,18 +417,18 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
             val trainingOptionLocations: ArrayList<Point> = IconTrainingEventHorseshoe.findAll(game.imageUtils)
             tutorialOptionCount = trainingOptionLocations.size
 
-            MessageLog.i(TAG, "[TRAINING_EVENT] Tutorial event detected for Unity Cup. Found $tutorialOptionCount option(s) on screen.")
+            MessageLog.v(TAG, "[TRAINING_EVENT] Tutorial event detected for Unity Cup. Found $tutorialOptionCount option(s) on screen.")
 
             when (tutorialOptionCount) {
                 2 -> {
                     // If 2 options detected, select the last one (index 1).
                     optionSelected = 1
-                    MessageLog.i(TAG, "[TRAINING_EVENT] Selecting last option (option 2) to dismiss Tutorial.")
+                    MessageLog.v(TAG, "[TRAINING_EVENT] Selecting last option (option 2) to dismiss Tutorial.")
                 }
 
                 5 -> {
                     optionSelected = 4
-                    MessageLog.i(TAG, "[TRAINING_EVENT] Selecting last option (option 5) first, then will select first option to close.")
+                    MessageLog.v(TAG, "[TRAINING_EVENT] Selecting last option (option 5) first, then will select first option to close.")
                 }
 
                 else -> {
@@ -411,18 +456,19 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
             }
 
             if (eventRewards.isNotEmpty()) {
-                MessageLog.i(TAG, "[TRAINING_EVENT] Special event override applied: option ${optionSelected + 1}: \"${eventRewards[optionSelected]}\"")
+                MessageLog.v(TAG, "[TRAINING_EVENT] Special event override applied: option ${optionSelected + 1}: \"${eventRewards[optionSelected]}\"")
             } else {
-                MessageLog.i(TAG, "[TRAINING_EVENT] Special event override applied: option ${optionSelected + 1}")
+                MessageLog.v(TAG, "[TRAINING_EVENT] Special event override applied: option ${optionSelected + 1}")
             }
             specialEventHandled = true
         }
 
         if (eventRewards.isNotEmpty() && eventRewards[0] != "") {
             if (!specialEventHandled) {
-                // Check for character or support event overrides.
+                // Check for character, support, or scenario event overrides.
                 val characterOverride = checkCharacterEventOverride(characterOrSupportName, eventTitle)
                 val supportOverride = checkSupportEventOverride(characterOrSupportName, eventTitle)
+                val scenarioOverride = checkScenarioEventOverride(characterOrSupportName, eventTitle)
 
                 if (characterOverride != null) {
                     optionSelected = characterOverride
@@ -433,7 +479,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                         optionSelected = eventRewards.size - 1
                     }
 
-                    MessageLog.i(TAG, "[TRAINING_EVENT] Character event override applied.")
+                    MessageLog.v(TAG, "[TRAINING_EVENT] Character event override applied.")
                     printEventSummary(eventTitle, characterOrSupportName, eventRewards, null, optionSelected, confidence)
                 } else if (supportOverride != null) {
                     optionSelected = supportOverride
@@ -444,14 +490,25 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                         optionSelected = eventRewards.size - 1
                     }
 
-                    MessageLog.i(TAG, "[TRAINING_EVENT] Support event override applied.")
+                    MessageLog.v(TAG, "[TRAINING_EVENT] Support event override applied.")
+                    printEventSummary(eventTitle, characterOrSupportName, eventRewards, null, optionSelected, confidence)
+                } else if (scenarioOverride != null) {
+                    optionSelected = scenarioOverride
+
+                    // Ensure the selected option is within bounds.
+                    if (optionSelected >= eventRewards.size) {
+                        MessageLog.w(TAG, "[WARN] handleTrainingEvent:: Selected scenario event option $optionSelected is out of bounds. Using last option.")
+                        optionSelected = eventRewards.size - 1
+                    }
+
+                    MessageLog.v(TAG, "[TRAINING_EVENT] Scenario event override applied.")
                     printEventSummary(eventTitle, characterOrSupportName, eventRewards, null, optionSelected, confidence)
                 } else {
                     // Initialize the List for normal event processing.
                     val selectionWeight = List(eventRewards.size) { 0 }.toMutableList()
 
                     // Sum up the stat gains with additional weight applied to stats that are prioritized.
-                    eventRewards.forEach { reward ->
+                    eventRewards.forEachIndexed { rewardIndex, reward ->
                         val formattedReward: List<String> = reward.split("\n")
 
                         formattedReward.forEach { line ->
@@ -468,22 +525,15 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                 return@forEach
                             }
 
-                            MessageLog.i(TAG, "[TRAINING_EVENT] Original line is \"$line\".")
-                            MessageLog.i(TAG, "[TRAINING_EVENT] Formatted line is \"$formattedLine\".")
-
                             var priorityStatCheck = false
                             if (line.lowercase().contains("can start dating")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of 100 to unlock recreation/dating for this support.")
-                                selectionWeight[optionSelected] += 100
+                                selectionWeight[rewardIndex] += 100
                             } else if (line.lowercase().contains("event chain ended")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of -200 for event chain ending.")
-                                selectionWeight[optionSelected] += -300
+                                selectionWeight[rewardIndex] += -300
                             } else if (line.lowercase().contains("(random)")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of -10 for random reward.")
-                                selectionWeight[optionSelected] += -10
+                                selectionWeight[rewardIndex] += -10
                             } else if (line.lowercase().contains("randomly")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of 50 for random options.")
-                                selectionWeight[optionSelected] += 50
+                                selectionWeight[rewardIndex] += 50
                             } else if (line.lowercase().contains("energy")) {
                                 val finalEnergyValue =
                                     try {
@@ -496,7 +546,6 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                                         try {
                                                             split.trim().toInt()
                                                         } catch (_: NumberFormatException) {
-                                                            MessageLog.w(TAG, "[WARN] handleTrainingEvent:: Could not convert $formattedLine to a number for energy with a forward slash.")
                                                             20
                                                         }
                                                 }
@@ -511,28 +560,21 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                             energyValue * 3
                                         }
                                     } catch (_: NumberFormatException) {
-                                        MessageLog.w(TAG, "[WARN] handleTrainingEvent:: Could not convert $formattedLine to a number for energy.")
                                         20
                                     }
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalEnergyValue for energy.")
-                                selectionWeight[optionSelected] += finalEnergyValue
+                                selectionWeight[rewardIndex] += finalEnergyValue
                             } else if (line.lowercase().contains("mood")) {
                                 val moodWeight = if (formattedLine.contains("-")) -50 else 50
-                                MessageLog.i(TAG, "[TRAINING-EVENT] Adding weight for option#${optionSelected + 1} of $moodWeight for ${if (moodWeight > 0) "positive" else "negative"} mood gain.")
-                                selectionWeight[optionSelected] += moodWeight
+                                selectionWeight[rewardIndex] += moodWeight
                             } else if (line.lowercase().contains("bond")) {
                                 val bondWeight = if (formattedLine.contains("-")) -20 else 20
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $bondWeight for bond ${if (bondWeight > 0) "gain" else "loss"}.")
-                                selectionWeight[optionSelected] += bondWeight
+                                selectionWeight[rewardIndex] += bondWeight
                             } else if (line.lowercase().contains("hint")) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of 25 for skill hint(s).")
-                                selectionWeight[optionSelected] += 25
-                            } else if (positiveStatuses.any { status -> line.contains(status) }) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of 25 for positive status effect.")
-                                selectionWeight[optionSelected] += 25
-                            } else if (negativeStatuses.any { status -> line.contains(status) }) {
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of -25 for negative status effect.")
-                                selectionWeight[optionSelected] += -25
+                                selectionWeight[rewardIndex] += 25
+                            } else if (PositiveStatus.names.any { status -> line.contains(status) }) {
+                                selectionWeight[rewardIndex] += 25
+                            } else if (NegativeStatus.names.any { status -> line.contains(status) }) {
+                                selectionWeight[rewardIndex] += -25
                             } else if (line.lowercase().contains("skill")) {
                                 val finalSkillPoints =
                                     if (formattedLine.contains("/")) {
@@ -543,7 +585,6 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                                 try {
                                                     split.trim().toInt()
                                                 } catch (_: NumberFormatException) {
-                                                    MessageLog.w(TAG, "[WARN] handleTrainingEvent:: Could not convert $formattedLine to a number for skill points with a forward slash.")
                                                     10
                                                 }
                                         }
@@ -551,8 +592,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                     } else {
                                         formattedLine.toInt()
                                     }
-                                MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalSkillPoints for skill points.")
-                                selectionWeight[optionSelected] += finalSkillPoints
+                                selectionWeight[rewardIndex] += finalSkillPoints
                             } else {
                                 // Apply inflated weights to the prioritized stats based on their order.
                                 campaign.training.statPrioritization.forEachIndexed { index, stat ->
@@ -578,7 +618,6 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                                             try {
                                                                 split.trim().toInt()
                                                             } catch (_: NumberFormatException) {
-                                                                MessageLog.w(TAG, "[WARN] handleTrainingEvent:: Could not convert $formattedLine to a number for a priority stat with a forward slash.")
                                                                 10
                                                             }
                                                     }
@@ -587,12 +626,10 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                                     formattedLine.toInt() + priorityBonus
                                                 }
                                             } catch (_: NumberFormatException) {
-                                                MessageLog.w(TAG, "[WARN] handleTrainingEvent:: Could not convert $formattedLine to a number for a priority stat.")
                                                 priorityStatCheck = false
                                                 10
                                             }
-                                        MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalStatValue for prioritized stat.")
-                                        selectionWeight[optionSelected] += finalStatValue
+                                        selectionWeight[rewardIndex] += finalStatValue
                                     }
                                 }
 
@@ -608,10 +645,6 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                                         try {
                                                             split.trim().toInt()
                                                         } catch (_: NumberFormatException) {
-                                                            MessageLog.w(
-                                                                TAG,
-                                                                "[WARN] handleTrainingEvent:: Could not convert $formattedLine to a number for non-prioritized stat with a forward slash.",
-                                                            )
                                                             10
                                                         }
                                                 }
@@ -620,18 +653,12 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                                 formattedLine.toInt()
                                             }
                                         } catch (_: NumberFormatException) {
-                                            MessageLog.w(TAG, "[WARN] handleTrainingEvent:: Could not convert $formattedLine to a number for non-prioritized stat.")
                                             10
                                         }
-                                    MessageLog.i(TAG, "[TRAINING_EVENT] Adding weight for option #${optionSelected + 1} of $finalStatValue for non-prioritized stat.")
-                                    selectionWeight[optionSelected] += finalStatValue
+                                    selectionWeight[rewardIndex] += finalStatValue
                                 }
                             }
-
-                            MessageLog.i(TAG, "[TRAINING_EVENT] Final weight for option #${optionSelected + 1} is: ${selectionWeight[optionSelected]}.")
                         }
-
-                        optionSelected++
                     }
 
                     // Select the best option that aligns with the stat prioritization made in the Training options.
@@ -780,7 +807,7 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
             }
         }
 
-        MessageLog.i(TAG, "[TRAINING_EVENT] Process to handle detected Training Event completed.")
-        MessageLog.i(TAG, "********************")
+        MessageLog.v(TAG, "[TRAINING_EVENT] Process to handle detected Training Event completed.")
+        MessageLog.v(TAG, "********************")
     }
 }
