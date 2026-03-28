@@ -1,13 +1,18 @@
-import { useMemo, useContext, useRef } from "react"
-import { View, Text, ScrollView, StyleSheet } from "react-native"
+import { useMemo, useContext, useRef, useState, useCallback } from "react"
+import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity } from "react-native"
+import { Divider } from "react-native-paper"
 import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext } from "../../context/BotStateContext"
 import { SearchPageProvider } from "../../context/SearchPageContext"
 import CustomSlider from "../../components/CustomSlider"
 import CustomCheckbox from "../../components/CustomCheckbox"
 import CustomTitle from "../../components/CustomTitle"
+import CustomButton from "../../components/CustomButton"
 import PageHeader from "../../components/PageHeader"
+import { Input } from "../../components/ui/input"
+import { CircleCheckBig, Trash2 } from "lucide-react-native"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
+import trackblazerIcons from "./icons"
 
 /**
  * The Scenario Overrides Settings page.
@@ -22,20 +27,48 @@ const ScenarioOverridesSettings = () => {
     const { settings, setSettings } = bsc
     const { scenarioOverrides } = settings
 
+    const [searchQuery, setSearchQuery] = useState("")
+
+    const filteredItems = useMemo(() => {
+        return Object.keys(trackblazerIcons).filter((itemName) => itemName.toLowerCase().includes(searchQuery.toLowerCase()))
+    }, [searchQuery])
+
     /**
      * Update a scenario override setting.
      * @param key The key of the setting to update.
      * @param value The value to set the setting to.
      */
-    const updateOverrideSetting = (key: keyof typeof scenarioOverrides, value: any) => {
-        setSettings({
-            ...bsc.settings,
-            scenarioOverrides: {
-                ...bsc.settings.scenarioOverrides,
-                [key]: value,
-            },
-        })
-    }
+    const updateOverrideSetting = useCallback(
+        (key: keyof typeof scenarioOverrides, value: any) => {
+            setSettings((prev) => ({
+                ...prev,
+                scenarioOverrides: {
+                    ...prev.scenarioOverrides,
+                    [key]: value,
+                },
+            }))
+        },
+        [setSettings]
+    )
+
+    /**
+     * Toggle the exclusion status of an item.
+     * @param itemName The name of the item to toggle.
+     */
+    const handleItemPress = useCallback(
+        (itemName: string) => {
+            const currentExcluded = scenarioOverrides.trackblazerExcludedItems
+            if (currentExcluded.includes(itemName)) {
+                updateOverrideSetting(
+                    "trackblazerExcludedItems",
+                    currentExcluded.filter((id) => id !== itemName)
+                )
+            } else {
+                updateOverrideSetting("trackblazerExcludedItems", [...currentExcluded, itemName])
+            }
+        },
+        [scenarioOverrides.trackblazerExcludedItems, updateOverrideSetting]
+    )
 
     const styles = useMemo(
         () =>
@@ -49,6 +82,15 @@ const ScenarioOverridesSettings = () => {
                 },
                 section: {
                     marginBottom: 8,
+                },
+                itemContainer: {
+                    backgroundColor: colors.card,
+                    padding: 12,
+                    borderRadius: 8,
+                    marginBottom: 8,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                 },
             }),
         [colors]
@@ -256,6 +298,61 @@ const ScenarioOverridesSettings = () => {
                                         </Text>
                                     </View>
                                 ))}
+                            </View>
+                        </View>
+
+                        <Divider style={{ marginVertical: 16 }} />
+
+                        <View style={styles.section}>
+                            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 12 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 16, color: colors.foreground }}>Items to Exclude from Shop</Text>
+                                    <Text style={{ fontSize: 14, color: colors.foreground, opacity: 0.7, marginTop: 4 }}>
+                                        Selected {scenarioOverrides.trackblazerExcludedItems.length} / {Object.keys(trackblazerIcons).length} items
+                                    </Text>
+                                </View>
+                                <View style={{ flexDirection: "row", gap: 8 }}>
+                                    <CustomButton icon={<Trash2 size={16} />} onPress={() => updateOverrideSetting("trackblazerExcludedItems", [])}>
+                                        Clear
+                                    </CustomButton>
+                                </View>
+                            </View>
+
+                            <Text style={{ fontSize: 14, color: colors.foreground, opacity: 0.7, marginBottom: 12 }}>
+                                Select items that the bot will never purchase from the shop in the Trackblazer scenario.
+                            </Text>
+
+                            <View style={{ marginBottom: 16 }}>
+                                <Input
+                                    style={{
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        borderRadius: 8,
+                                        padding: 12,
+                                        fontSize: 16,
+                                        color: colors.foreground,
+                                        backgroundColor: colors.background,
+                                        marginBottom: 12,
+                                    }}
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    placeholder="Search items by name..."
+                                />
+                                <View style={{ height: 400 }}>
+                                    <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                                        {filteredItems.map((itemName) => (
+                                            <TouchableOpacity key={itemName} onPress={() => handleItemPress(itemName)} style={styles.itemContainer}>
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                                    <Image source={trackblazerIcons[itemName]} style={{ width: 48, height: 48, marginRight: 8 }} />
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>{itemName}</Text>
+                                                    </View>
+                                                    {scenarioOverrides.trackblazerExcludedItems.includes(itemName) && <CircleCheckBig size={18} color={"green"} />}
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
                             </View>
                         </View>
                     </View>

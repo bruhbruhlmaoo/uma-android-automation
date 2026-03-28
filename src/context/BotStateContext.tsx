@@ -199,6 +199,7 @@ export interface Settings {
         trackblazerRetryRacesBeforeFinalGrades: string[]
         trackblazerEnableIrregularTraining: boolean
         trackblazerIrregularTrainingMinStatGain: number
+        trackblazerExcludedItems: string[]
     }
 }
 
@@ -413,6 +414,7 @@ export const defaultSettings: Settings = {
         trackblazerRetryRacesBeforeFinalGrades: ["G1", "G2", "G3"],
         trackblazerEnableIrregularTraining: false,
         trackblazerIrregularTrainingMinStatGain: 30,
+        trackblazerExcludedItems: [],
     },
 }
 
