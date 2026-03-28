@@ -1588,7 +1588,7 @@ abstract class Campaign(game: Game) : Task(game) {
 
             if (!trainee.bHasUpdatedAptitudes) {
                 openAptitudesDialog()
-                tryHandleAllDialogs()
+                if (tryHandleAllDialogs()) return true
             }
 
             val bIsScheduledRaceDayInitial = LabelScheduledRace.check(game.imageUtils, sourceBitmap = sourceBitmap)
@@ -1596,7 +1596,7 @@ abstract class Campaign(game: Game) : Task(game) {
 
             if (!date.bIsFinaleSeason && !bIsMandatoryRaceDayInitial && !bIsScheduledRaceDayInitial && bNeedToCheckFans && !bHasTriedCheckingFansToday) {
                 openFansDialog()
-                tryHandleAllDialogs()
+                if (tryHandleAllDialogs()) return true
             }
 
             // Mark that we've checked the date this turn.
