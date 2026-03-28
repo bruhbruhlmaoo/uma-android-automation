@@ -402,7 +402,9 @@ class Trackblazer(game: Game) : Campaign(game) {
                 val onlyOneTurnLeft = turnsRemaining == 1
 
                 if (forceRace) {
-                    if (!bHasCheckedDateThisTurn) {
+                    // If the bot hasn't checked the date yet, it usually means it started on the prep screen or it is the Finale season.
+                    // If we are explicitly overriding the warning (mandatory race), we should proceed even if the date check hasn't finished.
+                    if (!bHasCheckedDateThisTurn && !overrideIgnoreConsecutiveRaceWarning && !date.bIsFinaleSeason) {
                         MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning detected before turn-start updates. Closing it to perform checks first.")
                         detectedDialog.close(game.imageUtils)
                     } else {
@@ -426,7 +428,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                             MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < ${consecutiveRacesLimit + 1}. Continuing.")
                         }
 
-                        if (!bHasCheckedDateThisTurn) {
+                        if (!bHasCheckedDateThisTurn && !date.bIsFinaleSeason) {
                             MessageLog.i(TAG, "[TRACKBLAZER] Deferring race acknowledgment until turn-start updates are performed.")
                             detectedDialog.close(game.imageUtils)
                         } else {

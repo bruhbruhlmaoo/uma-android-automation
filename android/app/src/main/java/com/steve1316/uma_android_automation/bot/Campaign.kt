@@ -535,7 +535,9 @@ abstract class Campaign(game: Game) : Task(game) {
                 val overrideIgnoreConsecutiveRaceWarning = args["overrideIgnoreConsecutiveRaceWarning"] as? Boolean ?: false
                 racing.raceRepeatWarningCheck = true
                 if (overrideIgnoreConsecutiveRaceWarning || racing.enableForceRacing || racing.ignoreConsecutiveRaceWarning) {
-                    if (!bHasCheckedDateThisTurn) {
+                    // If the bot hasn't checked the date yet, it usually means it started on the prep screen or it is the Finale season.
+                    // If we are explicitly overriding the warning (mandatory race), we should proceed even if the date check hasn't finished.
+                    if (!bHasCheckedDateThisTurn && !overrideIgnoreConsecutiveRaceWarning && !date.bIsFinaleSeason) {
                         MessageLog.i(TAG, "[RACE] Consecutive race warning detected before turn-start updates. Closing it to perform checks first.")
                         result.dialog.close(game.imageUtils)
                     } else {
