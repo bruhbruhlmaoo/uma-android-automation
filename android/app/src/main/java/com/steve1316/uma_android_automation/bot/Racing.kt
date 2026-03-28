@@ -122,6 +122,9 @@ class Racing(private val game: Game, private val campaign: Campaign) {
     /** Whether to use the in-game race agenda feature. */
     private val enableUserInGameRaceAgenda = SettingsHelper.getBooleanSetting("racing", "enableUserInGameRaceAgenda")
 
+    /** Whether to limit extra races to only those in the in-game agenda. */
+    private val limitRacesToInGameAgenda = SettingsHelper.getBooleanSetting("racing", "limitRacesToInGameAgenda", true)
+
     /** The specific in-game race agenda selected by the user. */
     private val selectedUserAgenda = SettingsHelper.getStringSetting("racing", "selectedUserAgenda")
 
@@ -857,6 +860,12 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Don't bother looking for races on Junior Year Early July (Turn 13) since they only start showing up on Turn 14.
         if (campaign.date.day == 13) {
             MessageLog.i(TAG, "[RACE] Junior Year Early July (Turn 13) detected. No races available until Turn 14. Skipping extra race check.")
+            return false
+        }
+
+        // If the user wants to limit extra races to ONLY those scheduled in their in-game racing agenda.
+        if (enableUserInGameRaceAgenda && limitRacesToInGameAgenda) {
+            MessageLog.i(TAG, "[RACE] Skipping extra race check due to 'Limit Extra Races to Agenda' setting in favor of those scheduled by the user's in-game racing agenda.")
             return false
         }
 
