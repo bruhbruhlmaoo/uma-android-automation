@@ -554,7 +554,7 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
      * @param entryHeight Optional entry height to determine scroll distance.
      * @param durationMs Swipe duration. Minimum 250ms for Accessibility Service registration.
      */
-    fun scrollDown(startLoc: Point? = null, entryHeight: Int = 0, durationMs: Long = 1000L) {
+    fun scrollDown(startLoc: Point? = null, entryHeight: Int = 0, durationMs: Long = 250L) {
         if (!bIsScrollable) {
             MessageLog.d(TAG, "[DEBUG] scrollDown:: List is not scrollable.")
             return
@@ -576,7 +576,7 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
      * @param entryHeight Optional entry height to determine scroll distance.
      * @param durationMs Swipe duration. Minimum 250ms for Accessibility Service registration.
      */
-    fun scrollUp(startLoc: Point? = null, entryHeight: Int = 0, durationMs: Long = 1000L) {
+    fun scrollUp(startLoc: Point? = null, entryHeight: Int = 0, durationMs: Long = 250L) {
         if (!bIsScrollable) {
             MessageLog.d(TAG, "[DEBUG] scrollUp:: List is not scrollable.")
             return
