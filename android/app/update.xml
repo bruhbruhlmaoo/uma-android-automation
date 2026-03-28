@@ -1,35 +1,24 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.3.2</latestVersion>
+    <latestVersion>5.3.3</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.3.2 - Changelog
+v5.3.3 - Changelog
 
 > Trackblazer support is still fresh off the oven so expect some bugs. Regarding completion times on strong hardware, URA Finale averages 25 minutes, Unity Cup averages 35 minutes and Trackblazer averages 1 hour 20 minutes.
 
 New
 ---
-- Add a new option to the `Scenario Override Settings` page to force training after using a `Reset Whistle`.
-- Add a new option to the `Scenario Override Settings` page to select which race grades to use retries on during `Trackblazer`.
-- Add an option in the `Scenario Override Settings` page to enable `Irregular Training` for `Trackblazer`.
-- Add all of the scenario-specific Training Events including those for `Trackblazer` to the `Training Event Settings` page for the `Training Event Options Overrides` section.
+- Add a new option to the `Racing Settings` page to disable extra races from being run when user ingame racing plan is enabled.
 
 Adjustments
 ---
-- Update game data up to `Mejiro Bright` (2026-03-25).
-- Lots of logging adjustments to add more context as to why the bot is doing what it is doing during `Trackblazer`.
-- Update `ButtonShop` image asset to reduce false positive with dialog title text.
-- Skip checking for races on Junior Year Early July (Turn 13) as races are not available until the next turn.
-- Consolidate handling of optimizing the best energy items to use to not waste any over the cap.
-- Prevent the purchase of healing items for bad conditions that we do not have except `Rich Hand Creams` and `Miracle Cures`.
-- Defer scheduled race and consecutive race warning until after the Main Screen updates are complete.
-- Consolidate and simplify logging of inventory and usage reasons for `Trackblazer`.
-- Strip the newline from event titles when logging the Training Event Summary.
+- Speed up scrolling inside lists.
+- Modify Discord token field to not hide the value.
 
 Fixes
 ---
-- Fix bug where scheduled race can be skipped due to logic handling the consecutive race dialog.
-- Fix rare bug where skill plan is executed when not on the Main Screen.
+- Fix bug where the new consecutive race warning handling caused it to not run mandatory races.
 
     </releaseNotes>
   </update>
