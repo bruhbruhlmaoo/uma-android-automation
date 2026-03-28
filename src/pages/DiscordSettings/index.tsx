@@ -170,7 +170,6 @@ const DiscordSettings = () => {
                                 placeholder="Enter your Discord bot token..."
                                 placeholderTextColor={colors.foreground + "55"}
                                 editable={enableDiscordNotifications}
-                                secureTextEntry={true}
                                 autoCapitalize="none"
                                 autoCorrect={false}
                             />
