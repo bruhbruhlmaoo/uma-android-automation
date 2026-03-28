@@ -1,0 +1,65 @@
+const trackblazerIcons: { [key: string]: any } = {
+    // Stats
+    "Speed Notepad": require("./trackblazer/speed_notepad.png"),
+    "Stamina Notepad": require("./trackblazer/stamina_notepad.png"),
+    "Power Notepad": require("./trackblazer/power_notepad.png"),
+    "Guts Notepad": require("./trackblazer/guts_notepad.png"),
+    "Wit Notepad": require("./trackblazer/wit_notepad.png"),
+    "Speed Manual": require("./trackblazer/speed_manual.png"),
+    "Stamina Manual": require("./trackblazer/stamina_manual.png"),
+    "Power Manual": require("./trackblazer/power_manual.png"),
+    "Guts Manual": require("./trackblazer/guts_manual.png"),
+    "Wit Manual": require("./trackblazer/wit_manual.png"),
+    "Speed Scroll": require("./trackblazer/speed_scroll.png"),
+    "Stamina Scroll": require("./trackblazer/stamina_scroll.png"),
+    "Power Scroll": require("./trackblazer/power_scroll.png"),
+    "Guts Scroll": require("./trackblazer/guts_scroll.png"),
+    "Wit Scroll": require("./trackblazer/wit_scroll.png"),
+    // Energy and Motivation
+    "Vita 20": require("./trackblazer/vita_20.png"),
+    "Vita 40": require("./trackblazer/vita_40.png"),
+    "Vita 65": require("./trackblazer/vita_65.png"),
+    "Royal Kale Juice": require("./trackblazer/royal_kale_juice.png"),
+    "Energy Drink MAX": require("./trackblazer/energy_drink_max.png"),
+    "Energy Drink MAX EX": require("./trackblazer/energy_drink_max_ex.png"),
+    "Plain Cupcake": require("./trackblazer/plain_cupcake.png"),
+    "Berry Sweet Cupcake": require("./trackblazer/berry_sweet_cupcake.png"),
+    // Bond
+    "Yummy Cat Food": require("./trackblazer/yummy_cat_food.png"),
+    "Grilled Carrots": require("./trackblazer/grilled_carrots.png"),
+    // Get Good Conditions
+    "Pretty Mirror": require("./trackblazer/pretty_mirror.png"),
+    "Reporter's Binoculars": require("./trackblazer/reporters_binoculars.png"),
+    "Master Practice Guide": require("./trackblazer/master_practice_guide.png"),
+    "Scholar's Hat": require("./trackblazer/scholars_hat.png"),
+    // Heal Bad Conditions
+    "Fluffy Pillow": require("./trackblazer/fluffy_pillow.png"),
+    "Pocket Planner": require("./trackblazer/pocket_planner.png"),
+    "Rich Hand Cream": require("./trackblazer/rich_hand_cream.png"),
+    "Smart Scale": require("./trackblazer/smart_scale.png"),
+    "Aroma Diffuser": require("./trackblazer/aroma_diffuser.png"),
+    "Practice Drills DVD": require("./trackblazer/practice_drills_dvd.png"),
+    "Miracle Cure": require("./trackblazer/miracle_cure.png"),
+    // Training Facilities
+    "Speed Training Application": require("./trackblazer/speed_training_application.png"),
+    "Stamina Training Application": require("./trackblazer/stamina_training_application.png"),
+    "Power Training Application": require("./trackblazer/power_training_application.png"),
+    "Guts Training Application": require("./trackblazer/guts_training_application.png"),
+    "Wit Training Application": require("./trackblazer/wit_training_application.png"),
+    // Training Effects
+    "Coaching Megaphone": require("./trackblazer/coaching_megaphone.png"),
+    "Motivating Megaphone": require("./trackblazer/motivating_megaphone.png"),
+    "Empowering Megaphone": require("./trackblazer/empowering_megaphone.png"),
+    "Speed Ankle Weights": require("./trackblazer/speed_ankle_weights.png"),
+    "Stamina Ankle Weights": require("./trackblazer/stamina_ankle_weights.png"),
+    "Power Ankle Weights": require("./trackblazer/power_ankle_weights.png"),
+    "Guts Ankle Weights": require("./trackblazer/guts_ankle_weights.png"),
+    "Good-Luck Charm": require("./trackblazer/good_luck_charm.png"),
+    "Reset Whistle": require("./trackblazer/reset_whistle.png"),
+    // Races
+    "Artisan Cleat Hammer": require("./trackblazer/artisan_cleat_hammer.png"),
+    "Master Cleat Hammer": require("./trackblazer/master_cleat_hammer.png"),
+    "Glow Sticks": require("./trackblazer/glow_sticks.png"),
+}
+
+export default trackblazerIcons
