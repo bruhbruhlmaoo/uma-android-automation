@@ -41,6 +41,7 @@ const RacingSettings = () => {
         juniorYearRaceStrategy,
         originalRaceStrategy,
         enableUserInGameRaceAgenda,
+        limitRacesToInGameAgenda,
     } = racingSettings
 
     /**
@@ -289,6 +290,17 @@ const RacingSettings = () => {
                             ]}
                             value={racingSettings.selectedUserAgenda}
                             onValueChange={(value) => updateRacingSetting("selectedUserAgenda", value)}
+                            style={{ marginBottom: 16 }}
+                        />
+
+                        <CustomCheckbox
+                            searchId="limit-races-to-in-game-agenda"
+                            searchCondition={enableUserInGameRaceAgenda}
+                            parentId="enable-user-in-game-race-agenda"
+                            checked={limitRacesToInGameAgenda}
+                            onCheckedChange={(checked) => updateRacingSetting("limitRacesToInGameAgenda", checked)}
+                            label="Limit Extra Races to Agenda"
+                            description="When enabled, the bot will override the racing behavior of any scenario such that it will not run any extra races except for the ones scheduled by the selected user's in-game racing agenda."
                             style={{ marginBottom: 16 }}
                         />
 

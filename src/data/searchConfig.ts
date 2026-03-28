@@ -307,6 +307,13 @@ const searchConfig: SearchOption[] = [
         page: "RacingSettings",
         parentId: "enable-user-in-game-race-agenda",
     },
+    {
+        id: "limit-races-to-in-game-agenda",
+        title: "Limit Extra Races to Agenda",
+        description: "When enabled, the bot will override the racing behavior of any scenario such that it will not run any extra races except for the ones scheduled by the selected user's in-game racing agenda.",
+        page: "RacingSettings",
+        parentId: "enable-user-in-game-race-agenda",
+    },
 
     // ============================================================
     // Racing Plan Settings

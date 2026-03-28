@@ -48,6 +48,7 @@ export interface Settings {
         enableStopOnMandatoryRaces: boolean
         enableForceRacing: boolean
         enableUserInGameRaceAgenda: boolean
+        limitRacesToInGameAgenda: boolean
         selectedUserAgenda: string
         enableRacingPlan: boolean
         enableMandatoryRacingPlan: boolean
@@ -223,6 +224,7 @@ export const defaultSettings: Settings = {
         enableStopOnMandatoryRaces: false,
         enableForceRacing: false,
         enableUserInGameRaceAgenda: false,
+        limitRacesToInGameAgenda: true,
         selectedUserAgenda: "Agenda 1",
         enableRacingPlan: false,
         enableMandatoryRacingPlan: false,

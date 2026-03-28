@@ -318,6 +318,7 @@ ${longTargetsString}
 🏁 Stop on Mandatory Race: ${settings.racing.enableStopOnMandatoryRaces ? "✅" : "❌"}
 🏃 Force Racing Every Day: ${settings.racing.enableForceRacing ? "✅" : "❌"}
 🏁 Enable User In-Game Race Agenda: ${settings.racing.enableUserInGameRaceAgenda ? "✅" : "❌"}
+🏁 Limit Extra Races to Agenda: ${settings.racing.limitRacesToInGameAgenda ? "✅" : "❌"}
 🏁 Selected User In-Game Race Agenda: ${settings.racing.selectedUserAgenda}
 🏁 Enable Racing Plan: ${settings.racing.enableRacingPlan ? "✅" : "❌"}
 🏁 Racing Plan is Mandatory: ${settings.racing.enableMandatoryRacingPlan ? "✅" : "❌"}
