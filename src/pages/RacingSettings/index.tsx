@@ -42,6 +42,7 @@ const RacingSettings = () => {
         originalRaceStrategy,
         enableUserInGameRaceAgenda,
         limitRacesToInGameAgenda,
+        skipSummerTrainingForAgenda,
     } = racingSettings
 
     /**
@@ -301,6 +302,17 @@ const RacingSettings = () => {
                             onCheckedChange={(checked) => updateRacingSetting("limitRacesToInGameAgenda", checked)}
                             label="Limit Extra Races to Agenda"
                             description="When enabled, the bot will override the racing behavior of any scenario such that it will not run any extra races except for the ones scheduled by the selected user's in-game racing agenda."
+                            style={{ marginBottom: 16 }}
+                        />
+
+                        <CustomCheckbox
+                            searchId="skip-summer-training-for-agenda"
+                            searchCondition={enableUserInGameRaceAgenda}
+                            parentId="enable-user-in-game-race-agenda"
+                            checked={skipSummerTrainingForAgenda}
+                            onCheckedChange={(checked) => updateRacingSetting("skipSummerTrainingForAgenda", checked)}
+                            label="Skip Summer Training for Agenda"
+                            description="When enabled, the bot will perform scheduled races from the in-game racing agenda during Summer instead of prioritizing Summer training. Note that this requires 'Enable User In-Game Race Agenda' to be enabled."
                             style={{ marginBottom: 16 }}
                         />
 

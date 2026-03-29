@@ -1641,7 +1641,7 @@ abstract class Campaign(game: Game) : Task(game) {
 
         // Use CountDownLatch to run the operations in parallel.
         // 1 racingRequirements (skipped during summer) + 5 stats + 1 skill points + 1 mood + 1 energy = 9 (or 8) threads.
-        val latch = if (date.isSummer()) CountDownLatch(8) else CountDownLatch(9)
+        val latch = if (date.isSummer() && !(racing.skipSummerTrainingForAgenda && racing.enableUserInGameRaceAgenda)) CountDownLatch(8) else CountDownLatch(9)
 
         MessageLog.disableOutput = true
 
@@ -1671,7 +1671,7 @@ abstract class Campaign(game: Game) : Task(game) {
         }.apply { isDaemon = true }.start()
 
         // Thread 8: Update racing requirements.
-        if (!date.isSummer()) {
+        if (!date.isSummer() || (racing.skipSummerTrainingForAgenda && racing.enableUserInGameRaceAgenda)) {
             Thread {
                 try {
                     racing.checkRacingRequirements(sourceBitmap)

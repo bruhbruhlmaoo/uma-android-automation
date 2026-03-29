@@ -120,13 +120,16 @@ class Racing(private val game: Game, private val campaign: Campaign) {
     private val enableMandatoryRacingPlan = SettingsHelper.getBooleanSetting("racing", "enableMandatoryRacingPlan")
 
     /** Whether to use the in-game race agenda feature. */
-    private val enableUserInGameRaceAgenda = SettingsHelper.getBooleanSetting("racing", "enableUserInGameRaceAgenda")
+    val enableUserInGameRaceAgenda = SettingsHelper.getBooleanSetting("racing", "enableUserInGameRaceAgenda")
 
     /** Whether to limit extra races to only those in the in-game agenda. */
     private val limitRacesToInGameAgenda = SettingsHelper.getBooleanSetting("racing", "limitRacesToInGameAgenda", true)
 
     /** The specific in-game race agenda selected by the user. */
     private val selectedUserAgenda = SettingsHelper.getStringSetting("racing", "selectedUserAgenda")
+
+    /** Whether to skip Summer training to do races from the in-game agenda. */
+    val skipSummerTrainingForAgenda = SettingsHelper.getBooleanSetting("racing", "skipSummerTrainingForAgenda")
 
     /** The current number of retries available for the run. */
     internal var raceRetries = 3
@@ -786,8 +789,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
      * @param sourceBitmap Optional source bitmap to use for detection.
      */
     fun checkRacingRequirements(sourceBitmap: Bitmap? = null) {
-        // Skip racing requirements checks during Summer.
-        if (campaign.date.isSummer()) {
+        // Skip racing requirements checks during Summer unless skipSummerTrainingForAgenda is enabled.
+        if (campaign.date.isSummer() && !(skipSummerTrainingForAgenda && enableUserInGameRaceAgenda)) {
             if (hasFanRequirement || hasTrophyRequirement) {
                 MessageLog.i(TAG, "[RACE] It is currently Summer. Skipping racing requirements checks and clearing flags.")
                 clearRacingRequirementFlags()
@@ -883,7 +886,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             if (campaign.checkFinals()) {
                 MessageLog.i(TAG, "[RACE] It is UMA Finals right now so there will be no extra races. Stopping extra race check.")
                 return false
-            } else if (campaign.date.isSummer()) {
+            } else if (campaign.date.isSummer() && !(skipSummerTrainingForAgenda && enableUserInGameRaceAgenda)) {
                 MessageLog.i(TAG, "[RACE] It is currently Summer right now. Stopping extra race check.")
                 return false
             } else if (ButtonRaces.checkDisabled(game.imageUtils) == true) {

@@ -643,7 +643,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     override fun decideNextAction(): MainScreenAction {
         // Summer Training: Train during July and August in Classic/Senior.
-        if (date.isSummer()) {
+        if (date.isSummer() && !(racing.skipSummerTrainingForAgenda && racing.enableUserInGameRaceAgenda)) {
             MessageLog.i(TAG, "[TRACKBLAZER] It is Summer. Prioritizing training.")
             return MainScreenAction.TRAIN
         }

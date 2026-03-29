@@ -315,6 +315,14 @@ const searchConfig: SearchOption[] = [
         page: "RacingSettings",
         parentId: "enable-user-in-game-race-agenda",
     },
+    {
+        id: "skip-summer-training-for-agenda",
+        title: "Skip Summer Training for Agenda",
+        description:
+            "When enabled, the bot will perform scheduled races from the in-game racing agenda during Summer instead of prioritizing Summer training. Note that this requires 'Enable User In-Game Race Agenda' to be enabled.",
+        page: "RacingSettings",
+        parentId: "enable-user-in-game-race-agenda",
+    },
 
     // ============================================================
     // Racing Plan Settings
