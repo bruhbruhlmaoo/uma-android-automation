@@ -146,15 +146,14 @@ const Home = () => {
             const metrics = await StartModule.getDeviceDimensions()
             setDeviceMetrics(metrics)
 
-            const { width, dpi } = metrics
-            const isWidth1080 = width === 1080
+            const { width, height, dpi } = metrics
+            const isConfig1 = width === 1080 && height === 1920 && dpi === 240
+            const isConfig2 = width === 1080 && height === 2340 && dpi === 450
 
-            if (!isWidth1080) {
-                setUnsupportedReason(`unsupported width: ${width} (suggested 1080)`)
-            } else if (dpi !== 240 && dpi !== 450) {
-                setUnsupportedReason(`unsupported DPI: ${dpi} (suggested 240 or 450)`)
-            } else {
+            if (isConfig1 || isConfig2) {
                 setUnsupportedReason(null)
+            } else {
+                setUnsupportedReason(`unsupported configuration: ${width}x${height} @ ${dpi} DPI`)
             }
         } catch (error) {
             logErrorWithTimestamp("[Home] Failed to fetch device dimensions:", error)

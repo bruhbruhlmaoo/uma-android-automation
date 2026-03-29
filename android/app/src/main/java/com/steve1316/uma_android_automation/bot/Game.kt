@@ -260,10 +260,12 @@ class Game(val myContext: Context) {
 
         // Print device and version information.
         MessageLog.i(TAG, "[INFO] Device Information: ${SharedData.displayWidth}x${SharedData.displayHeight}, DPI ${SharedData.displayDPI}")
-        if (SharedData.displayWidth != 1080) {
+        val isConfig1 = SharedData.displayWidth == 1080 && SharedData.displayHeight == 1920 && SharedData.displayDPI == 240
+        val isConfig2 = SharedData.displayWidth == 1080 && SharedData.displayHeight == 2340 && SharedData.displayDPI == 450
+        if (!isConfig1 && !isConfig2) {
             MessageLog.w(
                 TAG,
-                "[WARN] ⚠️ Bot performance will be severely degraded since display width is not 1080p unless an appropriate scale is set for your device.",
+                "[WARN] ⚠️ Bot performance will be severely degraded since display configuration is not 1080x1920 @ 240 DPI or 1080x2340 @ 450 DPI unless an appropriate scale is set for your device.",
             )
         }
         if (debugMode) MessageLog.w(TAG, "[WARN] ⚠️ Debug Mode is enabled. All bot operations will be significantly slower as a result.")
