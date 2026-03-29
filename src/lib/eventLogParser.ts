@@ -125,6 +125,8 @@ type LineMatcher = {
     substr?: string[]
     /** The substrings to exclude. */
     negativeSubstr?: string[]
+    /** The regex to match. */
+    regex?: RegExp[]
 }
 
 /**
@@ -136,25 +138,36 @@ type LineMatcher = {
 function matchesLine(line: string, matcher: LineMatcher): boolean {
     const l = line
     if (matcher.negativeSubstr && matcher.negativeSubstr.some((s) => l.toLowerCase().includes(s.toLowerCase()))) return false
+
+    // Check substrings.
     const substrOk = matcher.substr ? matcher.substr.some((s) => l.toLowerCase().includes(s.toLowerCase())) : false
-    return substrOk
+    if (substrOk) return true
+
+    // Check regex.
+    const regexOk = matcher.regex ? matcher.regex.some((r) => r.test(l)) : false
+    return regexOk
 }
 
 const MATCHERS: Record<ActionKey, LineMatcher> = {
     training: {
         substr: ["Process to execute training completed", " stat gains: [", "[TRAINING] Executing the ", " with a focus on building relationship bars"],
+        regex: [/\[TRAINING\] Now starting process to execute training/i],
     },
     race: {
-        substr: ["Racing process for Mandatory Race is completed", "Racing process for Extra Race is completed"],
+        substr: ["Racing process for Mandatory Race is completed", "Racing process for Extra Race is completed", "Racing process for Extra Race (scheduled) is completed"],
+        regex: [/\[RACE\] Racing process for .*? Race.*? is completed/i],
     },
     energy: {
         substr: ["Successfully recovered energy"],
+        regex: [/\[ENERGY\] Successfully recovered energy/i],
     },
     mood: {
         substr: ["Recovering mood now"],
+        regex: [/Recovering mood now/i],
     },
     injury: {
         substr: ["Injury detected and attempted to heal"],
+        regex: [/\[INJURY\] Injury detected and attempted to heal/i],
     },
 }
 

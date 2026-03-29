@@ -100,7 +100,7 @@ object LogStreamServer {
     private val actionTrainingPattern = Pattern.compile("\\[TRAINING] Now starting process to execute training")
 
     /** Regex pattern to detect the completion of a race. */
-    private val actionRacePattern = Pattern.compile("\\[RACE] Racing process for .*? Race is completed", Pattern.CASE_INSENSITIVE)
+    private val actionRacePattern = Pattern.compile("\\[RACE] Racing process for .*? Race.*? is completed", Pattern.CASE_INSENSITIVE)
 
     /** Regex pattern to detect mood recovery. */
     private val actionMoodPattern = Pattern.compile("Recovering mood now", Pattern.CASE_INSENSITIVE)
