@@ -1,15 +1,24 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.3.4</latestVersion>
+    <latestVersion>5.3.5</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.3.4 - Changelog
+v5.3.5 - Changelog
 
 > Trackblazer support is still fresh off the oven so expect some bugs. Regarding completion times on strong hardware, URA Finale averages 25 minutes, Unity Cup averages 35 minutes and Trackblazer averages 1 hour 20 minutes.
 
 New
 ---
-- Add a new option to the `Scenario Overrides Settings` page for users to select items from the list to exclude from purchases.
+- Add option to the `Racing Settings` page to skip Summer training in favor of scheduled races.
+
+Adjustments
+---
+- Update warning about display configuration to be more strict.
+- Log excluded items from purchase in the Shop purchase summary.
+
+Fixes
+---
+- Attempt to fix bug with back to back training analysis when Irregular Training is enabled.
 
     </releaseNotes>
   </update>
