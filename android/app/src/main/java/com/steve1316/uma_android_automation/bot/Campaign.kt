@@ -1747,12 +1747,13 @@ abstract class Campaign(game: Game) : Task(game) {
                     ButtonSkills.click(game.imageUtils)
                     game.wait(1.0)
                     if (!handleSkillListScreen("skillPointCheck")) {
-                        throw InterruptedException("handleSkillList() for Skill Point Check failed. Stopping bot...")
+                        MessageLog.e(TAG, "[ERROR] performGlobalChecks:: Failed to handle Skill Point Check. Aborting...")
+                        return true
                     }
                     bHasHandledSkillPointCheck = true
                     return true
                 } else {
-                    MessageLog.i(TAG, "[SKILLS] Not at Main screen while trying to start Skill Point Check. Retrying later.")
+                    MessageLog.i(TAG, "[SKILLS] Skipping skill purchase check for now since we are not confirmed to be sitting on the Main screen.")
                 }
             } else {
                 throw CampaignBreakpointException("Bot reached skill point check threshold. Stopping bot...")
