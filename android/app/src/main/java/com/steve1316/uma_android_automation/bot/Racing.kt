@@ -2716,6 +2716,9 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                 }
             }
 
+            // Let the campaign handle any necessary logic on the scheduled race's Race Prep screen (e.g. using race items).
+            campaign.onScheduledRacePrepScreen()
+
             MessageLog.v(TAG, "[RACE] Confirming the scheduled race dialog...")
             ButtonRace.click(game.imageUtils, tries = 30)
             game.wait(game.dialogWaitDelay)
