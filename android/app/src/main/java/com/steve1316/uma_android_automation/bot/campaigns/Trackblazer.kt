@@ -1150,8 +1150,15 @@ class Trackblazer(game: Game) : Campaign(game) {
      * specifically to use race items if appropriate.
      */
     override fun onScheduledRacePrepScreen() {
-        val grade = racing.lastRaceGrade
-        val fans = racing.lastRaceFans
+        var grade = racing.lastRaceGrade
+        var fans = racing.lastRaceFans
+
+        // For Finale races (turns 73, 74, 75), manually set the grade to G1 and appropriate fans.
+        // This ensures the racing item logic is triggered for these mandatory races.
+        if (date.bIsFinaleSeason && (date.day == 73 || date.day == 74 || date.day == 75)) {
+            grade = RaceGrade.G1
+            fans = if (date.day == 75) 30000 else 10000
+        }
 
         if (grade != null && (grade == RaceGrade.G1 || grade == RaceGrade.G2 || grade == RaceGrade.G3)) {
             MessageLog.i(TAG, "[TRACKBLAZER] Executing scheduled race item logic on Race Prep screen.")
@@ -1177,9 +1184,27 @@ class Trackblazer(game: Game) : Campaign(game) {
         val artisanHammerCount = if (disabledItems.contains("Artisan Cleat Hammer")) 0 else (currentInventory["Artisan Cleat Hammer"] ?: 0)
         val glowSticksCount = if (disabledItems.contains("Glow Sticks")) 0 else (currentInventory["Glow Sticks"] ?: 0)
 
-        val hasMasterHammer = masterHammerCount > 0
-        val hasArtisanHammer = artisanHammerCount > 0
-        val hasGlowSticks = glowSticksCount > 0
+        val hasMasterHammer =
+            if (date.day == 73 || date.day == 74) {
+                // Save the last Master Cleat Hammer for the Finale race (turn 75).
+                masterHammerCount >= 2
+            } else {
+                masterHammerCount > 0
+            }
+        val hasArtisanHammer =
+            if (date.day == 73 || date.day == 74) {
+                // Save the last Artisan Cleat Hammer for the Finale race (turn 75).
+                artisanHammerCount >= 2
+            } else {
+                artisanHammerCount > 0
+            }
+        val hasGlowSticks =
+            if (date.day == 73 || date.day == 74) {
+                // Save the last Glow Stick for the Finale race (turn 75).
+                glowSticksCount >= 2
+            } else {
+                glowSticksCount > 0
+            }
 
         val hammerToUse =
             if (grade == RaceGrade.G1) {
@@ -1196,7 +1221,13 @@ class Trackblazer(game: Game) : Campaign(game) {
                 null
             }
 
-        val useGlowSticks = grade == RaceGrade.G1 && fans >= 20000 && hasGlowSticks
+        val useGlowSticks =
+            if (date.day == 73 || date.day == 74) {
+                // During Finale Qualifier/Semi-Finals, ignore the standard 20k fan requirement if we have enough copies.
+                grade == RaceGrade.G1 && hasGlowSticks
+            } else {
+                grade == RaceGrade.G1 && fans >= 20000 && hasGlowSticks
+            }
 
         if (hammerToUse != null || useGlowSticks) {
             MessageLog.i(TAG, "[TRACKBLAZER] Suitable race items found in inventory (Hammer: $hammerToUse, Glow Sticks: $useGlowSticks). Opening Training Items dialog.")
