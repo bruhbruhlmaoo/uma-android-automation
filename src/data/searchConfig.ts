@@ -586,6 +586,12 @@ const searchConfig: SearchOption[] = [
         description: "Select items that the bot will never purchase from the shop in the Trackblazer scenario.",
         page: "ScenarioOverridesSettings",
     },
+    {
+        id: "trackblazer-shop-check-frequency",
+        title: "Trackblazer Shop Check Frequency",
+        description: "Sets the frequency of shop checks after races in the Trackblazer scenario. 1 = every race, 2 = 1 day after, 3 = 2 days after, etc.",
+        page: "ScenarioOverridesSettings",
+    },
 
     // ============================================================
     // Debug Settings

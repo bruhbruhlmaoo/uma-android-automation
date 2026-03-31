@@ -222,6 +222,24 @@ const ScenarioOverridesSettings = () => {
                         </View>
 
                         <View style={styles.section}>
+                            <CustomSlider
+                                searchId="trackblazer-shop-check-frequency"
+                                value={scenarioOverrides.trackblazerShopCheckFrequency}
+                                placeholder={bsc.defaultSettings.scenarioOverrides.trackblazerShopCheckFrequency}
+                                onValueChange={(value) => updateOverrideSetting("trackblazerShopCheckFrequency", value)}
+                                onSlidingComplete={(value) => updateOverrideSetting("trackblazerShopCheckFrequency", value)}
+                                min={1}
+                                max={4}
+                                step={1}
+                                label="Shop Check Frequency"
+                                labelUnit=""
+                                showValue={true}
+                                showLabels={true}
+                                description="Sets the frequency of shop checks after races in the Trackblazer scenario. 1 = every race, 2 = 1 day after, 3 = 2 days after, etc."
+                            />
+                        </View>
+
+                        <View style={styles.section}>
                             <Text style={{ fontSize: 16, color: colors.foreground, marginBottom: 8 }}>Race Grades to check Shop Afterwards</Text>
                             <Text style={{ fontSize: 14, color: colors.foreground, opacity: 0.7, marginBottom: 12 }}>
                                 Select which race grades should trigger a shop check after the race in the Trackblazer scenario.

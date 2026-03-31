@@ -201,6 +201,7 @@ export interface Settings {
         trackblazerEnableIrregularTraining: boolean
         trackblazerIrregularTrainingMinStatGain: number
         trackblazerExcludedItems: string[]
+        trackblazerShopCheckFrequency: number
     }
 }
 
@@ -417,6 +418,7 @@ export const defaultSettings: Settings = {
         trackblazerEnableIrregularTraining: false,
         trackblazerIrregularTrainingMinStatGain: 30,
         trackblazerExcludedItems: [],
+        trackblazerShopCheckFrequency: 3,
     },
 }
 
