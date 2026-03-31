@@ -604,8 +604,18 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                                     ),
                             )
 
+                        if (result is DialogHandlerResult.NoDialogDetected) {
+                            continue
+                        }
+
                         if (result !is DialogHandlerResult.Deferred) {
-                            throw IllegalStateException("loadUserRaceAgenda: Received non-deferred dialog result. Expected deferred.")
+                            val name =
+                                when (result) {
+                                    is DialogHandlerResult.Handled -> result.dialog.name
+                                    is DialogHandlerResult.Unhandled -> result.dialog.name
+                                    else -> "Unknown"
+                                }
+                            throw IllegalStateException("loadUserRaceAgenda: Received non-deferred dialog result ($name). Expected deferred.")
                         }
 
                         when (result.dialog.name) {
