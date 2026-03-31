@@ -1498,16 +1498,18 @@ abstract class Campaign(game: Game) : Task(game) {
             if (DiscordUtils.enableDiscordNotifications) {
                 DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Bot may have encountered a warning popup. Exiting now...\n```")
             }
-            return false
+            throw CampaignBreakpointException(game.notificationMessage)
         } else if (ButtonNext.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
             // Now confirm the completion of a Training Goal popup.
             MessageLog.i(TAG, "[MISC] Popup detected that needs to be dismissed with the \"Next\" button.")
             game.wait(2.0)
             ButtonNext.click(game.imageUtils)
             game.wait(1.0)
+            return true
         } else if (ButtonCraneGame.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
             if (enableCraneGameAttempt) {
                 handleCraneGame()
+                return true
             } else {
                 // Stop when the bot has reached the Crane Game Event.
                 MessageLog.v(TAG, "\n[END] Bot will stop due to the detection of the Crane Game Event.")
@@ -1515,7 +1517,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 if (DiscordUtils.enableDiscordNotifications) {
                     DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Bot will stop due to the detection of the Crane Game Event.\n```")
                 }
-                return false
+                throw CampaignBreakpointException(game.notificationMessage)
             }
         } else if (
             LabelOrdinaryCuties.check(game.imageUtils, sourceBitmap = sourceBitmap) &&
@@ -1524,19 +1526,24 @@ abstract class Campaign(game: Game) : Task(game) {
             ButtonCraneGameOk.click(game.imageUtils, sourceBitmap = sourceBitmap)
             game.waitForLoading()
             MessageLog.v(TAG, "[CRANE_GAME] Event exited.")
+            return true
         } else if (ButtonNextRaceEnd.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
             MessageLog.i(TAG, "[MISC] Ended a leftover race.")
             // Clicking this button triggers connection to server.
             game.waitForLoading()
+            return true
         } else if (IconRaceNotEnoughFans.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
             MessageLog.i(TAG, "[MISC] There was a popup about insufficient fans.")
             racing.encounteredRacingPopup = true
             ButtonCancel.click(game.imageUtils, sourceBitmap = sourceBitmap)
+            return true
         } else if (ButtonBack.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
             MessageLog.i(TAG, "[MISC] Navigating back a screen since all the other misc checks have been completed.")
             game.wait(1.0)
+            return true
         } else if (ButtonSkip.click(game.imageUtils, sourceBitmap = sourceBitmap)) {
             MessageLog.i(TAG, "[MISC] Clicked skip button.")
+            return true
         } else if (!BotService.isRunning) {
             MessageLog.v(TAG, "\n[END] BotService is not running. Exiting now...")
             throw InterruptedException()
@@ -1544,7 +1551,7 @@ abstract class Campaign(game: Game) : Task(game) {
             MessageLog.i(TAG, "[MISC] Did not detect any popups or the Crane Game on the screen. Moving on...")
         }
 
-        return true
+        return false
     }
 
     /**
