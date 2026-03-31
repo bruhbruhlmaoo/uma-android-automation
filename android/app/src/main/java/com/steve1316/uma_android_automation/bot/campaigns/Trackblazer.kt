@@ -1118,6 +1118,20 @@ class Trackblazer(game: Game) : Campaign(game) {
     }
 
     /**
+     * Executes the logic meant for the Race Prep screen of scheduled races,
+     * specifically to use race items if appropriate.
+     */
+    override fun onScheduledRacePrepScreen() {
+        val grade = racing.lastRaceGrade
+        val fans = racing.lastRaceFans
+
+        if (grade != null && (grade == RaceGrade.G1 || grade == RaceGrade.G2 || grade == RaceGrade.G3)) {
+            MessageLog.i(TAG, "[TRACKBLAZER] Executing scheduled race item logic on Race Prep screen.")
+            useRaceItems(grade, fans)
+        }
+    }
+
+    /**
      * Uses race-related items (Hammers, Glow Sticks) based on the race grade and fan count.
      *
      * @param grade The grade of the detected race.

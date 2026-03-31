@@ -166,6 +166,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
     /** Tracks the grade of the last race that was selected. */
     var lastRaceGrade: RaceGrade? = null
+    var lastRaceFans: Int = 0
 
     /** Tracks if the last race selected was a Rival Race. */
     var lastRaceIsRival: Boolean = false
@@ -2197,6 +2198,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // we should not reset the flags as they may have been set somewhere else.
         if (!ButtonRace.check(game.imageUtils)) {
             lastRaceGrade = null
+            lastRaceFans = 0
             lastRaceIsRival = false
             bRetriedCurrentRace = false
         }
@@ -2711,10 +2713,14 @@ class Racing(private val game: Game, private val campaign: Campaign) {
                     val raceDataList = lookupRaceInDatabase(campaign.date.day, raceName)
                     if (raceDataList.isNotEmpty()) {
                         lastRaceGrade = raceDataList[0].grade
+                        lastRaceFans = raceDataList[0].fans
                         MessageLog.i(TAG, "[RACE] Detected scheduled race grade: $lastRaceGrade for Trackblazer Shop logic.")
                     }
                 }
             }
+
+            // Let the campaign handle any necessary logic on the scheduled race's Race Prep screen (e.g. using race items).
+            campaign.onScheduledRacePrepScreen()
 
             MessageLog.v(TAG, "[RACE] Confirming the scheduled race dialog...")
             ButtonRace.click(game.imageUtils, tries = 30)
@@ -3032,6 +3038,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         MessageLog.v(TAG, "[RACE] Selecting smart racing choice: ${bestRace.raceData.name} (score: ${game.decimalFormat.format(bestRace.score)}).")
         game.tap(targetRaceLocation.x, targetRaceLocation.y, IconRaceListPredictionDoubleStar.template.path, ignoreWaiting = true)
         lastRaceGrade = bestRace.raceData.grade
+        lastRaceFans = bestRace.raceData.fans
         lastRaceIsRival = bestRace.raceData.isRival
 
         return true
@@ -3217,6 +3224,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             }
         val raceDataList = lookupRaceInDatabase(campaign.date.day, selectedRaceName)
         lastRaceGrade = raceDataList.firstOrNull()?.grade
+        lastRaceFans = raceDataList.firstOrNull()?.fans ?: 0
         lastRaceIsRival = filteredRaces[index].isRival
 
         // Selects the determined race on screen.

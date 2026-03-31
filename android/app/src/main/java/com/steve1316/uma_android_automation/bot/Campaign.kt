@@ -1451,6 +1451,14 @@ abstract class Campaign(game: Game) : Task(game) {
     }
 
     /**
+     * Called when the bot encounters a scheduled race and reaches the Race Prep screen
+     * before starting the race.
+     *
+     * This provides a hook for scenarios to perform actions such as using race items.
+     */
+    open fun onScheduledRacePrepScreen() {}
+
+    /**
      * Handles the fallback logic when racing fails.
      *
      * This includes checking for mandatory race detection and falling back to training.
