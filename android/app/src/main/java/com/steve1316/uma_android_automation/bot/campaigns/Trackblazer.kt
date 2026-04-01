@@ -1337,6 +1337,16 @@ class Trackblazer(game: Game) : Campaign(game) {
         // If we have a cached inventory and have seen all items of interest, we can exit the scroll loop early.
         val remainingItemsOfInterest =
             if (currentInventory.isNotEmpty()) {
+                val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
+                val neededWeight =
+                    when (trainingSelected) {
+                        StatName.SPEED -> "Speed Ankle Weights"
+                        StatName.STAMINA -> "Stamina Ankle Weights"
+                        StatName.POWER -> "Power Ankle Weights"
+                        StatName.GUTS -> "Guts Ankle Weights"
+                        else -> ""
+                    }
+
                 currentInventory
                     .filter { (name, count) ->
                         if (count <= 0) return@filter false
@@ -1348,8 +1358,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                         val isEnergy = shopList.energyItemNames.contains(name) || name == "Royal Kale Juice"
                         val isMood = name == "Berry Sweet Cupcake" || name == "Plain Cupcake"
                         val isMegaphone = name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone"
-                        val isAnkleWeight = name.contains("Ankle Weights")
-                        val isCharm = name == "Good-Luck Charm"
+                        val isAnkleWeight = name == neededWeight
+                        val isCharm = name == "Good-Luck Charm" && failureChance >= 20
 
                         // Determine if this item is actually useful right now.
                         val isUseful =
