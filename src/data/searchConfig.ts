@@ -695,9 +695,10 @@ const searchConfig: SearchOption[] = [
         page: "DebugSettings",
     },
     {
-        id: "debug-aptitudes-detection-test",
-        title: "Start Aptitudes Detection Test",
-        description: "Disables normal bot operations and starts the Aptitudes detection test. Only on the Main screen and tests detecting the current aptitudes.",
+        id: "debug-main-screen-update-test",
+        title: "Start Main Screen Update Test",
+        description:
+            "Disables normal bot operations and starts the Main Screen update test. This test will go through all Main Screen updates and then print the Trainee information.",
         page: "DebugSettings",
     },
     {

@@ -32,7 +32,7 @@ const DebugSettings = () => {
         "debugMode_startComprehensiveTrainingOCRTest",
         "debugMode_startDateOCRTest",
         "debugMode_startRaceListDetectionTest",
-        "debugMode_startAptitudesDetectionTest",
+        "debugMode_startMainScreenUpdateTest",
         "debugMode_startTraineeNameOCRTest",
         "debugMode_startMainScreenOCRTest",
         "debugMode_startTrainingScreenOCRTest",
@@ -558,11 +558,11 @@ const DebugSettings = () => {
                             />
 
                             <CustomCheckbox
-                                searchId="debug-aptitudes-detection-test"
-                                checked={bsc.settings.debug.debugMode_startAptitudesDetectionTest}
-                                onCheckedChange={(checked) => handleDebugTestToggle("debugMode_startAptitudesDetectionTest", checked)}
-                                label="Start Aptitudes Detection Test"
-                                description="Disables normal bot operations and starts the Aptitudes detection test. Only on the Main screen and tests detecting the current aptitudes."
+                                searchId="debug-main-screen-update-test"
+                                checked={bsc.settings.debug.debugMode_startMainScreenUpdateTest}
+                                onCheckedChange={(checked) => handleDebugTestToggle("debugMode_startMainScreenUpdateTest", checked)}
+                                label="Start Main Screen Update Test"
+                                description="Disables normal bot operations and starts the Main Screen update test. This test will go through all Main Screen updates and then print the Trainee information."
                                 style={{ marginTop: 10 }}
                             />
 

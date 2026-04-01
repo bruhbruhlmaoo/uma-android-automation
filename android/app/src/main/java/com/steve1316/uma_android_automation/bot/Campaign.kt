@@ -217,7 +217,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 "debugMode_startComprehensiveTrainingOCRTest" to training::startComprehensiveTrainingOCRTest,
                 "debugMode_startDateOCRTest" to ::startDateOCRTest,
                 "debugMode_startRaceListDetectionTest" to racing::startRaceListDetectionTest,
-                "debugMode_startAptitudesDetectionTest" to ::startAptitudesDetectionTest,
+                "debugMode_startMainScreenUpdateTest" to this::startMainScreenUpdateTest,
                 "debugMode_startTraineeNameOCRTest" to ::startTraineeNameOCRTest,
                 "debugMode_startMainScreenOCRTest" to ::startMainScreenOCRTest,
                 "debugMode_startTrainingScreenOCRTest" to ::startTrainingScreenOCRTest,
@@ -297,14 +297,28 @@ abstract class Campaign(game: Game) : Task(game) {
     }
 
     /**
-     * Performs an aptitude detection test on the Main screen.
-     *
-     * Opens the aptitudes dialog and processes it to test OCR accuracy.
+     * Performs a comprehensive update test on the Main screen and perform all Main screen updates.
      */
-    open fun startAptitudesDetectionTest() {
-        MessageLog.i(TAG, "\n[TEST] Now beginning the Aptitudes Detection test on the Main screen.")
+    open fun startMainScreenUpdateTest() {
+        MessageLog.i(TAG, "\n[TEST] Now beginning the Main Screen update test.")
+
+        // Update the date.
+        updateDate()
+
+        // Perform parallel turn-start updates (stats, mood, energy, skill points, etc.).
+        val sourceBitmap = game.imageUtils.getSourceBitmap()
+        performTurnStartUpdates(sourceBitmap)
+
+        // Update the aptitudes.
         openAptitudesDialog()
         handleDialogs()
+
+        // Update the fan count.
+        openFansDialog()
+        handleDialogs()
+
+        trainee.logInfo()
+        MessageLog.i(TAG, "\n[TEST] Main Screen update test complete.")
     }
 
     /**
