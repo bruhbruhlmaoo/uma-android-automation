@@ -1498,17 +1498,21 @@ class Trackblazer(game: Game) : Campaign(game) {
         bInventorySynced = true
 
         // Log reasoning for item usage decisions made during this pass, incorporating the inventory summary.
-        if (trainee != null) {
-            val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
+        if (trainee != null || bDryRun) {
             val stateContext =
-                buildString {
-                    val stateList = listOf("Energy=$initialEnergy%", "Mood=$initialMood", "Megaphone Turn=$initialMegaphoneTurnCounter", "Coins=$shopCoins")
-                    appendLine("Current State: ${stateList.joinToString(", ")}")
-                    if (trainingSelected != null) {
-                        val failureInfo = if (failureChance > 0) " (Fail: $failureChance%)" else ""
-                        append("Selected Training: $trainingSelected$failureInfo")
-                    }
-                }.trimEnd()
+                if (trainee != null) {
+                    val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
+                    buildString {
+                        val stateList = listOf("Energy=$initialEnergy%", "Mood=$initialMood", "Megaphone Turn=$initialMegaphoneTurnCounter", "Coins=$shopCoins")
+                        appendLine("Current State: ${stateList.joinToString(", ")}")
+                        if (trainingSelected != null) {
+                            val failureInfo = if (failureChance > 0) " (Fail: $failureChance%)" else ""
+                            append("Selected Training: $trainingSelected$failureInfo")
+                        }
+                    }.trimEnd()
+                } else {
+                    null
+                }
             shopList.printItemUsageSummary(itemsUsedWithReasons, stateContext)
         }
 
