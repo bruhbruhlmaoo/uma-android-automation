@@ -2,6 +2,7 @@ package com.steve1316.uma_android_automation.bot.campaigns
 
 import android.graphics.Bitmap
 import android.util.Log
+import com.steve1316.automation_library.utils.DiscordUtils
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.bot.Campaign
@@ -25,6 +26,7 @@ import com.steve1316.uma_android_automation.components.DialogExchangeComplete
 import com.steve1316.uma_android_automation.components.DialogInterface
 import com.steve1316.uma_android_automation.components.DialogUtils
 import com.steve1316.uma_android_automation.components.IconGoalRibbon
+import com.steve1316.uma_android_automation.components.IconOneFreePerDayTooltip
 import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
 import com.steve1316.uma_android_automation.components.IconTazuna
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
@@ -467,6 +469,33 @@ class Trackblazer(game: Game) : Campaign(game) {
 
             "try_again" -> {
                 // Specialized Trackblazer retry logic.
+                if (racing.disableRaceRetries) {
+                    if (racing.enableFreeRaceRetry && IconOneFreePerDayTooltip.check(game.imageUtils)) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Failed mandatory or Rival race. Using daily free race retry...")
+                        racing.raceRetries--
+                        detectedDialog.ok(game.imageUtils)
+                        game.wait(0.5)
+                        return DialogHandlerResult.Handled(detectedDialog)
+                    }
+
+                    if (racing.enableCompleteCareerOnFailure) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Failed a mandatory race and no retries remaining. Completing career...")
+                        // Manually set retries to -1 to break the race retry loop.
+                        racing.raceRetries = -1
+                        detectedDialog.close(game.imageUtils)
+                        game.wait(0.5)
+                        return DialogHandlerResult.Handled(detectedDialog)
+                    }
+
+                    MessageLog.v(TAG, "\n[END] Stopping the bot due to failing a mandatory race.")
+                    MessageLog.v(TAG, "********************")
+                    game.notificationMessage = "Stopping the bot due to failing a mandatory race."
+                    if (DiscordUtils.enableDiscordNotifications) {
+                        DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Stopping the bot due to failing a mandatory race.\n```")
+                    }
+                    throw IllegalStateException()
+                }
+
                 if (racing.lastRaceGrade != null && racing.trackblazerRetryGrades.contains(racing.lastRaceGrade) && racing.raceRetries >= 0) {
                     if (racing.lastRaceIsRival && !racing.bRetriedCurrentRace) {
                         MessageLog.i(TAG, "[TRACKBLAZER] ${racing.lastRaceGrade} Rival Race retry button is available. Retrying once.")
