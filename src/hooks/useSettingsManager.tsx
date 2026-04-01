@@ -52,14 +52,6 @@ export const applyMigrations = (settings: Settings): { settings: Settings; anyMi
     let anyMigrated = false
     let migratedSettings = settings
 
-    // Migration: focusOnSparkStatTarget from boolean to string array format.
-    const focusOnSparkStatTargetValue = migratedSettings.training?.focusOnSparkStatTarget
-    if (typeof focusOnSparkStatTargetValue === "boolean") {
-        migratedSettings.training.focusOnSparkStatTarget = focusOnSparkStatTargetValue ? ["Speed", "Stamina", "Power"] : []
-        anyMigrated = true
-        logWithTimestamp("[SettingsManager] Migrated focusOnSparkStatTarget from boolean to array format.")
-    }
-
     // Migration: Move Training Event specific OCR settings to trainingEvent category.
     const ocr = (migratedSettings as any).ocr
     const debug = (migratedSettings as any).debug
