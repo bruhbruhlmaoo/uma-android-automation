@@ -2289,7 +2289,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         runRaceWithRetries()
         finalizeRaceResults()
 
-        MessageLog.v(TAG, "[RACE] Racing process for Standalone Race is completed.")
+        MessageLog.v(TAG, "[RACE] Racing process for Standalone Race is completed. Grade: ${lastRaceGrade ?: "Standalone"}")
         MessageLog.v(TAG, "********************")
     }
 
@@ -2316,7 +2316,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Clear the next smart race day tracker since we just completed a race.
         nextSmartRaceDay = null
 
-        MessageLog.v(TAG, "[RACE] Racing process for already selected race is completed.")
+        MessageLog.v(TAG, "[RACE] Racing process for already selected race is completed. Grade: ${lastRaceGrade ?: "OP"}")
         MessageLog.v(TAG, "********************")
         return true
     }
@@ -2333,6 +2333,12 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             MessageLog.v(TAG, "********************")
             detectedMandatoryRaceCheck = true
             return false
+        }
+
+        // For Finale races, manually set the grade and fans.
+        if (campaign.date.bIsFinaleSeason && (campaign.date.day == 73 || campaign.date.day == 74 || campaign.date.day == 75)) {
+            lastRaceGrade = RaceGrade.FINALE
+            lastRaceFans = if (campaign.date.day == 75) 30000 else 10000
         }
 
         // If there is a popup warning about racing too many times, confirm the popup to continue as this is a mandatory race.
@@ -2353,7 +2359,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         runRaceWithRetries()
         finalizeRaceResults()
 
-        MessageLog.v(TAG, "[RACE] Racing process for Mandatory Race is completed.")
+        MessageLog.v(TAG, "[RACE] Racing process for Mandatory Race is completed. Grade: ${lastRaceGrade ?: "Mandatory"}")
         MessageLog.v(TAG, "********************")
         return true
     }
@@ -2566,7 +2572,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Clear the next smart race day tracker since we just completed a race.
         nextSmartRaceDay = null
 
-        MessageLog.v(TAG, "[RACE] Racing process for Maiden Race is completed.")
+        MessageLog.v(TAG, "[RACE] Racing process for Maiden Race is completed. Grade: ${lastRaceGrade ?: "Maiden"}")
         MessageLog.v(TAG, "********************")
         return true
     }
@@ -2750,7 +2756,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         // Clear the next smart race day tracker since we just completed a race.
         nextSmartRaceDay = null
 
-        MessageLog.v(TAG, "[RACE] Racing process for Extra Race${if (isScheduledRace) " (scheduled) " else " "}is completed.")
+        MessageLog.v(TAG, "[RACE] Racing process for Extra Race${if (isScheduledRace) " (scheduled) " else " "}is completed. Grade: ${lastRaceGrade ?: "OP"}")
         MessageLog.v(TAG, "********************")
         return true
     }

@@ -2125,7 +2125,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
      * @param trainingSelected The name of the training to execute.
      */
     fun executeTraining(trainingSelected: StatName?) {
-        MessageLog.v(TAG, "[TRAINING] Now starting process to execute training...")
+        MessageLog.v(TAG, "[TRAINING] Now starting process to execute $trainingSelected training...")
 
         if (trainingSelected != null) {
             MessageLog.v(TAG, "[TRAINING] Executing the $trainingSelected Training.\n")

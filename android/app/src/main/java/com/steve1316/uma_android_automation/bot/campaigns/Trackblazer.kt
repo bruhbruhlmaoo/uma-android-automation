@@ -1158,6 +1158,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         // This ensures the racing item logic is triggered for these mandatory races.
         if (date.bIsFinaleSeason && (date.day == 73 || date.day == 74 || date.day == 75)) {
             grade = RaceGrade.G1
+            racing.lastRaceGrade = RaceGrade.FINALE
             fans = if (date.day == 75) 30000 else 10000
         }
 

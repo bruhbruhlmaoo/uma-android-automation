@@ -168,6 +168,7 @@ enum class RaceGrade {
     G3,
     G2,
     G1,
+    FINALE,
     EX,
     ;
 

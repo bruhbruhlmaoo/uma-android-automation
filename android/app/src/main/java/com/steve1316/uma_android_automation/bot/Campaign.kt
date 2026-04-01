@@ -1172,7 +1172,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 game.wait(game.dialogWaitDelay)
                 ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
                 game.waitForLoading()
-                MessageLog.v(TAG, "[ENERGY] Successfully recovered energy.")
+                MessageLog.v(TAG, "[ENERGY] Successfully recovered energy via rest.")
                 true
             }
 
@@ -1182,7 +1182,7 @@ abstract class Campaign(game: Game) : Task(game) {
                 game.wait(game.dialogWaitDelay)
                 ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
                 game.waitForLoading()
-                MessageLog.v(TAG, "[ENERGY] Successfully recovered energy for the Summer.")
+                MessageLog.v(TAG, "[ENERGY] Successfully recovered energy via Summer rest.")
                 true
             }
 
@@ -1229,7 +1229,9 @@ abstract class Campaign(game: Game) : Task(game) {
 
             // Check if a date is available.
             if (!recreationDateCompleted && IconRecreationDate.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
-                handleRecreationDate(recoverMoodIfCompleted = true)
+                if (handleRecreationDate(recoverMoodIfCompleted = true)) {
+                    MessageLog.v(TAG, "[MOOD] Successfully recovered mood via recreation date.")
+                }
             } else {
                 // Otherwise, recover mood as normal.
                 // Note that if a date was already completed, the Recreation popup will still show so it will require an additional step to recover mood.
@@ -1252,6 +1254,11 @@ abstract class Campaign(game: Game) : Task(game) {
                     // Otherwise, dismiss the popup that says to confirm recreation if the user has not set it to skip the confirmation in their in-game settings.
                     ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)
                     game.waitForLoading()
+                }
+                if (ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
+                    MessageLog.v(TAG, "[MOOD] Successfully recovered mood via Summer rest.")
+                } else {
+                    MessageLog.v(TAG, "[MOOD] Successfully recovered mood.")
                 }
             }
             true
