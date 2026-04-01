@@ -621,36 +621,6 @@ class TrackblazerShopList(private val game: Game) {
     }
 
     /**
-     * Extract item entries from a non-scrollable list using template matching for plus buttons.
-     *
-     * @param sourceBitmap The source bitmap to scan.
-     * @return A list of pseudo-ScrollListEntry objects.
-     */
-    private fun getEntriesNonScrollable(sourceBitmap: Bitmap): List<ScrollListEntry> {
-        MessageLog.d(TAG, "[DEBUG] getEntriesNonScrollable:: Scanning full screen for plus buttons...")
-        // Find all plus buttons on the screen to identify items.
-        val plusButtons = ButtonSkillUp.findAll(game.imageUtils, sourceBitmap = sourceBitmap)
-        MessageLog.d(TAG, "[DEBUG] getEntriesNonScrollable:: Found ${plusButtons.size} plus buttons.")
-        plusButtons.sortBy { it.y }
-
-        return plusButtons.mapIndexed { index, point ->
-            // Determine the entry height and coordinates based on the plus button position.
-            val entryHeight = game.imageUtils.relHeight(220)
-            val entryY = (point.y - (entryHeight / 2)).toInt().coerceIn(0, sourceBitmap.height - entryHeight)
-            val entryBBox = BoundingBox(x = 0, y = entryY, w = sourceBitmap.width, h = entryHeight)
-            val entryBitmap = game.imageUtils.createSafeBitmap(sourceBitmap, entryBBox, "PseudoEntry_$index")
-
-            ScrollListEntry(
-                index = index,
-                bitmap = entryBitmap ?: sourceBitmap,
-                bbox = entryBBox,
-                refX = point.x.toInt(),
-                refY = (point.y - entryY).toInt(),
-            )
-        }
-    }
-
-    /**
      * Use the Good-Luck Charm if available in the inventory.
      *
      * @param scannedItems Optional list of pre-scanned items.
@@ -668,69 +638,25 @@ class TrackblazerShopList(private val game: Game) {
      * @return True if the process completed successfully.
      */
     fun processItemsWithFallback(keyExtractor: ((ScrollListEntry) -> String?)? = null, callback: (ScrollListEntry) -> Boolean): Boolean {
-        val sourceBitmap = game.imageUtils.getSourceBitmap()
+        // Training Items dialog uses specific scroll regions if detected.
+        val isTrainingItems = ButtonConfirmUse.check(game.imageUtils)
+        val topLeft = if (isTrainingItems) IconDialogScrollListTopLeft else null
+        val bottomRight = if (isTrainingItems) IconDialogScrollListBottomRight else null
 
-        // Step 1: Attempt ScrollList detection first.
-        MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: Attempting ScrollList detection...")
-
-        val list =
-            if (ButtonConfirmUse.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
-                // Training Items dialog detected, use specific scroll regions.
-                ScrollList.create(
-                    game,
-                    bitmap = sourceBitmap,
-                    listTopLeftComponent = IconDialogScrollListTopLeft,
-                    listBottomRightComponent = IconDialogScrollListBottomRight,
-                )
-            } else {
-                // Default Shop list detection.
-                ScrollList.create(game, bitmap = sourceBitmap)
-            }
-
-        if (list != null) {
-            // Always check if the shop is on sale.
-            isShopOnSale = LabelOnSale.check(game.imageUtils, sourceBitmap = sourceBitmap)
-
-            val result = list.process(keyExtractor = keyExtractor) { _, entry -> callback(entry) }
-
-            // If ScrollList processing was successful (it found the list and potentially scrolled), we are done.
-            if (result) return true
+        if (!isTrainingItems) {
+            // Always check if the shop is on sale for default shop lists.
+            isShopOnSale = LabelOnSale.check(game.imageUtils)
         }
 
-        // Step 2: Fallback to non-scrollable case if ScrollList failed or found nothing.
-        // This is a safety measure for small dialogs where ScrollList corner detection might fail
-        // but plus buttons are clearly visible.
-        MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: ScrollList detection failed or empty. Falling back to non-scrollable entry detection...")
-        val nonScrollableEntries = getEntriesNonScrollable(sourceBitmap)
-        if (nonScrollableEntries.isNotEmpty()) {
-            MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: Using non-scrollable entry detection.")
-            // Maintain localized processedKeys for the non-scrollable fallback if needed.
-            val processedKeys = mutableSetOf<String>()
-
-            for (entry in nonScrollableEntries) {
-                if (keyExtractor != null) {
-                    val key = keyExtractor(entry)
-                    if (key != null) {
-                        // Skip if we already processed this item.
-                        if (processedKeys.contains(key)) {
-                            continue
-                        }
-                        processedKeys.add(key)
-                    }
-                }
-
-                // Execute the callback for this entry.
-                val found = callback(entry)
-                if (!found && game.debugMode) {
-                    MessageLog.d(TAG, "[DEBUG] processItemsWithFallback:: No item detected in non-scrollable entry at index ${entry.index}.")
-                }
-                if (found) break
-            }
-            return true
+        return ScrollList.processWithFallback(
+            game,
+            keyExtractor = keyExtractor,
+            fallbackComponent = ButtonSkillUp,
+            listTopLeftComponent = topLeft,
+            listBottomRightComponent = bottomRight,
+        ) { _, entry: ScrollListEntry ->
+            callback(entry)
         }
-
-        MessageLog.e(TAG, "[ERROR] processItemsWithFallback:: Failed to detect shop list or any items.")
-        return false
     }
 
     /**
