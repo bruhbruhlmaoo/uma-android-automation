@@ -135,6 +135,9 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Flag to track when a shop check should be performed after a race. */
     private var bShouldCheckShop: Boolean = false
 
+    /** Flag to track if the first-time Shop check for the session has been performed. */
+    private var bInitialShopCheckPerformed: Boolean = false
+
     /** Mapping of energy-restoring items to their gain values. */
     private val energyGains =
         mapOf(
@@ -347,12 +350,19 @@ class Trackblazer(game: Game) : Campaign(game) {
                     MessageLog.i(TAG, "[TRACKBLAZER] Shop discount detected! Initiating buying process.")
                 }
 
-                detectedDialog.ok(game.imageUtils)
-                game.wait(3.0)
+                if (detectedDialog.ok(game.imageUtils)) {
+                    game.wait(game.dialogWaitDelay)
 
-                // Clear the shop check flag and counter as the shop is already being handled.
-                bShouldCheckShop = false
-                shopCheckCounter = 0
+                    // Clear the shop check flag and counter as the shop is already being handled.
+                    bShouldCheckShop = false
+                    shopCheckCounter = 0
+                    bInitialShopCheckPerformed = true
+
+                    return DialogHandlerResult.Handled(detectedDialog)
+                } else {
+                    MessageLog.e(TAG, "[ERROR] handleDialogs:: Failed to click the OK button on the Shop dialog.")
+                    return DialogHandlerResult.Unhandled(detectedDialog)
+                }
 
                 buyItems()
             }
@@ -629,6 +639,14 @@ class Trackblazer(game: Game) : Campaign(game) {
         // This handles Stats, Energy, Mood, and Bad Conditions.
         // Training items are only available starting Turn 13 (Junior Year Early July).
         if (date.day >= 13) {
+            if (!bInitialShopCheckPerformed) {
+                MessageLog.i(TAG, "[TRACKBLAZER] Performing first-time Shop check for the session...")
+                if (openShop()) {
+                    buyItems()
+                    bInitialShopCheckPerformed = true
+                }
+            }
+
             useItems(trainee)
         }
     }
