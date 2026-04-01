@@ -596,7 +596,7 @@ const TrainingSettings = () => {
                                 checked={mustRestBeforeSummer}
                                 onCheckedChange={(checked) => updateTrainingSetting("mustRestBeforeSummer", checked)}
                                 label="Must Rest before Summer"
-                                description="Forces the bot to rest during June Late Phase in Classic and Senior Years to ensure enough energy for Summer Training in July."
+                                description="Optimizes June Late Phase in Classic and Senior Years for Summer Training. If Energy < 70%, it will Rest. If Energy >= 70% and Mood < Great, it will recover Mood. If Energy >= 70% and Mood is Great, it will train Wit."
                                 className="my-2"
                                 searchId="must-rest-before-summer"
                             />
