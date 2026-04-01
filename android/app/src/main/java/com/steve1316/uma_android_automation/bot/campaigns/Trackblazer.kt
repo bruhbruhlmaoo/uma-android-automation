@@ -870,7 +870,10 @@ class Trackblazer(game: Game) : Campaign(game) {
         MessageLog.i(TAG, "[TRACKBLAZER] Initiating buying process.")
 
         // Update current coins via OCR before buying.
-        updateShopCoins()
+        if (!updateShopCoins()) {
+            MessageLog.w(TAG, "[TRACKBLAZER] Aborting buying process due to failed Shop Coins update.")
+            return
+        }
         MessageLog.i(TAG, "[TRACKBLAZER] Initial Shop Coins: $shopCoins")
 
         // If the shop coins are 0, it is possible that the OCR failed to read them correctly.
