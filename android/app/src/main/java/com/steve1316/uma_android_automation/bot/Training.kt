@@ -1212,10 +1212,10 @@ class Training(private val game: Game, private val campaign: Campaign) {
                             maximumFailureChance
                         }
 
-                    // If we failed to detect a failure chance, fallback to detecting it
-                    // synchronously a couple more times.
+                    // If we failed to detect a failure chance, fallback to the initial failure chance that was read as we first entered the training screen.
                     if (result.failureChance == -1) {
-                        result.failureChance = game.imageUtils.findTrainingFailureChance(tries = 3)
+                        MessageLog.w(TAG, "[WARN] analyzeTrainings:: ${result.name} failure chance OCR failed. Falling back to the initial robustly read value of $failureChance%.")
+                        result.failureChance = failureChance
                     }
 
                     if (result.failureChance == -1) {
@@ -1299,6 +1299,14 @@ class Training(private val game: Game, private val campaign: Campaign) {
                 // Apply secondary stat gain boosts based on context for all results before caching.
                 for (result in analysisResults) {
                     applyContextualStatGainBoost(result)
+                }
+
+                // Apply the initial failure chance as a fallback if OCR failed during individual stat analysis.
+                for (result in analysisResults) {
+                    if (result.failureChance == -1) {
+                        MessageLog.i(TAG, "[TRAINING] [${result.name}] Failure chance OCR failed. Falling back to the initial robustly read value of $failureChance%.")
+                        result.failureChance = failureChance
+                    }
                 }
 
                 // Process results and populate training maps.
