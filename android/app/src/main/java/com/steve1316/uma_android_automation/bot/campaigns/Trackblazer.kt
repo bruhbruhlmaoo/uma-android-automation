@@ -1793,7 +1793,11 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
 
         if (!hasItems) {
-            summary.append("\nInventory is empty.\n")
+            if (bInventorySynced) {
+                summary.append("\nInventory is empty.\n")
+            } else {
+                summary.append("\nInventory has not been scanned yet.\n")
+            }
         }
 
         if (withDividers) {
