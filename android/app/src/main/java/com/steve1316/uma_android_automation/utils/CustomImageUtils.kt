@@ -59,8 +59,8 @@ import kotlin.text.replace
 
 /** Utility functions for image processing via CV like OpenCV. */
 class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(context) {
-    /** OCR threshold for image processing. */
-    private val threshold: Int = SettingsHelper.getIntSetting("ocr", "ocrThreshold")
+    /** OCR threshold for text recognition. */
+    private val threshold: Int = SettingsHelper.getIntSetting("debug", "ocrThreshold")
 
     /** Whether debug mode is enabled for additional logging and saving debugging images to storage. */
     override var debugMode: Boolean = SettingsHelper.getBooleanSetting("debug", "enableDebugMode")

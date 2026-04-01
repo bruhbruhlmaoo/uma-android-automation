@@ -83,16 +83,16 @@ class TrainingEventRecognizer(private val game: Game, private val imageUtils: Cu
         }
 
     /** Whether to hide OCR comparison results in the log output. */
-    private val hideComparisonResults: Boolean = SettingsHelper.getBooleanSetting("debug", "enableHideOCRComparisonResults")
+    private val hideComparisonResults: Boolean = SettingsHelper.getBooleanSetting("trainingEvent", "enableHideOCRComparisonResults")
 
     /** The minimum confidence score required for an OCR match to be accepted immediately. */
-    private val minimumConfidence = SettingsHelper.getIntSetting("ocr", "ocrConfidence").toDouble() / 100.0
+    private val minimumConfidence = SettingsHelper.getIntSetting("trainingEvent", "ocrConfidence").toDouble() / 100.0
 
     /** The grayscale threshold used for OCR pre-processing. */
-    private val threshold = SettingsHelper.getIntSetting("ocr", "ocrThreshold").toDouble()
+    private val threshold = SettingsHelper.getIntSetting("debug", "ocrThreshold").toDouble()
 
     /** Whether to automatically retry OCR detection with different thresholds if confidence is low. */
-    private val enableAutomaticRetry = SettingsHelper.getBooleanSetting("ocr", "enableAutomaticOCRRetry")
+    private val enableAutomaticRetry = SettingsHelper.getBooleanSetting("trainingEvent", "enableAutomaticOCRRetry")
 
     /** Service for calculating string similarity using the Jaro-Winkler algorithm. */
     private val stringSimilarityService = StringSimilarityServiceImpl(JaroWinklerStrategy())
