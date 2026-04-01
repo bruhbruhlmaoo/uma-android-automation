@@ -622,14 +622,26 @@ class Trackblazer(game: Game) : Campaign(game) {
         training.clearAnalysisCache()
     }
 
+    override fun checkCampaignSpecificConditions(): Boolean {
+        if (ButtonTrainingItems.check(game.imageUtils)) {
+            MessageLog.i(TAG, "[TRACKBLAZER] Bot is at the Shop screen. Initiating buying process.")
+            buyItems()
+            return true
+        }
+
+        return false
+    }
+
     override fun onBeforeMainScreenUpdate() {
         // Buy items if a shop check is pending after a race.
         if (bShouldCheckShop) {
             MessageLog.i(TAG, "[TRACKBLAZER] Pending shop check detected! Checking Shop for new items...")
-            bShouldCheckShop = false
             game.wait(0.5)
             if (openShop()) {
+                bShouldCheckShop = false
                 buyItems(bAfterRacePurchase = true)
+            } else {
+                MessageLog.w(TAG, "[WARN] onBeforeMainScreenUpdate:: Failed to open the shop despite pending shop check.")
             }
         }
     }
@@ -783,12 +795,21 @@ class Trackblazer(game: Game) : Campaign(game) {
      */
     fun openShop(tries: Int = 5): Boolean {
         if (ButtonShopTrackblazer.click(game.imageUtils, tries = tries)) {
-            game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
+            game.wait(game.dialogWaitDelay)
             return true
-        } else {
-            MessageLog.e(TAG, "[ERROR] openShop:: Unable to open the Shop due to failing to find its button.")
-            return false
         }
+
+        val detectedDialog = DialogUtils.getDialog(game.imageUtils)
+        if (detectedDialog != null && detectedDialog.name == "shop") {
+            MessageLog.i(TAG, "[TRACKBLAZER] Shop dialog detected while trying to open the shop. Entering via dialog...")
+            if (detectedDialog.ok(game.imageUtils)) {
+                game.wait(game.dialogWaitDelay)
+                return ButtonTrainingItems.check(game.imageUtils)
+            }
+        }
+
+        MessageLog.e(TAG, "[ERROR] openShop:: Unable to open the Shop due to failing to find its button.")
+        return false
     }
 
     /**
