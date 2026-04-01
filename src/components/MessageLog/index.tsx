@@ -275,6 +275,9 @@ const MessageLog = () => {
                 : `${Object.keys(settings.trainingEvent.scenarioEventOverrides).length} Scenario Event Override(s) applied`
         }
 🔋 Prioritize Energy Options: ${settings.trainingEvent.enablePrioritizeEnergyOptions ? "✅" : "❌"}
+🔍 Enable Automatic OCR retry: ${settings.trainingEvent.enableAutomaticOCRRetry ? "✅" : "❌"}
+🔍 Minimum OCR Confidence: ${settings.trainingEvent.ocrConfidence}
+🔍 Hide OCR String Comparison Results: ${settings.trainingEvent.enableHideOCRComparisonResults ? "✅" : "❌"}
 
 ---------- Training Options ----------
 🚫 Training Blacklist: ${settings.training.trainingBlacklist.length === 0 ? "No Trainings blacklisted" : `${settings.training.trainingBlacklist.join(", ")}`}
@@ -302,12 +305,6 @@ ${sprintTargetsString}
 ${mileTargetsString}
 ${mediumTargetsString}
 ${longTargetsString}
-
----------- Tesseract OCR Optimization ----------
-🔍 OCR Threshold: ${settings.ocr.ocrThreshold}
-🔍 Enable Automatic OCR retry: ${settings.ocr.enableAutomaticOCRRetry ? "✅" : "❌"}
-🔍 Minimum OCR Confidence: ${settings.ocr.ocrConfidence}
-🔍 Hide OCR String Comparison Results: ${settings.debug.enableHideOCRComparisonResults ? "✅" : "❌"}
 
 ---------- Racing Options ----------
 👥 Prioritize Farming Fans: ${settings.racing.enableFarmingFans ? "✅" : "❌"}
@@ -379,6 +376,7 @@ ${longTargetsString}
 
 ---------- Debug Options ----------
 🐛 Debug Mode: ${settings.debug.enableDebugMode ? "✅" : "❌"}
+🔍 OCR Threshold: ${settings.debug.ocrThreshold}
 🔍 Minimum Template Match Confidence: ${settings.debug.templateMatchConfidence}
 🔍 Custom Scale: ${settings.debug.templateMatchCustomScale}
 💻 Remote Log Viewer: ${settings.debug.enableRemoteLogViewer ? "✅" : "❌"}
@@ -399,7 +397,6 @@ ${longTargetsString}
 🔍 Start Trackblazer Race Selection Test: ${settings.debug.debugMode_startTrackblazerRaceSelectionTest ? "✅" : "❌"}
 🔍 Start Trackblazer Inventory Sync Test: ${settings.debug.debugMode_startTrackblazerInventorySyncTest ? "✅" : "❌"}
 🔍 Start Trackblazer Buy Items Test: ${settings.debug.debugMode_startTrackblazerBuyItemsTest ? "✅" : "❌"}
-🔍 Hide String Comparison Results: ${settings.debug.enableHideOCRComparisonResults ? "✅" : "❌"}
 
 ---------- Discord Options ----------
 🔔 Discord Notifications: ${settings.discord?.enableDiscordNotifications ? "✅" : "❌"}

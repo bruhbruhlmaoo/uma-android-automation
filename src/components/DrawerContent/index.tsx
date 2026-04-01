@@ -39,7 +39,6 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
     const settingsNestedRoutes = [
         "TrainingSettings",
         "TrainingEventSettings",
-        "OCRSettings",
         "RacingSettings",
         "RacingPlanSettings",
         "SkillSettings",
@@ -214,11 +213,6 @@ const DrawerContent: React.FC<DrawerContentComponentProps> = (props) => {
                     name: "TrainingEventSettings",
                     label: "Training Event Settings",
                     icon: () => "calendar-outline",
-                },
-                {
-                    name: "OCRSettings",
-                    label: "OCR Settings",
-                    icon: () => "eye-outline",
                 },
                 {
                     name: "RacingSettings",

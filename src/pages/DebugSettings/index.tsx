@@ -239,6 +239,33 @@ const DebugSettings = () => {
                                 description="Manually set the scale to do template matching. The Basic Template Matching Test can help find your recommended scale. Making it too low or too high will cause the bot to match on too little or too many things as false positives."
                             />
 
+                            {/* OCR Threshold Slider */}
+                            <CustomSlider
+                                searchId="ocr-threshold"
+                                value={bsc.settings.debug.ocrThreshold}
+                                placeholder={bsc.defaultSettings.debug.ocrThreshold}
+                                onValueChange={(value: number) => {
+                                    bsc.setSettings({
+                                        ...bsc.settings,
+                                        debug: { ...bsc.settings.debug, ocrThreshold: value },
+                                    })
+                                }}
+                                onSlidingComplete={(value: number) => {
+                                    bsc.setSettings({
+                                        ...bsc.settings,
+                                        debug: { ...bsc.settings.debug, ocrThreshold: value },
+                                    })
+                                }}
+                                min={100}
+                                max={255}
+                                step={5}
+                                label="OCR Threshold"
+                                labelUnit=""
+                                showValue={true}
+                                showLabels={true}
+                                description="The brightness threshold used to distinguish text from the background during OCR. Note: This setting does not affect high-precision features like Stat Detection or Training Failure Chance detection, as they use specialized processing."
+                            />
+
                             <Separator style={{ marginVertical: 16 }} />
 
                             <CustomTitle title="Remote Log Viewer" description="Stream logs in real-time to a browser on your local network. Both devices must be on the same WiFi." />

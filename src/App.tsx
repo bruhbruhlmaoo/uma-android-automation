@@ -16,7 +16,6 @@ import Home from "./pages/Home"
 import Settings from "./pages/Settings"
 import TrainingSettings from "./pages/TrainingSettings"
 import TrainingEventSettings from "./pages/TrainingEventSettings"
-import OCRSettings from "./pages/OCRSettings"
 import RacingSettings from "./pages/RacingSettings"
 import RacingPlanSettings from "./pages/RacingPlanSettings"
 import SkillSettings from "./pages/SkillSettings"
@@ -45,7 +44,6 @@ function SettingsStack() {
             <Stack.Screen name="SettingsMain" component={Settings} />
             <Stack.Screen name="TrainingSettings" component={TrainingSettings} />
             <Stack.Screen name="TrainingEventSettings" component={TrainingEventSettings} />
-            <Stack.Screen name="OCRSettings" component={OCRSettings} />
             <Stack.Screen name="RacingSettings" component={RacingSettings} />
             <Stack.Screen name="RacingPlanSettings" component={RacingPlanSettings} />
             <Stack.Screen name="SkillSettings" component={SkillSettings} />

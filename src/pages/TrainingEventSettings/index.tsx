@@ -11,6 +11,7 @@ import CustomTitle from "../../components/CustomTitle"
 import CustomButton from "../../components/CustomButton"
 import { Search, X } from "lucide-react-native"
 import PageHeader from "../../components/PageHeader"
+import CustomSlider from "../../components/CustomSlider"
 import { usePerformanceLogging } from "../../hooks/usePerformanceLogging"
 
 // Import the data files.
@@ -55,8 +56,16 @@ const TrainingEventSettings = () => {
 
     const { settings, setSettings } = bsc
     // Merge current training event settings with defaults to handle missing properties.
-    const trainingEventSettings = { ...defaultSettings.trainingEvent, ...settings.trainingEvent }
-    const { enablePrioritizeEnergyOptions, specialEventOverrides, characterEventOverrides, supportEventOverrides, scenarioEventOverrides } = trainingEventSettings
+    const {
+        enablePrioritizeEnergyOptions,
+        enableAutomaticOCRRetry,
+        ocrConfidence,
+        enableHideOCRComparisonResults,
+        specialEventOverrides,
+        characterEventOverrides,
+        supportEventOverrides,
+        scenarioEventOverrides,
+    } = { ...defaultSettings.trainingEvent, ...settings.trainingEvent }
 
     const [eventOverrideModalVisible, setEventOverrideModalVisible] = useState(false)
     const [eventOverrideSearchQuery, setEventOverrideSearchQuery] = useState("")
@@ -609,9 +618,49 @@ const TrainingEventSettings = () => {
                             <CustomCheckbox
                                 searchId="prioritize-energy-options"
                                 checked={enablePrioritizeEnergyOptions}
-                                onCheckedChange={(checked) => updateTrainingEventSetting("enablePrioritizeEnergyOptions", checked)}
+                                onCheckedChange={(checked: boolean) => updateTrainingEventSetting("enablePrioritizeEnergyOptions", checked)}
                                 label="Prioritize Energy Options"
                                 description="When enabled, the bot will prioritize training event choices that provide energy recovery or avoid energy consumption, helping to maintain optimal energy levels for training sessions."
+                                className="my-2"
+                            />
+                        </View>
+
+                        <CustomTitle
+                            searchId="ocr-recognition-settings"
+                            title="OCR Recognition Settings"
+                            description="Configure settings for detecting and recognizing Training Event titles using OCR. These settings only affect the Training Event recognition process."
+                        />
+
+                        <View style={styles.section}>
+                            <CustomCheckbox
+                                searchId="automatic-ocr-retry-training"
+                                checked={enableAutomaticOCRRetry}
+                                onCheckedChange={(checked: boolean) => updateTrainingEventSetting("enableAutomaticOCRRetry", checked)}
+                                label="Enable Automatic OCR Retry for Training Events"
+                                description="When enabled, the bot will automatically retry OCR detection with adjusted settings if the initial attempt for a training event title fails or has low confidence."
+                                className="my-2"
+                            />
+
+                            <CustomSlider
+                                searchId="ocr-confidence-training"
+                                label="OCR Confidence for Training Events"
+                                description="The minimum confidence level required for a Training Event title to be considered a match. Higher values ensure more accurate recognition but may lead to more missed events."
+                                min={50}
+                                max={100}
+                                step={1}
+                                value={ocrConfidence}
+                                onValueChange={(value: number) => updateTrainingEventSetting("ocrConfidence", value)}
+                                showValue={true}
+                                showLabels={true}
+                                className="my-2"
+                            />
+
+                            <CustomCheckbox
+                                searchId="hide-ocr-comparison-results-training"
+                                checked={enableHideOCRComparisonResults}
+                                onCheckedChange={(checked: boolean) => updateTrainingEventSetting("enableHideOCRComparisonResults", checked)}
+                                label="Hide OCR String Comparison Results"
+                                description="If enabled, the bot will suppress detailed logging of individual string similarity scores during training event detection to keep the logs cleaner."
                                 className="my-2"
                             />
                         </View>

@@ -199,33 +199,43 @@ const searchConfig: SearchOption[] = [
         description: "Override the bot's normal stat prioritization for specific training events. These settings bypass the standard weight calculation system.",
         page: "TrainingEventSettings",
     },
+    {
+        id: "ocr-recognition-settings-title",
+        title: "OCR Recognition Settings",
+        description: "Configure settings for detecting and recognizing Training Event titles using OCR.",
+        page: "TrainingEventSettings",
+    },
+    {
+        id: "automatic-ocr-retry-training",
+        title: "Enable Automatic OCR Retry for Training Events",
+        description: "When enabled, the bot will automatically retry OCR detection if the initial attempt for a training event title fails or has low confidence.",
+        page: "TrainingEventSettings",
+        parentId: "ocr-recognition-settings-title",
+    },
+    {
+        id: "ocr-confidence-training",
+        title: "OCR Confidence for Training Events",
+        description: "The minimum confidence level required for a Training Event title to be considered a match.",
+        page: "TrainingEventSettings",
+        parentId: "ocr-recognition-settings-title",
+    },
+    {
+        id: "hide-ocr-comparison-results-training",
+        title: "Hide OCR String Comparison Results",
+        description: "If enabled, the bot will suppress detailed logging of individual string similarity scores during training event detection to keep the logs cleaner.",
+        page: "TrainingEventSettings",
+        parentId: "ocr-recognition-settings-title",
+    },
 
     // ============================================================
     // OCR Settings
     // ============================================================
     {
-        id: "ocrThreshold",
+        id: "ocr-threshold",
         title: "OCR Threshold",
-        description: "Adjust the threshold for OCR text detection. Higher values make text detection more strict, lower values make it more lenient.",
-        page: "OCRSettings",
-    },
-    {
-        id: "enableAutomaticOCRRetry",
-        title: "Enable Automatic OCR Retry",
-        description: "When enabled, the bot will automatically retry OCR detection if the initial attempt fails or has low confidence.",
-        page: "OCRSettings",
-    },
-    {
-        id: "ocrConfidence",
-        title: "OCR Confidence",
-        description: "Set the minimum confidence level required for OCR text detection. Higher values ensure more accurate text recognition but may miss some text.",
-        page: "OCRSettings",
-    },
-    {
-        id: "enableHideOCRComparisonResults",
-        title: "Hide OCR String Comparison Results during Training Event detection",
-        description: "Hides the log messages involved in the string comparison process during training event detection.",
-        page: "OCRSettings",
+        description:
+            "Adjust the threshold for OCR text detection. Higher values make text detection more strict, lower values make it more lenient. Note: This setting does not affect high-precision features like Stat Detection or Training Failure Chance detection.",
+        page: "DebugSettings",
     },
 
     // ============================================================

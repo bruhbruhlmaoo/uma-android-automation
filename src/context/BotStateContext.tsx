@@ -81,6 +81,9 @@ export interface Settings {
     // Training Event settings
     trainingEvent: {
         enablePrioritizeEnergyOptions: boolean
+        enableAutomaticOCRRetry: boolean
+        ocrConfidence: number
+        enableHideOCRComparisonResults: boolean
         specialEventOverrides: Record<string, { selectedOption: string; requiresConfirmation: boolean }>
         characterEventOverrides: Record<string, number>
         supportEventOverrides: Record<string, number>
@@ -147,16 +150,10 @@ export interface Settings {
         trainingLongStatTarget_witStatTarget: number
     }
 
-    // OCR settings
-    ocr: {
-        ocrThreshold: number
-        enableAutomaticOCRRetry: boolean
-        ocrConfidence: number
-    }
-
     // Debug settings
     debug: {
         enableDebugMode: boolean
+        ocrThreshold: number
         templateMatchConfidence: number
         templateMatchCustomScale: number
         debugMode_startTemplateMatchingTest: boolean
@@ -173,7 +170,6 @@ export interface Settings {
         debugMode_startTrackblazerRaceSelectionTest: boolean
         debugMode_startTrackblazerInventorySyncTest: boolean
         debugMode_startTrackblazerBuyItemsTest: boolean
-        enableHideOCRComparisonResults: boolean
         enableScreenRecording: boolean
         recordingBitRate: number
         recordingFrameRate: number
@@ -274,6 +270,9 @@ export const defaultSettings: Settings = {
     },
     trainingEvent: {
         enablePrioritizeEnergyOptions: false,
+        enableAutomaticOCRRetry: true,
+        ocrConfidence: 90,
+        enableHideOCRComparisonResults: true,
         specialEventOverrides: {
             "New Year's Resolutions": {
                 selectedOption: "Option 2: Energy +20",
@@ -371,13 +370,9 @@ export const defaultSettings: Settings = {
         trainingLongStatTarget_gutsStatTarget: 300,
         trainingLongStatTarget_witStatTarget: 300,
     },
-    ocr: {
-        ocrThreshold: 230,
-        enableAutomaticOCRRetry: true,
-        ocrConfidence: 90,
-    },
     debug: {
         enableDebugMode: false,
+        ocrThreshold: 230,
         templateMatchConfidence: 0.8,
         templateMatchCustomScale: 1.0,
         debugMode_startTemplateMatchingTest: false,
@@ -394,7 +389,6 @@ export const defaultSettings: Settings = {
         debugMode_startTrackblazerRaceSelectionTest: false,
         debugMode_startTrackblazerInventorySyncTest: false,
         debugMode_startTrackblazerBuyItemsTest: false,
-        enableHideOCRComparisonResults: true,
         enableScreenRecording: false,
         recordingBitRate: 6,
         recordingFrameRate: 30,
