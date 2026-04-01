@@ -682,12 +682,6 @@ const searchConfig: SearchOption[] = [
         page: "DebugSettings",
     },
     {
-        id: "debug-date-ocr-test",
-        title: "Start Date OCR Test",
-        description: "Disables normal bot operations and starts the date OCR test. Only on the Main screen and the Race List screen and tests detecting the current date.",
-        page: "DebugSettings",
-    },
-    {
         id: "debug-race-list-detection-test",
         title: "Start Race List Detection Test",
         description:
@@ -699,24 +693,6 @@ const searchConfig: SearchOption[] = [
         title: "Start Main Screen Update Test",
         description:
             "Disables normal bot operations and starts the Main Screen update test. This test will go through all Main Screen updates and then print the Trainee information.",
-        page: "DebugSettings",
-    },
-    {
-        id: "debug-trainee-name-ocr-test",
-        title: "Start Trainee Name OCR Test",
-        description: "Disables normal bot operations and starts the Trainee Name OCR test. Only on the Aptitude dialog and tests detecting the trainee's name using color filtering.",
-        page: "DebugSettings",
-    },
-    {
-        id: "debug-main-screen-ocr-test",
-        title: "Start Main Screen OCR Test",
-        description: "Disables normal bot operations and starts the Main screen OCR test. Only on the Main screen and tests detecting various components on the screen.",
-        page: "DebugSettings",
-    },
-    {
-        id: "debug-training-screen-ocr-test",
-        title: "Start Training Screen OCR Test",
-        description: "Disables normal bot operations and starts the Training screen OCR test. Only on the Training screen and tests detecting various components on the screen.",
         page: "DebugSettings",
     },
     {

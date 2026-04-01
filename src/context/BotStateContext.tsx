@@ -159,12 +159,8 @@ export interface Settings {
         debugMode_startTemplateMatchingTest: boolean
         debugMode_startSingleTrainingOCRTest: boolean
         debugMode_startComprehensiveTrainingOCRTest: boolean
-        debugMode_startDateOCRTest: boolean
         debugMode_startRaceListDetectionTest: boolean
         debugMode_startMainScreenUpdateTest: boolean
-        debugMode_startTraineeNameOCRTest: boolean
-        debugMode_startMainScreenOCRTest: boolean
-        debugMode_startTrainingScreenOCRTest: boolean
         debugMode_startSkillListBuyTest: boolean
         debugMode_startScrollBarDetectionTest: boolean
         debugMode_startTrackblazerRaceSelectionTest: boolean
@@ -378,12 +374,8 @@ export const defaultSettings: Settings = {
         debugMode_startTemplateMatchingTest: false,
         debugMode_startSingleTrainingOCRTest: false,
         debugMode_startComprehensiveTrainingOCRTest: false,
-        debugMode_startDateOCRTest: false,
         debugMode_startRaceListDetectionTest: false,
         debugMode_startMainScreenUpdateTest: false,
-        debugMode_startTraineeNameOCRTest: false,
-        debugMode_startMainScreenOCRTest: false,
-        debugMode_startTrainingScreenOCRTest: false,
         debugMode_startSkillListBuyTest: false,
         debugMode_startScrollBarDetectionTest: false,
         debugMode_startTrackblazerRaceSelectionTest: false,

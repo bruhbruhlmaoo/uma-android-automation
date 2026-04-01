@@ -215,12 +215,8 @@ abstract class Campaign(game: Game) : Task(game) {
                 "debugMode_startTemplateMatchingTest" to ::startTemplateMatchingTest,
                 "debugMode_startSingleTrainingOCRTest" to training::startSingleTrainingOCRTest,
                 "debugMode_startComprehensiveTrainingOCRTest" to training::startComprehensiveTrainingOCRTest,
-                "debugMode_startDateOCRTest" to ::startDateOCRTest,
                 "debugMode_startRaceListDetectionTest" to racing::startRaceListDetectionTest,
                 "debugMode_startMainScreenUpdateTest" to this::startMainScreenUpdateTest,
-                "debugMode_startTraineeNameOCRTest" to ::startTraineeNameOCRTest,
-                "debugMode_startMainScreenOCRTest" to ::startMainScreenOCRTest,
-                "debugMode_startTrainingScreenOCRTest" to ::startTrainingScreenOCRTest,
                 "debugMode_startScrollBarDetectionTest" to ::startScrollBarDetectionTest,
                 "debugMode_startSkillListBuyTest" to skillPlan::startSkillListBuyTest,
             )
@@ -287,14 +283,6 @@ abstract class Campaign(game: Game) : Task(game) {
         }
     }
 
-    /**
-     * Performs an OCR test on the current date and elapsed turn number on the Main screen.
-     */
-    open fun startDateOCRTest() {
-        MessageLog.i(TAG, "\n[TEST] Now beginning the Date OCR test on the Main screen.")
-        game.wait(5.0)
-        updateDate()
-    }
 
     /**
      * Performs a comprehensive update test on the Main screen and perform all Main screen updates.
@@ -321,175 +309,6 @@ abstract class Campaign(game: Game) : Task(game) {
         MessageLog.i(TAG, "\n[TEST] Main Screen update test complete.")
     }
 
-    /**
-     * Performs a trainee name OCR test on the Aptitude dialog.
-     *
-     * Opens the aptitudes dialog and processes it to test name OCR accuracy.
-     */
-    open fun startTraineeNameOCRTest() {
-        MessageLog.i(TAG, "\n[TEST] Now beginning the Trainee Name OCR test on the Main screen.")
-        openAptitudesDialog()
-        handleDialogs()
-    }
-
-    /**
-     * Performs an OCR detection test on the Training screen.
-     */
-    open fun startTrainingScreenOCRTest() {
-        MessageLog.i(TAG, "\n[TEST] Now beginning the Training Screen OCR test.")
-
-        var numPass = 0
-        var numFail = 0
-
-        // Simple components to test.
-        val componentsToTest: List<ComponentInterface> =
-            listOf(
-                LabelEnergy,
-                LabelStatTableHeaderSkillPoints,
-                LabelTrainingFailureChance,
-                ButtonTrainingSpeed,
-                ButtonTrainingStamina,
-                ButtonTrainingPower,
-                ButtonTrainingGuts,
-                ButtonTrainingWit,
-                ButtonBack,
-                ButtonLog,
-                ButtonBurger,
-            )
-        for (componentToTest in componentsToTest) {
-            if (componentToTest.check(game.imageUtils)) {
-                MessageLog.i(TAG, "[PASS] ${componentToTest.template.path}")
-                numPass++
-            } else {
-                MessageLog.e(TAG, "[FAIL] ${componentToTest.template.path}")
-                numFail++
-            }
-        }
-
-        when {
-            IconTrainingHeaderSpeed.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderSpeed.template.path}")
-                numPass++
-            }
-
-            IconTrainingHeaderStamina.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderStamina.template.path}")
-                numPass++
-            }
-
-            IconTrainingHeaderPower.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderPower.template.path}")
-                numPass++
-            }
-
-            IconTrainingHeaderGuts.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderGuts.template.path}")
-                numPass++
-            }
-
-            IconTrainingHeaderWit.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconTrainingHeaderWit.template.path}")
-                numPass++
-            }
-
-            else -> {
-                MessageLog.e(TAG, "[FAIL] Could not detect any training header icons.")
-                numFail++
-            }
-        }
-
-        MessageLog.i(TAG, "[TEST] startTrainingScreenOCRTest END: PASS=$numPass, FAIL=$numFail")
-    }
-
-    /**
-     * Performs an OCR detection test on the Main screen for all relevant icons and buttons.
-     */
-    open fun startMainScreenOCRTest() {
-        MessageLog.i(TAG, "\n[TEST] Now beginning the Main Screen OCR test for all relevant icons and buttons.")
-
-        var numPass = 0
-        var numFail = 0
-
-        // Simple components to test.
-        val componentsToTest: List<ComponentInterface> =
-            listOf(
-                ButtonHomeFansInfo,
-                IconTazuna,
-                LabelEnergy,
-                LabelStatTableHeaderSkillPoints,
-                ButtonHomeFullStats,
-                ButtonRest,
-                ButtonTraining,
-                ButtonSkills,
-                ButtonInfirmary,
-                ButtonRecreation,
-                ButtonLog,
-                ButtonBurger,
-            )
-        for (componentToTest in componentsToTest) {
-            if (componentToTest.check(game.imageUtils)) {
-                MessageLog.i(TAG, "[PASS] ${componentToTest.template.path}")
-                numPass++
-            } else {
-                MessageLog.e(TAG, "[FAIL] ${componentToTest.template.path}")
-                numFail++
-            }
-        }
-
-        // More complex components to test that have multiple different states.
-
-        when (ButtonRaces.checkDisabled(game.imageUtils)) {
-            true -> {
-                MessageLog.i(TAG, "[PASS] ${ButtonRaces.template.path} (locked)")
-                numPass++
-            }
-
-            false -> {
-                MessageLog.i(TAG, "[PASS] ${ButtonRaces.template.path}")
-                numPass++
-            }
-
-            null -> {
-                MessageLog.e(TAG, "[FAIL] ${ButtonRaces.template.path}")
-                numFail++
-            }
-        }
-
-        MessageLog.i(TAG, "[TEST] Testing mood components...")
-        when {
-            IconMoodGreat.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconMoodGreat.template.path}")
-                numPass++
-            }
-
-            IconMoodGood.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconMoodGood.template.path}")
-                numPass++
-            }
-
-            IconMoodNormal.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconMoodNormal.template.path}")
-                numPass++
-            }
-
-            IconMoodBad.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconMoodBad.template.path}")
-                numPass++
-            }
-
-            IconMoodAwful.check(game.imageUtils) -> {
-                MessageLog.i(TAG, "[PASS] ${IconMoodAwful.template.path}")
-                numPass++
-            }
-
-            else -> {
-                MessageLog.e(TAG, "[FAIL] Could not detect any mood icons.")
-                numFail++
-            }
-        }
-
-        MessageLog.i(TAG, "[TEST] startMainScreenOCRTest END: PASS=$numPass, FAIL=$numFail")
-    }
 
     /**
      * Performs a scrollbar detection and functionality test on the current screen.

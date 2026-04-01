@@ -30,12 +30,8 @@ const DebugSettings = () => {
         "debugMode_startTemplateMatchingTest",
         "debugMode_startSingleTrainingOCRTest",
         "debugMode_startComprehensiveTrainingOCRTest",
-        "debugMode_startDateOCRTest",
         "debugMode_startRaceListDetectionTest",
         "debugMode_startMainScreenUpdateTest",
-        "debugMode_startTraineeNameOCRTest",
-        "debugMode_startMainScreenOCRTest",
-        "debugMode_startTrainingScreenOCRTest",
         "debugMode_startSkillListBuyTest",
         "debugMode_startScrollBarDetectionTest",
         "debugMode_startTrackblazerRaceSelectionTest",
@@ -539,14 +535,6 @@ const DebugSettings = () => {
                                 style={{ marginTop: 10 }}
                             />
 
-                            <CustomCheckbox
-                                searchId="debug-date-ocr-test"
-                                checked={bsc.settings.debug.debugMode_startDateOCRTest}
-                                onCheckedChange={(checked) => handleDebugTestToggle("debugMode_startDateOCRTest", checked)}
-                                label="Start Date OCR Test"
-                                description="Disables normal bot operations and starts the date OCR test. Only on the Main screen and the Race List screen and tests detecting the current date."
-                                style={{ marginTop: 10 }}
-                            />
 
                             <CustomCheckbox
                                 searchId="debug-race-list-detection-test"
@@ -563,33 +551,6 @@ const DebugSettings = () => {
                                 onCheckedChange={(checked) => handleDebugTestToggle("debugMode_startMainScreenUpdateTest", checked)}
                                 label="Start Main Screen Update Test"
                                 description="Disables normal bot operations and starts the Main Screen update test. This test will go through all Main Screen updates and then print the Trainee information."
-                                style={{ marginTop: 10 }}
-                            />
-
-                            <CustomCheckbox
-                                searchId="debug-trainee-name-ocr-test"
-                                checked={bsc.settings.debug.debugMode_startTraineeNameOCRTest}
-                                onCheckedChange={(checked) => handleDebugTestToggle("debugMode_startTraineeNameOCRTest", checked)}
-                                label="Start Trainee Name OCR Test"
-                                description="Disables normal bot operations and starts the Trainee Name OCR test. Only on the Aptitude dialog and tests detecting the trainee's name using color filtering."
-                                style={{ marginTop: 10 }}
-                            />
-
-                            <CustomCheckbox
-                                searchId="debug-main-screen-ocr-test"
-                                checked={bsc.settings.debug.debugMode_startMainScreenOCRTest}
-                                onCheckedChange={(checked) => handleDebugTestToggle("debugMode_startMainScreenOCRTest", checked)}
-                                label="Start Main Screen OCR Test"
-                                description="Disables normal bot operations and starts the Main screen OCR test. Only on the Main screen and tests detecting various components on the screen."
-                                style={{ marginTop: 10 }}
-                            />
-
-                            <CustomCheckbox
-                                searchId="debug-training-screen-ocr-test"
-                                checked={bsc.settings.debug.debugMode_startTrainingScreenOCRTest}
-                                onCheckedChange={(checked) => handleDebugTestToggle("debugMode_startTrainingScreenOCRTest", checked)}
-                                label="Start Training Screen OCR Test"
-                                description="Disables normal bot operations and starts the Training screen OCR test. Only on the Training screen and tests detecting various components on the screen."
                                 style={{ marginTop: 10 }}
                             />
 
