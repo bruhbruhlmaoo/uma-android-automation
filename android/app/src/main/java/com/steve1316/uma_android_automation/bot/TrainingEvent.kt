@@ -7,6 +7,7 @@ import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.components.ButtonClose
 import com.steve1316.uma_android_automation.components.ButtonNext
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
+import com.steve1316.uma_android_automation.types.Mood
 import com.steve1316.uma_android_automation.types.NegativeStatus
 import com.steve1316.uma_android_automation.types.PositiveStatus
 import net.ricecode.similarity.JaroWinklerStrategy
@@ -557,14 +558,30 @@ class TrainingEvent(private val game: Game, private val campaign: Campaign) {
                                         if (enablePrioritizeEnergyOptions) {
                                             energyValue * 100
                                         } else {
-                                            energyValue * 3
+                                            val energyMultiplier =
+                                                when {
+                                                    campaign.trainee.energy < 30 -> 4
+                                                    campaign.trainee.energy < 50 -> 3
+                                                    campaign.trainee.energy < 70 -> 2
+                                                    campaign.trainee.energy >= 90 -> 0
+                                                    else -> 1
+                                                }
+                                            energyValue * energyMultiplier
                                         }
                                     } catch (_: NumberFormatException) {
                                         20
                                     }
                                 selectionWeight[rewardIndex] += finalEnergyValue
                             } else if (line.lowercase().contains("mood")) {
-                                val moodWeight = if (formattedLine.contains("-")) -50 else 50
+                                val moodMultiplier =
+                                    when (campaign.trainee.mood) {
+                                        Mood.AWFUL -> 150
+                                        Mood.BAD -> 120
+                                        Mood.NORMAL -> 100
+                                        Mood.GOOD -> 80
+                                        Mood.GREAT -> 0
+                                    }
+                                val moodWeight = if (formattedLine.contains("-")) -150 else moodMultiplier
                                 selectionWeight[rewardIndex] += moodWeight
                             } else if (line.lowercase().contains("bond")) {
                                 val bondWeight = if (formattedLine.contains("-")) -20 else 20
