@@ -805,10 +805,10 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
             width = 105
             height = 40
         } else {
-            offsetX = -862 + (index * 170)
-            offsetY = 25
-            width = 98
-            height = 42
+            offsetX = -860 + (index * 170)
+            offsetY = 20
+            width = 100
+            height = 50
         }
 
         // Perform OCR with no thresholding (stats are on solid background).
