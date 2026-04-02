@@ -1,27 +1,40 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.4.0</latestVersion>
+    <latestVersion>5.4.1</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.4.0 - Changelog
+v5.4.1 - Changelog
 
 > Trackblazer support is still fresh off the oven so expect some bugs. Regarding completion times on strong hardware, URA Finale averages 25 minutes, Unity Cup averages 35 minutes and Trackblazer averages 50 minutes.
 
 New
 ---
-- Creates a custom tooltip for the action counters in the `Remote Log Viewer` that shows a breakdown of each action for granularity like how many of each grade was done for racing, how many of each stat training was done, etc.
+- Add support for the Group Support Card type.
 
 Adjustments
 ---
-- Increase height of crop region for failure chance and filter out "Failure" from the OCR result.
-- Add fallback to the previous valid failure chance if it encounters an OCR failure.
-- Stopping manually counts as success instead of an error for the Task.
-- Adjust how long to wait for the item usage animation to finish before closing the "Training Items" dialog.
-- Move OCR settings to pages where they are more aligned with and remove the `OCR Settings` page as it is now unneeded.
-- Remove old migration for the `focusOnSparkStatTarget` setting.
-- Update default stat targets for each distance based on past Champion Meetings. Refer to #251 for changes. Note that the changes are not retroactive so users will need to change them manually.
-- Improve optimization of rest action before Summer training to do mood recovery instead.
-- Optimize Training Event option selection by taking into account current energy and mood levels.
+- Add the `Reset Whistle` and the Good Condition items to the priority list for Trackblazer.
+- Shop will be checked when the app starts if it is available.
+- Optimize the handling and early exits of quick-use items and inventory scan.
+- Rework the `Aptitudes Detection Test` into the comprehensive `Main Screen Update Test` in the `Debug Settings` page.
+- Remove the following Debug Tests as they are no longer needed: `Date OCR`, `Trainee Name OCR`, `Main Screen OCR` and `Training Screen OCR`.
+- Update the OCR crop region for current stats on the Main screen to be a little bit bigger.
+- Remove thresholding on the OCR crop region for item amounts in Trackblazer.
+- Update `getInventorySummary()` to differentiate between an empty inventory and an inventory that has not had its initial scan done yet.
+- Log the inventory at the end of the `Trackblazer Inventory Sync Test`.
+- Simplify the `buyItems()` evaluation summary.
+- Update the OCR crop region for `updateShopCoins()` to be a little bit bigger.
+- Have `buyItems()` abort the buying process if it could not read the Shop coin amount via OCR.
+- Adjust early exit conditions for `Ankle Weights` and `Good-Luck Charms` when scanning the scroll list.
+- Add handling of daily free race retry and the `Complete Career on Failure` settings into Trackblazer.
+- Update `handleRecreationDate()` to handle multiple dates from the Group Support Card type.
+
+Fixes
+---
+- Fix bug with the Trackblazer shop check frequency causing it to never be checked.
+- Fix bug where Trackblazer retry logic was being bypassed by base retry handling.
+- Fix bug where consecutive race warning handling would enter the race list screen and then back out unnecessarily.
+- Fix bug where `Good-Luck Charm` was not passed through after `Reset Whistle` usage for re-analysis.
 
     </releaseNotes>
   </update>
