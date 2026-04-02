@@ -366,7 +366,9 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
 
             // Parse the result.
             return try {
-                val cleanedResult = detectedText.lowercase().replace("%", "").replace("failure", "").replace("\n", "").replace(Regex("[^0-9]"), "").trim()
+                // Replace OCR misidentification of 'o/O' with '0'.
+                val cleanedResult = detectedText.lowercase().replace("o", "0").replace("%", "").replace("failure", "").replace("\n", "").replace(Regex("[^0-9]"), "").trim()
+
                 var value = cleanedResult.toInt()
 
                 // Correct the OCR error if failure chance exceeds 100% and strip the last digit.
