@@ -28,7 +28,6 @@ import com.steve1316.uma_android_automation.components.DialogUtils
 import com.steve1316.uma_android_automation.components.IconGoalRibbon
 import com.steve1316.uma_android_automation.components.IconOneFreePerDayTooltip
 import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
-import com.steve1316.uma_android_automation.components.IconTazuna
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
 import com.steve1316.uma_android_automation.components.IconUnityCupTutorialHeader
 import com.steve1316.uma_android_automation.components.LabelScheduledRace
@@ -654,16 +653,6 @@ class Trackblazer(game: Game) : Campaign(game) {
         training.clearAnalysisCache()
     }
 
-    override fun checkCampaignSpecificConditions(): Boolean {
-        if (IconTazuna.check(game.imageUtils) && ButtonTrainingItems.check(game.imageUtils)) {
-            MessageLog.i(TAG, "[TRACKBLAZER] Bot is at the Shop screen. Initiating buying process.")
-            buyItems()
-            return true
-        }
-
-        return false
-    }
-
     override fun onBeforeMainScreenUpdate() {
         // Buy items if a shop check is pending after a race.
         if (bShouldCheckShop) {
@@ -1104,16 +1093,15 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Lengthy delay here for the animation to finish.
         // We increase the delay by a second for each additional item to be used after 3 items.
-        val animationDelay = if (itemsUsedCount > 3) 3.0 + (itemsUsedCount - 3) else 3.0
+        val animationDelay = if (itemsUsedCount > 3) 4.0 + (itemsUsedCount - 3) else 4.0
         MessageLog.i(TAG, "[TRACKBLAZER] Waiting for animation to finish (Delay: $animationDelay seconds).")
         game.wait(animationDelay)
 
         // Finalize by closing the dialog.
         MessageLog.i(TAG, "[TRACKBLAZER] Closing training items dialog.")
         if (ButtonClose.check(game.imageUtils, tries = 50)) {
-            game.wait(0.5)
             ButtonClose.click(game.imageUtils)
-            game.wait(0.5)
+            game.wait(1.0)
         }
 
         // Clear the training analysis cache so that the bot re-evaluates the training options if it re-enters the training screen.
