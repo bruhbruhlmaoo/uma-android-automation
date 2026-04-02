@@ -285,6 +285,7 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
          * @param bScrollBottomToTop If true, process from bottom to top.
          * @param keyExtractor Optional callback to generate unique keys and skip duplicates.
          * @param fallbackComponent The component to use for identifying rows if the scroll list region isn't found.
+         * @param bForceComponentDetection If true, force component-based detection even if the scroll list region is found.
          * @param listTopLeftComponent Optional top-left corner component for the scroll list.
          * @param listBottomRightComponent Optional bottom-right corner component for the scroll list.
          * @param entryDetectionConfig Optional config for entry detection.
@@ -297,6 +298,7 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
             bScrollBottomToTop: Boolean = false,
             keyExtractor: ((ScrollListEntry) -> String?)? = null,
             fallbackComponent: ComponentInterface,
+            bForceComponentDetection: Boolean = false,
             listTopLeftComponent: ComponentInterface? = null,
             listBottomRightComponent: ComponentInterface? = null,
             entryDetectionConfig: ScrollListEntryDetectionConfig? = null,
@@ -308,7 +310,7 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
             val list = create(game, sourceBitmap, listTopLeftComponent, listBottomRightComponent, entryDetectionConfig)
             if (list != null) {
                 MessageLog.d(TAG, "[DEBUG] processWithFallback:: Standard ScrollList detected. Processing...")
-                return list.process(maxTimeMs, bScrollBottomToTop, keyExtractor, onEntry)
+                return list.process(maxTimeMs, bScrollBottomToTop, keyExtractor, fallbackComponent, bForceComponentDetection, onEntry)
             }
 
             // Step 2: Fallback to component-based detection.
@@ -378,10 +380,13 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
      * Detects locations of each entry in the visible portion of the list.
      *
      * @param bitmap An optional bitmap to use when detecting entries. If not specified, a screenshot will be taken.
-     * @return A list of bounding boxes for each entry that we detected.
+     * @param entryComponent Optional component to use for identifying rows.
+     * @param bForceComponentDetection If true, force component-based detection even if the scroll list region is found.
+     * @return A list of [ScrollListEntry] objects for each entry that we detected.
      */
-    private fun detectEntries(bitmap: Bitmap? = null): List<BoundingBox> {
-        val bboxBar: BoundingBox? = getListScrollBarBoundingRegion().first
+    private fun detectEntries(bitmap: Bitmap? = null, entryComponent: ComponentInterface? = null, bForceComponentDetection: Boolean = false): List<ScrollListEntry> {
+        val sourceBitmap = bitmap ?: game.imageUtils.getSourceBitmap()
+        val bboxBar: BoundingBox? = getListScrollBarBoundingRegion(sourceBitmap).first
 
         // We want to cut the scroll bar region out of the search region. This way, the scroll bar doesn't cause entries to merge together.
         // This is really only important for lists where entries can have overlay icons (such as selection brackets) around them that can overlap with the scrollbar.
@@ -393,11 +398,52 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
                 h = bboxList.h,
             )
 
+        // If a component is provided and we are forcing component detection, use it to identify entries.
+        if (entryComponent != null && bForceComponentDetection) {
+            // Find all instances of the landmark component in the current frame.
+            val points = entryComponent.findAll(game.imageUtils, sourceBitmap = sourceBitmap)
+            val filteredPoints =
+                points.filter { point ->
+                    // Check if the landmark is within the horizontal bounds of the list.
+                    val xInRange = point.x >= bboxNoScrollbar.x && point.x <= bboxNoScrollbar.x + bboxNoScrollbar.w
+                    // Use a 150px vertical padding buffer to identify landmarks that may be partially outside the nominal scroll area.
+                    val yInRange = point.y >= (bboxNoScrollbar.y - 150) && point.y <= (bboxNoScrollbar.y + bboxNoScrollbar.h + 150)
+
+                    if (!xInRange || !yInRange) {
+                        MessageLog.d(
+                            TAG,
+                            "[DEBUG] detectEntries:: Point at (${point.x.toInt()}, ${point.y.toInt()}) filtered out. List BBox: $bboxNoScrollbar. xInRange=$xInRange, yInRange=$yInRange (Padding: 150px)",
+                        )
+                    }
+
+                    xInRange && yInRange
+                }
+            val sortedPoints = filteredPoints.sortedBy { it.y }
+
+            return sortedPoints.mapIndexed { index, point ->
+                // Estimate entry height based on screen size (roughly 220px on 1920h).
+                val entryHeight = game.imageUtils.relHeight(220)
+                // Relax clamping to the entire screen height to correctly position entries that are outside the nominal scroll area (e.g. at the top).
+                val entryY = (point.y - (entryHeight / 2)).toInt().coerceIn(0, sourceBitmap.height - entryHeight)
+                val entryBBox = BoundingBox(x = bboxNoScrollbar.x, y = entryY, w = bboxNoScrollbar.w, h = entryHeight)
+                val entryBitmap = game.imageUtils.createSafeBitmap(sourceBitmap, entryBBox, "Entry_$index")
+
+                ScrollListEntry(
+                    index = -1, // To be filled by process().
+                    bitmap = entryBitmap ?: sourceBitmap,
+                    bbox = entryBBox,
+                    // Preserve the landmark's coordinates relative to the entry bitmap for downstream components.
+                    refX = point.x.toInt(),
+                    refY = (point.y - entryY).toInt(),
+                )
+            }
+        }
+
         // Extract a list of bounding boxes for each entry in the list.
         val rects: List<BoundingBox> =
             if (entryDetectionConfig.bUseGeneric) {
                 game.imageUtils.detectRectanglesGeneric(
-                    bitmap = bitmap,
+                    bitmap = sourceBitmap,
                     region = bboxNoScrollbar,
                     minArea = entryDetectionConfig.minArea,
                     maxArea = entryDetectionConfig.maxArea,
@@ -412,7 +458,7 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
                 )
             } else {
                 game.imageUtils.detectRoundedRectangles(
-                    bitmap = bitmap,
+                    bitmap = sourceBitmap,
                     region = bboxNoScrollbar,
                     minArea = entryDetectionConfig.minArea,
                     maxArea = entryDetectionConfig.maxArea,
@@ -426,21 +472,27 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
                 )
             }
 
-        // Adjust BoundingBox coordinates to be screen-relative.
-        val result: MutableList<BoundingBox> =
-            rects.map {
-                BoundingBox(
-                    x = it.x + bboxList.x,
-                    y = it.y + bboxList.y,
-                    w = it.w,
-                    h = it.h,
+        // Adjust BoundingBox coordinates to be screen-relative and create ScrollListEntry objects.
+        val result: List<ScrollListEntry> =
+            rects.mapIndexed { index, it ->
+                val entryBBox =
+                    BoundingBox(
+                        x = it.x + bboxList.x,
+                        y = it.y + bboxList.y,
+                        w = it.w,
+                        h = it.h,
+                    )
+                val entryBitmap = game.imageUtils.createSafeBitmap(sourceBitmap, entryBBox, "Entry_$index")
+
+                ScrollListEntry(
+                    index = -1, // To be filled by process()
+                    bitmap = entryBitmap ?: sourceBitmap,
+                    bbox = entryBBox,
                 )
-            }.toMutableList()
+            }
 
         // Sort by screen position top to bottom.
-        result.sortBy { it.y }
-
-        return result.toList()
+        return result.sortedBy { it.bbox.y }
     }
 
     /**
@@ -693,10 +745,19 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
      * @param maxTimeMs Maximum processing time before timeout.
      * @param bScrollBottomToTop If true, process from bottom to top.
      * @param keyExtractor Optional callback to generate unique keys and skip duplicates.
+     * @param entryComponent Optional component to use for identifying rows.
+     * @param bForceComponentDetection If true, force component-based detection even if the scroll list region is found.
      * @param onEntry Callback executed for each entry. Return true to exit early.
      * @return True if processing completed or exited early via callback.
      */
-    fun process(maxTimeMs: Int = MAX_PROCESS_TIME_DEFAULT_MS, bScrollBottomToTop: Boolean = false, keyExtractor: ((ScrollListEntry) -> String?)? = null, onEntry: OnEntryDetectedCallback): Boolean {
+    fun process(
+        maxTimeMs: Int = MAX_PROCESS_TIME_DEFAULT_MS,
+        bScrollBottomToTop: Boolean = false,
+        keyExtractor: ((ScrollListEntry) -> String?)? = null,
+        entryComponent: ComponentInterface? = null,
+        bForceComponentDetection: Boolean = false,
+        onEntry: OnEntryDetectedCallback,
+    ): Boolean {
         var bitmap = game.imageUtils.getSourceBitmap()
 
         if (bScrollBottomToTop) scrollToBottom(bitmap) else scrollToTop(bitmap)
@@ -719,17 +780,21 @@ class ScrollList private constructor(private val game: Game, private val bboxLis
             var retries = 3
             while (retries > 0) {
                 bitmap = game.imageUtils.getSourceBitmap()
-                val detectedRects = detectEntries(bitmap)
+                val detectedEntries = detectEntries(bitmap, entryComponent, bForceComponentDetection)
 
-                if (detectedRects.isNotEmpty()) {
+                if (detectedEntries.isNotEmpty()) {
                     currentFrameEntries =
                         if (bScrollBottomToTop) {
-                            detectedRects.reversed().map { entryBbox ->
-                                ScrollListEntry(index++, game.imageUtils.createSafeBitmap(bitmap, entryBbox, "ScrollList.process: cropped entry") ?: bitmap, entryBbox)
+                            // If scrolling bottom to top, reverse the entries to process them in meaningful order.
+                            // Entries from detectEntries() are always sorted top to bottom on the screen.
+                            detectedEntries.reversed().map { entry ->
+                                // Assign a unique increasing index to each detected entry.
+                                entry.copy(index = index++)
                             }
                         } else {
-                            detectedRects.map { entryBbox ->
-                                ScrollListEntry(index++, game.imageUtils.createSafeBitmap(bitmap, entryBbox, "ScrollList.process: cropped entry") ?: bitmap, entryBbox)
+                            detectedEntries.map { entry ->
+                                // Assign a unique increasing index to each detected entry.
+                                entry.copy(index = index++)
                             }
                         }
                     break
