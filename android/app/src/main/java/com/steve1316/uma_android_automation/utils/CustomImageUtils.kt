@@ -22,6 +22,7 @@ import com.steve1316.uma_android_automation.components.IconEnergyBarRightPart0
 import com.steve1316.uma_android_automation.components.IconEnergyBarRightPart1
 import com.steve1316.uma_android_automation.components.IconEventTitleSpacer
 import com.steve1316.uma_android_automation.components.IconRaceListPredictionDoubleStar
+import com.steve1316.uma_android_automation.components.IconStatBlockGroup
 import com.steve1316.uma_android_automation.components.IconStatBlockGuts
 import com.steve1316.uma_android_automation.components.IconStatBlockPower
 import com.steve1316.uma_android_automation.components.IconStatBlockSpeed
@@ -430,6 +431,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                 StatName.GUTS.name to IconStatBlockGuts,
                 StatName.WIT.name to IconStatBlockWit,
                 "trainer" to IconStatBlockTrainer,
+                "group" to IconStatBlockGroup,
             )
 
         val statSupportComponentMap: Map<String, ComponentInterface> =
