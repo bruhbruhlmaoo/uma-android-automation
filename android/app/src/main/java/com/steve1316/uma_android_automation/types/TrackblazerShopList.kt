@@ -694,6 +694,7 @@ class TrackblazerShopList(private val game: Game) {
         MessageLog.i(TAG, "[INFO] Beginning process of scanning shop items...")
         val availableInShop = mutableListOf<Triple<String, Int, ScrollListEntry>>()
         val itemNameMap = mutableMapOf<Int, String>()
+        var totalEntriesDetected = 0
         processItemsWithFallback(
             keyExtractor = { entry ->
                 val name = getShopItemName(entry, isEntryDisabled(entry.bitmap))
@@ -701,6 +702,7 @@ class TrackblazerShopList(private val game: Game) {
                 name
             },
         ) { entry ->
+            totalEntriesDetected++
             // Check if the item's plus button is disabled.
             val isDisabled = isEntryDisabled(entry.bitmap)
             val itemName = itemNameMap[entry.index] ?: getShopItemName(entry, isDisabled)
@@ -713,7 +715,7 @@ class TrackblazerShopList(private val game: Game) {
         }
 
         // Log a warning if the scan failed to read any item names due to OCR failure.
-        if (availableInShop.isEmpty()) {
+        if (availableInShop.isEmpty() && totalEntriesDetected != 0) {
             MessageLog.w(
                 TAG,
                 "[WARN] buyItems:: Scanned the list of items in the Shop but could not read any of the names. OCR is dependent on correct display setup configuration. User's current display setup: ${SharedData.displayWidth}x${SharedData.displayHeight}, DPI ${SharedData.displayDPI}",
@@ -786,6 +788,12 @@ class TrackblazerShopList(private val game: Game) {
             sb.appendLine("")
             availableInShop.forEach { (name, _, _) ->
                 sb.appendLine("  - $name")
+            }
+        } else {
+            if (totalEntriesDetected == 0) {
+                sb.appendLine("No items were detected in the Shop. Current coins: $currentCoins.")
+            } else {
+                sb.appendLine("Scanned $totalEntriesDetected items in the Shop but none are available to buy. Current coins: $currentCoins.")
             }
         }
 
