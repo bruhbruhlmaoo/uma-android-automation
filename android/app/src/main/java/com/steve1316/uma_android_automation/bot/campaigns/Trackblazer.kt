@@ -141,6 +141,9 @@ class Trackblazer(game: Game) : Campaign(game) {
     /** Flag to track if the first-time Shop check for the session has been performed. */
     private var bInitialShopCheckPerformed: Boolean = false
 
+    /** Flag indicating if the bot has checked for Irregular Training during the current turn. */
+    private var bHasCheckedIrregularTrainingThisTurn: Boolean = false
+
     /** Mapping of energy-restoring items to their gain values. */
     private val energyGains =
         mapOf(
@@ -659,6 +662,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         bUsedCharmToday = false
         bUsedHammerToday = false
         bIsIrregularTraining = false
+        bHasCheckedIrregularTrainingThisTurn = false
         training.clearAnalysisCache()
     }
 
@@ -747,7 +751,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             return MainScreenAction.TRAIN
         }
 
-        if (enableIrregularTraining && date.year > DateYear.JUNIOR) {
+        if (enableIrregularTraining && date.year > DateYear.JUNIOR && !bHasCheckedIrregularTrainingThisTurn) {
             val isScheduledRace = LabelScheduledRace.check(game.imageUtils)
             val isMandatoryRace = IconRaceDayRibbon.check(game.imageUtils) || IconGoalRibbon.check(game.imageUtils)
 
@@ -774,6 +778,9 @@ class Trackblazer(game: Game) : Campaign(game) {
                         MessageLog.i(TAG, "[TRACKBLAZER] No valid Irregular Training found. Backing out to resume racing logic.")
                         ButtonBack.click(game.imageUtils)
                         game.wait(game.dialogWaitDelay)
+
+                        // Mark that we've checked for Irregular Training this turn to avoid looping.
+                        bHasCheckedIrregularTrainingThisTurn = true
                     }
                 }
             }
