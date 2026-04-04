@@ -870,8 +870,8 @@ class Trackblazer(game: Game) : Campaign(game) {
      */
     fun updateShopCoins(): Boolean {
         MessageLog.i(TAG, "[TRACKBLAZER] Updating current amount of Shop Coins...")
-        game.wait(2.0)
-        val (trainingItemsButtonLocation, sourceBitmap) = ButtonTrainingItems.find(game.imageUtils)
+        game.wait(3.0)
+        val (trainingItemsButtonLocation, sourceBitmap) = ButtonTrainingItems.find(game.imageUtils, tries = 30)
         if (trainingItemsButtonLocation == null) {
             MessageLog.e(TAG, "[ERROR] updateShopCoins:: Failed to find Training Items button.")
             return false
