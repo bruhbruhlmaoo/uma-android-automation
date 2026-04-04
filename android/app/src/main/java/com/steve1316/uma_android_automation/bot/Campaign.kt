@@ -755,22 +755,44 @@ abstract class Campaign(game: Game) : Task(game) {
     }
 
     /**
+     * Determines whether item-based mood recovery should override the default mood recovery logic.
+     *
+     * Called when mood is below Good and the firstTrainingCheck guard has passed.
+     * Subclasses can override this to make item-aware mood recovery decisions.
+     *
+     * @param sourceBitmap Current screen bitmap.
+     * @return True to proceed with rest/recreation recovery, false to skip recovery (items will handle it),
+     *         or null to fall through to the default Campaign behavior.
+     */
+    open fun shouldRecoverMoodFromItems(sourceBitmap: Bitmap): Boolean? {
+        return null
+    }
+
+    /**
      * Determines if mood recovery should be attempted.
      *
      * @param sourceBitmap Current screen bitmap.
      * @return True if mood recovery is needed and possible, false otherwise.
      */
     open fun shouldRecoverMood(sourceBitmap: Bitmap): Boolean {
-        // Only recover mood if its below Good mood and it's not Summer.
-        return if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
+        // Guard: During the first training check, skip mood recovery for Normal mood to allow training analysis first.
+        if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
             MessageLog.i(
                 TAG,
                 "[MOOD] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active. Will need to complete a training first before being allowed to recover mood.",
             )
-            false
-        } else {
-            (trainee.mood < Mood.GOOD)
+            return false
         }
+
+        // Allow subclasses to make item-aware mood recovery decisions.
+        if (trainee.mood <= Mood.NORMAL) {
+            val itemDecision = shouldRecoverMoodFromItems(sourceBitmap)
+            if (itemDecision != null) {
+                return itemDecision
+            }
+        }
+
+        return (trainee.mood < Mood.GOOD)
     }
 
     /**
