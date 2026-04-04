@@ -430,7 +430,15 @@ class Trackblazer(game: Game) : Campaign(game) {
                         MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning detected before turn-start updates. Closing it to perform checks first.")
                         detectedDialog.close(game.imageUtils)
                     } else {
-                        MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing.")
+                        val isScheduledRace = args["isScheduledRace"] as? Boolean ?: false
+                        val isMandatoryRace = args["isMandatoryRace"] as? Boolean ?: false
+
+                        when {
+                            isScheduledRace -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled as this is a scheduled race. Continuing.")
+                            isMandatoryRace -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled as this is a required race. Continuing.")
+                            else -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing.")
+                        }
+
                         detectedDialog.ok(game.imageUtils)
                         game.wait(2.0)
                     }

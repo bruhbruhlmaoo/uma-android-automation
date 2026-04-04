@@ -362,7 +362,15 @@ abstract class Campaign(game: Game) : Task(game) {
                         MessageLog.i(TAG, "[RACE] Consecutive race warning detected before turn-start updates. Closing it to perform checks first.")
                         result.dialog.close(game.imageUtils)
                     } else {
-                        MessageLog.i(TAG, "[RACE] Consecutive race warning! Racing anyway...")
+                        val isScheduledRace = args["isScheduledRace"] as? Boolean ?: false
+                        val isMandatoryRace = args["isMandatoryRace"] as? Boolean ?: false
+
+                        when {
+                            isScheduledRace -> MessageLog.i(TAG, "[RACE] Consecutive race warning! Racing anyway as this is a scheduled race...")
+                            isMandatoryRace -> MessageLog.i(TAG, "[RACE] Consecutive race warning! Racing anyway as this is a required race...")
+                            else -> MessageLog.i(TAG, "[RACE] Consecutive race warning! Racing anyway...")
+                        }
+
                         result.dialog.ok(game.imageUtils)
                         game.wait(2.0)
                     }

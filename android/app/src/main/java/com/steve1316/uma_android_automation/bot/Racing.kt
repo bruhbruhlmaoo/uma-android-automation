@@ -2265,7 +2265,15 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             }
             game.wait(0.5, skipWaitingForLoading = true)
             // Check for the consecutive race dialog before proceeding.
-            val result: DialogHandlerResult = campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to overrideIgnore))
+            val result: DialogHandlerResult =
+                campaign.handleDialogs(
+                    args =
+                        mapOf(
+                            "overrideIgnoreConsecutiveRaceWarning" to overrideIgnore,
+                            "isScheduledRace" to isScheduledRace,
+                            "isMandatoryRace" to (isScheduledRace || hasFanRequirement || hasTrophyRequirement || hasInsufficientGoalRacePtsRequirement),
+                        ),
+                )
             if (result is DialogHandlerResult.Handled &&
                 result.dialog.name == "consecutive_race_warning" &&
                 !(overrideIgnore || enableForceRacing || ignoreConsecutiveRaceWarning)
