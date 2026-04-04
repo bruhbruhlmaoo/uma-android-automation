@@ -466,41 +466,7 @@ abstract class Campaign(game: Game) : Task(game) {
             }
 
             "try_again" -> {
-                // All branches need a slight delay to allow the dialog to close since the runRaceWithRetries() loop handles dialogs at the start of each iteration.
-                // Can cause problem where we handle one branch then immediately handle dialogs again and handle a second branch for the same dialog instance.
-                if (racing.disableRaceRetries) {
-                    if (racing.enableFreeRaceRetry && IconOneFreePerDayTooltip.check(game.imageUtils)) {
-                        MessageLog.i(TAG, "[RACE] Failed mandatory race. Using daily free race retry...")
-                        racing.raceRetries--
-                        result.dialog.ok(game.imageUtils)
-                        game.wait(0.5)
-                        return DialogHandlerResult.Handled(result.dialog)
-                    }
-                    if (racing.enableCompleteCareerOnFailure) {
-                        MessageLog.i(TAG, "[RACE] Failed a mandatory race and no retries remaining. Completing career...")
-                        // Manually set retries to -1 to break the race retry loop.
-                        racing.raceRetries = -1
-                        result.dialog.close(game.imageUtils)
-                        game.wait(0.5)
-                        return DialogHandlerResult.Handled(result.dialog)
-                    }
-                    MessageLog.v(TAG, "\n[END] Stopping the bot due to failing a mandatory race.")
-                    MessageLog.v(TAG, "********************")
-                    game.notificationMessage = "Stopping the bot due to failing a mandatory race."
-                    if (DiscordUtils.enableDiscordNotifications) {
-                        DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Stopping the bot due to failing a mandatory race.\n```")
-                    }
-                    throw IllegalStateException()
-                }
-                if (racing.raceRetries >= 0) {
-                    MessageLog.i(TAG, "[RACE] Retrying the race. Retries remaining: ${racing.raceRetries}")
-                    racing.raceRetries--
-                    game.wait(0.5)
-                    ButtonTryAgain.click(game.imageUtils)
-                } else {
-                    MessageLog.w(TAG, "[WARN] handleDialogs:: No retries remaining but Try Again dialog detected. Closing dialog...")
-                    result.dialog.close(game.imageUtils)
-                }
+                return handleTryAgainDialog(result.dialog, args)
             }
 
             "umamusume_class" -> {
@@ -658,6 +624,27 @@ abstract class Campaign(game: Game) : Task(game) {
     }
 
     /**
+     * Determines whether to retry a race after failing.
+     *
+     * Called when [Racing.disableRaceRetries] is false (non-mandatory race retries).
+     * The implementation should handle clicking the retry button if returning true.
+     *
+     * @param dialog The Try Again dialog.
+     * @param args Additional arguments from dialog handling.
+     * @return True if the retry was initiated (button clicked), false to close the dialog without retrying.
+     */
+    open fun shouldRetryRace(dialog: DialogInterface, args: Map<String, Any>): Boolean {
+        if (racing.raceRetries >= 0) {
+            MessageLog.i(TAG, "[RACE] Retrying the race. Retries remaining: ${racing.raceRetries}")
+            racing.raceRetries--
+            game.wait(0.5)
+            ButtonTryAgain.click(game.imageUtils)
+            return true
+        }
+        return false
+    }
+
+    /**
      * Handles the consecutive race warning dialog using hook methods for extensibility.
      *
      * @param dialog The detected dialog.
@@ -697,6 +684,55 @@ abstract class Campaign(game: Game) : Task(game) {
         } else {
             MessageLog.i(TAG, "[RACE] Consecutive race warning! Aborting racing...")
             racing.clearRacingRequirementFlags()
+            dialog.close(game.imageUtils)
+        }
+
+        game.wait(0.5)
+        return DialogHandlerResult.Handled(dialog)
+    }
+
+    /**
+     * Handles the Try Again dialog using a hook method for the retry decision.
+     *
+     * The mandatory-race-failure path (disableRaceRetries == true) is handled here as shared logic.
+     * The non-mandatory retry decision is delegated to [shouldRetryRace].
+     *
+     * @param dialog The Try Again dialog.
+     * @param args Additional arguments from dialog handling.
+     * @return The result of the dialog handling operation.
+     */
+    private fun handleTryAgainDialog(dialog: DialogInterface, args: Map<String, Any>): DialogHandlerResult {
+        // All branches need a slight delay to allow the dialog to close since the runRaceWithRetries() loop handles dialogs at the start of each iteration.
+        // Can cause problem where we handle one branch then immediately handle dialogs again and handle a second branch for the same dialog instance.
+        if (racing.disableRaceRetries) {
+            if (racing.enableFreeRaceRetry && IconOneFreePerDayTooltip.check(game.imageUtils)) {
+                MessageLog.i(TAG, "[RACE] Failed mandatory race. Using daily free race retry...")
+                racing.raceRetries--
+                dialog.ok(game.imageUtils)
+                game.wait(0.5)
+                return DialogHandlerResult.Handled(dialog)
+            }
+            if (racing.enableCompleteCareerOnFailure) {
+                MessageLog.i(TAG, "[RACE] Failed a mandatory race and no retries remaining. Completing career...")
+                // Manually set retries to -1 to break the race retry loop.
+                racing.raceRetries = -1
+                dialog.close(game.imageUtils)
+                game.wait(0.5)
+                return DialogHandlerResult.Handled(dialog)
+            }
+            MessageLog.v(TAG, "\n[END] Stopping the bot due to failing a mandatory race.")
+            MessageLog.v(TAG, "********************")
+            game.notificationMessage = "Stopping the bot due to failing a mandatory race."
+            if (DiscordUtils.enableDiscordNotifications) {
+                DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Stopping the bot due to failing a mandatory race.\n```")
+            }
+            throw IllegalStateException()
+        }
+
+        if (shouldRetryRace(dialog, args)) {
+            // Retry was initiated by the hook.
+        } else {
+            MessageLog.w(TAG, "[WARN] handleDialogs:: No retries remaining but Try Again dialog detected. Closing dialog...")
             dialog.close(game.imageUtils)
         }
 
