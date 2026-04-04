@@ -16,7 +16,6 @@ import com.steve1316.uma_android_automation.components.ButtonOk
 import com.steve1316.uma_android_automation.components.ButtonRaceDayRace
 import com.steve1316.uma_android_automation.components.ButtonRaceListFullStats
 import com.steve1316.uma_android_automation.components.ButtonRaces
-import com.steve1316.uma_android_automation.components.ButtonRestAndRecreation
 import com.steve1316.uma_android_automation.components.ButtonShopTrackblazer
 import com.steve1316.uma_android_automation.components.ButtonSkillUp
 import com.steve1316.uma_android_automation.components.ButtonTraining
@@ -27,7 +26,6 @@ import com.steve1316.uma_android_automation.components.DialogExchangeComplete
 import com.steve1316.uma_android_automation.components.DialogInterface
 import com.steve1316.uma_android_automation.components.DialogUtils
 import com.steve1316.uma_android_automation.components.IconGoalRibbon
-import com.steve1316.uma_android_automation.components.IconOneFreePerDayTooltip
 import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
 import com.steve1316.uma_android_automation.components.IconUnityCupTutorialHeader
@@ -287,35 +285,12 @@ class Trackblazer(game: Game) : Campaign(game) {
     // //////////////////////////////////////////////////////////////////////////////////////////////////
 
     override fun handleDialogs(dialog: DialogInterface?, args: Map<String, Any>): DialogHandlerResult {
-        val result: DialogHandlerResult = super.handleDialogs(dialog, args + mapOf("dialogNamesToDefer" to listOf("consecutive_race_warning", "try_again")))
-
-        // Extract dialog name if result has one.
-        val dialogName =
-            when (result) {
-                is DialogHandlerResult.Handled -> result.dialog.name
-                is DialogHandlerResult.Unhandled -> result.dialog.name
-                is DialogHandlerResult.Deferred -> result.dialog.name
-                else -> ""
-            }
-
+        val result: DialogHandlerResult = super.handleDialogs(dialog, args)
         if (result !is DialogHandlerResult.Unhandled) {
-            // Only handle successful results that are NOT the consecutive race warning,
-            // as we want to apply Trackblazer-specific logic for that one.
-            if (dialogName != "consecutive_race_warning" && dialogName != "try_again") {
-                return result
-            }
+            return result
         }
 
-        // Use the dialog from the result if super already detected it, otherwise detect it now.
-        val detectedDialog =
-            when (result) {
-                is DialogHandlerResult.Handled -> result.dialog
-                is DialogHandlerResult.Unhandled -> result.dialog
-                is DialogHandlerResult.Deferred -> result.dialog
-                else -> DialogUtils.getDialog(game.imageUtils)
-            } ?: return DialogHandlerResult.NoDialogDetected
-
-        when (detectedDialog.name) {
+        when (result.dialog.name) {
             "exchange_complete" -> {
                 val boughtItems = args["itemsBought"] as? List<String> ?: emptyList()
                 val quickUseItemsOnly = boughtItems.filter { shopList.shopItems[it]?.isQuickUsage == true }
@@ -326,25 +301,25 @@ class Trackblazer(game: Game) : Campaign(game) {
                     usedItems.forEach { useInventoryItem(it.first) }
 
                     // This clicks the "Confirm Use" button on the "Exchange Complete" dialog.
-                    if (detectedDialog.ok(game.imageUtils)) {
+                    if (result.dialog.ok(game.imageUtils)) {
                         game.wait(0.5)
                         // This clicks the "Use Training Items" button on the "Confirm Use" dialog.
                         handleDialogs(DialogConfirmUse)
                         // This clicks the "Close" button on the "Exchange Complete" dialog after handling quick-use.
-                        detectedDialog.close(game.imageUtils)
+                        result.dialog.close(game.imageUtils)
                     } else {
                         // Fallback to closing the dialog if "Confirm Use" button was not found.
                         MessageLog.i(TAG, "[TRACKBLAZER] Quick-use items were identified but the \"Confirm Use\" button was not found. Closing dialog...")
-                        detectedDialog.close(game.imageUtils)
+                        result.dialog.close(game.imageUtils)
                     }
                 } else {
                     MessageLog.i(TAG, "[TRACKBLAZER] No quick-use items were purchased. Closing dialog...")
-                    detectedDialog.close(game.imageUtils)
+                    result.dialog.close(game.imageUtils)
                 }
             }
 
             "confirm_use" -> {
-                detectedDialog.ok(game.imageUtils)
+                result.dialog.ok(game.imageUtils)
             }
 
             "shop" -> {
@@ -356,7 +331,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                     MessageLog.i(TAG, "[TRACKBLAZER] Shop discount detected! Initiating buying process.")
                 }
 
-                if (detectedDialog.ok(game.imageUtils)) {
+                if (result.dialog.ok(game.imageUtils)) {
                     game.wait(game.dialogWaitDelay)
 
                     // Clear the shop check flag and counter as the shop is already being handled.
@@ -366,175 +341,26 @@ class Trackblazer(game: Game) : Campaign(game) {
 
                     game.wait(0.5)
                     buyItems()
-                    return DialogHandlerResult.Handled(detectedDialog)
+                    return DialogHandlerResult.Handled(result.dialog)
                 } else {
                     MessageLog.e(TAG, "[ERROR] handleDialogs:: Failed to click the OK button on the Shop dialog.")
-                    return DialogHandlerResult.Unhandled(detectedDialog)
+                    return DialogHandlerResult.Unhandled(result.dialog)
                 }
             }
 
             "training_items" -> {
                 MessageLog.i(TAG, "[TRACKBLAZER] Training Items dialog detected. Closing it as it is not currently being handled by a specific process.")
-                detectedDialog.close(game.imageUtils)
-            }
-
-            "consecutive_race_warning" -> {
-                val okButtonLocation: Point? = ButtonOk.find(game.imageUtils).first
-
-                if (okButtonLocation != null) {
-                    val ocrText =
-                        game.imageUtils.performOCRFromReference(
-                            okButtonLocation,
-                            offsetX = -560,
-                            offsetY = -525,
-                            width = game.imageUtils.relWidth(690),
-                            height = game.imageUtils.relHeight(50),
-                            useThreshold = true,
-                            useGrayscale = true,
-                            scale = 2.0,
-                            ocrEngine = "mlkit",
-                            debugName = "TrackblazerConsecutiveRaceOCR",
-                        )
-
-                    Log.d(TAG, "[DEBUG] handleDialogs:: OCR text from consecutive warning: \"$ocrText\"")
-
-                    // Regex: This will put you at ([0-9]+) consecutive races.
-                    val match = Regex("""([0-9]+)""").find(ocrText)
-                    val ocrCount = match?.groups?.get(1)?.value?.toInt() ?: -1
-
-                    if (ocrCount != -1) {
-                        Log.d(TAG, "[DEBUG] handleDialogs:: OCR detected a count of $ocrCount consecutive races.")
-
-                        // Trust OCR as the primary source of truth if it successfully parses a number.
-                        consecutiveRaceCount = ocrCount
-                        counterUpdatedByOCR = true
-                    } else {
-                        MessageLog.w(TAG, "[WARN] handleDialogs:: Failed to parse consecutive race count from OCR. Counter will be incremented after race.")
-                    }
-                } else {
-                    MessageLog.e(TAG, "[ERROR] handleDialogs:: Failed to find ButtonOk on consecutive race warning screen. Counter will be incremented after race.")
-                }
-
-                MessageLog.i(TAG, "[TRACKBLAZER] Current consecutive race count: $consecutiveRaceCount.")
-
-                // Check if we should ignore the warning based on global settings or arguments.
-                val overrideIgnoreConsecutiveRaceWarning = args["overrideIgnoreConsecutiveRaceWarning"] as? Boolean ?: false
-                val forceRace = overrideIgnoreConsecutiveRaceWarning || racing.enableForceRacing || racing.ignoreConsecutiveRaceWarning
-
-                // Edge case: if there is only 1 turn left before a mandatory race, we can safely race
-                // even if it would be our 6th consecutive race.
-                val turnsRemaining = game.imageUtils.determineTurnsRemainingBeforeNextGoal()
-                val onlyOneTurnLeft = turnsRemaining == 1
-
-                if (forceRace) {
-                    // If the bot hasn't checked the date yet, it usually means it started on the prep screen or it is the Finale season.
-                    // If we are explicitly overriding the warning (mandatory race), we should proceed even if the date check hasn't finished.
-                    if (!bHasCheckedDateThisTurn && !overrideIgnoreConsecutiveRaceWarning && !date.bIsFinaleSeason) {
-                        MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning detected before turn-start updates. Closing it to perform checks first.")
-                        detectedDialog.close(game.imageUtils)
-                    } else {
-                        val isScheduledRace = args["isScheduledRace"] as? Boolean ?: false
-                        val isMandatoryRace = args["isMandatoryRace"] as? Boolean ?: false
-
-                        when {
-                            isScheduledRace -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled as this is a scheduled race. Continuing.")
-                            isMandatoryRace -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled as this is a required race. Continuing.")
-                            else -> MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race warning! Forced racing enabled. Continuing.")
-                        }
-
-                        detectedDialog.ok(game.imageUtils)
-                        game.wait(2.0)
-                    }
-                } else {
-                    // A -30 stat penalty can apply starting from 3 consecutive races.
-                    if (consecutiveRaceCount >= 3) {
-                        MessageLog.w(TAG, "[WARN] handleDialogs:: Current consecutive race count is $consecutiveRaceCount. Note that a -30 stat penalty can apply starting from 3 consecutive races!")
-                    }
-
-                    if (consecutiveRaceCount < (consecutiveRacesLimit + 1) || onlyOneTurnLeft) {
-                        if (onlyOneTurnLeft && consecutiveRaceCount >= (consecutiveRacesLimit + 1)) {
-                            MessageLog.i(
-                                TAG,
-                                "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}, but only 1 turn remains before mandatory race. Racing is safe. Continuing.",
-                            )
-                        } else {
-                            MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < ${consecutiveRacesLimit + 1}. Continuing.")
-                        }
-
-                        if (!bHasCheckedDateThisTurn && !date.bIsFinaleSeason) {
-                            MessageLog.i(TAG, "[TRACKBLAZER] Deferring race acknowledgment until turn-start updates are performed.")
-                            detectedDialog.close(game.imageUtils)
-                        } else {
-                            detectedDialog.ok(game.imageUtils)
-                            game.wait(2.0)
-                        }
-                    } else {
-                        MessageLog.w(TAG, "[WARN] handleDialogs:: Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}. Aborting racing.")
-                        racing.encounteredRacingPopup = false
-                        racing.clearRacingRequirementFlags()
-                        detectedDialog.close(game.imageUtils)
-                    }
-                }
-                return DialogHandlerResult.Handled(detectedDialog)
-            }
-
-            "try_again" -> {
-                // Specialized Trackblazer retry logic.
-                if (racing.disableRaceRetries) {
-                    if (racing.enableFreeRaceRetry && IconOneFreePerDayTooltip.check(game.imageUtils)) {
-                        MessageLog.i(TAG, "[TRACKBLAZER] Failed mandatory or Rival race. Using daily free race retry...")
-                        racing.raceRetries--
-                        detectedDialog.ok(game.imageUtils)
-                        game.wait(0.5)
-                        return DialogHandlerResult.Handled(detectedDialog)
-                    }
-
-                    if (racing.enableCompleteCareerOnFailure) {
-                        MessageLog.i(TAG, "[TRACKBLAZER] Failed a mandatory race and no retries remaining. Completing career...")
-                        // Manually set retries to -1 to break the race retry loop.
-                        racing.raceRetries = -1
-                        detectedDialog.close(game.imageUtils)
-                        game.wait(0.5)
-                        return DialogHandlerResult.Handled(detectedDialog)
-                    }
-
-                    MessageLog.v(TAG, "\n[END] Stopping the bot due to failing a mandatory race.")
-                    MessageLog.v(TAG, "********************")
-                    game.notificationMessage = "Stopping the bot due to failing a mandatory race."
-                    if (DiscordUtils.enableDiscordNotifications) {
-                        DiscordUtils.queue.add("```diff\n- ${MessageLog.getSystemTimeString()} Stopping the bot due to failing a mandatory race.\n```")
-                    }
-                    throw IllegalStateException()
-                }
-
-                if (racing.lastRaceGrade != null && racing.trackblazerRetryGrades.contains(racing.lastRaceGrade) && racing.raceRetries >= 0) {
-                    if (racing.lastRaceIsRival && !racing.bRetriedCurrentRace) {
-                        MessageLog.i(TAG, "[TRACKBLAZER] ${racing.lastRaceGrade} Rival Race retry button is available. Retrying once.")
-                        racing.bRetriedCurrentRace = true
-                    } else {
-                        MessageLog.i(TAG, "[TRACKBLAZER] ${racing.lastRaceGrade} race retry button is available. Retrying.")
-                    }
-
-                    racing.raceRetries--
-                    if (detectedDialog.ok(game.imageUtils)) {
-                        game.wait(1.0)
-                    }
-                    return DialogHandlerResult.Handled(detectedDialog)
-                } else {
-                    MessageLog.w(TAG, "[WARN] handleDialogs:: No retries remaining or G1/G2/G3/Rival race conditions not met. Closing dialog.")
-                    detectedDialog.close(game.imageUtils)
-                    return DialogHandlerResult.Handled(detectedDialog)
-                }
+                result.dialog.close(game.imageUtils)
             }
 
             else -> {
-                Log.w(TAG, "[WARN] handleDialogs:: Unknown dialog \"${detectedDialog.name}\" detected so it will not be handled.")
-                return DialogHandlerResult.Unhandled(detectedDialog)
+                Log.w(TAG, "[WARN] handleDialogs:: Unknown dialog \"${result.dialog.name}\" detected so it will not be handled.")
+                return DialogHandlerResult.Unhandled(result.dialog)
             }
         }
 
         game.wait(0.5)
-        return DialogHandlerResult.Handled(detectedDialog)
+        return DialogHandlerResult.Handled(result.dialog)
     }
 
     override fun handleTrainingEvent() {
@@ -803,42 +629,6 @@ class Trackblazer(game: Game) : Campaign(game) {
 
             useItems(trainee)
         }
-    }
-
-    override fun shouldRecoverMood(sourceBitmap: Bitmap): Boolean {
-        if (trainee.mood <= Mood.NORMAL) {
-            // Special case: During the first training check of the game/session, if mood is Normal,
-            // we skip recovery to allow at least one training analysis to happen first.
-            if (training.firstTrainingCheck && trainee.mood == Mood.NORMAL && !ButtonRestAndRecreation.check(game.imageUtils, sourceBitmap = sourceBitmap)) {
-                MessageLog.i(TAG, "[TRACKBLAZER] Current mood is Normal. Not recovering mood due to firstTrainingCheck flag being active.")
-                return false
-            }
-
-            val hasMoodItems =
-                currentInventory.any { (name, count) ->
-                    count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") && !disabledItems.contains(name)
-                }
-
-            if (trainee.energy >= 70) {
-                // If energy is high, we prefer to rest/recover mood naturally to save items.
-                MessageLog.i(TAG, "[TRACKBLAZER] Mood is ${trainee.mood} and energy is ${trainee.energy}% (>= 70%). Attempting to recover mood via rest/recreation (saving items).")
-                return true
-            } else if (!hasMoodItems) {
-                // If energy is low, we prefer to use items. If no items are available, we must rest/recover mood manually as a fallback.
-                MessageLog.i(TAG, "[TRACKBLAZER] Mood is ${trainee.mood} and energy is ${trainee.energy}% (< 70%). No mood items are available. Attempting to recover mood via rest/recreation...")
-                return true
-            }
-        }
-
-        // Handle forced mood recovery during Late June before Summer Training.
-        if (mustRestBeforeSummer && (date.year == DateYear.CLASSIC || date.year == DateYear.SENIOR) && date.month == DateMonth.JUNE && date.phase == DatePhase.LATE) {
-            if (trainee.mood < Mood.GREAT) {
-                MessageLog.i(TAG, "[TRACKBLAZER] Mood is ${trainee.mood} and it is Late June. Recovering mood to GREAT in preparation for Summer Training.")
-                return true
-            }
-        }
-
-        return false
     }
 
     override fun performMoodRecovery(sourceBitmap: Bitmap, targetMood: Mood): Boolean {
