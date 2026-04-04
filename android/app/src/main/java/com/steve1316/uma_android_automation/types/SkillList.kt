@@ -393,6 +393,9 @@ class SkillList(private val game: Game, private val campaign: Campaign) {
             return null
         }
 
+        // Handle cases where the capital "I" is misread as a lowercase "l".
+        skillName = skillName.replace(Regex("\\bl\\b"), "I")
+
         // Detect special icons (◎, ○, ×) that indicate skill levels or status.
         val componentsToCheck: List<ComponentInterface> =
             listOf(
@@ -423,9 +426,11 @@ class SkillList(private val game: Game, private val campaign: Campaign) {
             // If OCR misread the icon as a character (like 'O' or 'x'), we strip the last character.
             skillName = skillName.trimEnd()
 
-            // Handle edge case where "Savvy ○" or "Savvy ◎" is misread as "SavvyO".
-            if (skillName.endsWith("SavvyO")) {
-                skillName = skillName.dropLast(1)
+            // Handle edge cases where an icon (○, ◎, ×) is misread as a letter (O, x) and attached to the word.
+            if (skillName.length >= 2 && (skillName.endsWith("O") || skillName.endsWith("x"))) {
+                if (skillName[skillName.length - 2] != ' ') {
+                    skillName = skillName.dropLast(1)
+                }
             }
 
             if (skillName.isNotEmpty() && skillName.last().isLetterOrDigit()) {
