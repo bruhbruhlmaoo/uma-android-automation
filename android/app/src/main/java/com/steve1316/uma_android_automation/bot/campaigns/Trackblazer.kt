@@ -1684,9 +1684,10 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
 
         // Mood Items Check.
-        if (trainee.mood.ordinal <= Mood.BAD.ordinal && (itemName == "Berry Sweet Cupcake" || itemName == "Plain Cupcake")) {
-            // Very simple inline mood: use the first one seen.
-            val reason = "Recovering mood (current: ${trainee.mood})."
+        val shouldUseMoodItem = trainee.mood <= Mood.NORMAL && trainee.energy < 70
+        if (shouldUseMoodItem && (itemName == "Berry Sweet Cupcake" || itemName == "Plain Cupcake")) {
+            // Very simple inline mood: use the first one seen if energy is low.
+            val reason = "Recovering mood (current: ${trainee.mood}, energy: ${trainee.energy}% < 70%)."
             if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for mood recovery.", nextInventory, reason = reason)) {
                 val oldMood = trainee.mood
                 trainee.mood = if (itemName == "Berry Sweet Cupcake") Mood.GOOD else Mood.NORMAL
@@ -1779,7 +1780,7 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         val potentialUse =
             (trainee.energy <= energyThresholdToUseEnergyItems && hasEnergyItems) ||
-                (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) ||
+                (trainee.mood <= Mood.NORMAL && trainee.energy < 70 && hasMoodItems) ||
                 (trainee.currentNegativeStatuses.isNotEmpty() && hasBadConditionItems) ||
                 hasStatItems ||
                 hasMegaphones ||
@@ -1790,7 +1791,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             val reasons = mutableListOf<String>()
             if (needSync) reasons.add("Sync needed")
             if (trainee.energy <= energyThresholdToUseEnergyItems && hasEnergyItems) reasons.add("Low energy")
-            if (trainee.mood.ordinal <= Mood.BAD.ordinal && hasMoodItems) reasons.add("Low mood")
+            if (trainee.mood <= Mood.NORMAL && trainee.energy < 70 && hasMoodItems) reasons.add("Low mood")
             if (trainee.currentNegativeStatuses.isNotEmpty() && hasBadConditionItems) reasons.add("Bad conditions")
             if (hasStatItems) reasons.add("Stat items available")
             if (hasMegaphones) reasons.add("Megaphone available")
