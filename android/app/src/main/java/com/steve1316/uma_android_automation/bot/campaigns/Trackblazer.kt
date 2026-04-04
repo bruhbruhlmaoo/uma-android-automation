@@ -573,6 +573,114 @@ class Trackblazer(game: Game) : Campaign(game) {
         return super.recoverMood(sourceBitmap, targetMood)
     }
 
+    override fun onConsecutiveRaceWarningDetected(dialog: DialogInterface, args: Map<String, Any>) {
+        val okButtonLocation: Point? = ButtonOk.find(game.imageUtils).first
+
+        if (okButtonLocation != null) {
+            val ocrText =
+                game.imageUtils.performOCRFromReference(
+                    okButtonLocation,
+                    offsetX = -560,
+                    offsetY = -525,
+                    width = game.imageUtils.relWidth(690),
+                    height = game.imageUtils.relHeight(50),
+                    useThreshold = true,
+                    useGrayscale = true,
+                    scale = 2.0,
+                    ocrEngine = "mlkit",
+                    debugName = "TrackblazerConsecutiveRaceOCR",
+                )
+
+            Log.d(TAG, "[DEBUG] onConsecutiveRaceWarningDetected:: OCR text from consecutive warning: \"$ocrText\"")
+
+            // Regex: This will put you at ([0-9]+) consecutive races.
+            val match = Regex("""([0-9]+)""").find(ocrText)
+            val ocrCount = match?.groups?.get(1)?.value?.toInt() ?: -1
+
+            if (ocrCount != -1) {
+                Log.d(TAG, "[DEBUG] onConsecutiveRaceWarningDetected:: OCR detected a count of $ocrCount consecutive races.")
+
+                // Trust OCR as the primary source of truth if it successfully parses a number.
+                consecutiveRaceCount = ocrCount
+                counterUpdatedByOCR = true
+            } else {
+                MessageLog.w(TAG, "[WARN] onConsecutiveRaceWarningDetected:: Failed to parse consecutive race count from OCR. Counter will be incremented after race.")
+            }
+        } else {
+            MessageLog.e(TAG, "[ERROR] onConsecutiveRaceWarningDetected:: Failed to find ButtonOk on consecutive race warning screen. Counter will be incremented after race.")
+        }
+
+        MessageLog.i(TAG, "[TRACKBLAZER] Current consecutive race count: $consecutiveRaceCount.")
+    }
+
+    override fun shouldAllowConsecutiveRace(args: Map<String, Any>): Boolean {
+        // A -30 stat penalty can apply starting from 3 consecutive races.
+        if (consecutiveRaceCount >= 3) {
+            MessageLog.w(TAG, "[WARN] shouldAllowConsecutiveRace:: Current consecutive race count is $consecutiveRaceCount. Note that a -30 stat penalty can apply starting from 3 consecutive races!")
+        }
+
+        // Edge case: if there is only 1 turn left before a mandatory race, we can safely race
+        // even if it would exceed the limit.
+        val turnsRemaining = game.imageUtils.determineTurnsRemainingBeforeNextGoal()
+        val onlyOneTurnLeft = turnsRemaining == 1
+
+        if (consecutiveRaceCount < (consecutiveRacesLimit + 1) || onlyOneTurnLeft) {
+            if (onlyOneTurnLeft && consecutiveRaceCount >= (consecutiveRacesLimit + 1)) {
+                MessageLog.i(
+                    TAG,
+                    "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}, but only 1 turn remains before mandatory race. Racing is safe. Continuing.",
+                )
+            } else {
+                MessageLog.i(TAG, "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount < ${consecutiveRacesLimit + 1}. Continuing.")
+            }
+            return true
+        } else {
+            MessageLog.w(TAG, "[WARN] shouldAllowConsecutiveRace:: Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}. Aborting racing.")
+            racing.encounteredRacingPopup = false
+            return false
+        }
+    }
+
+    override fun shouldRetryRace(dialog: DialogInterface, args: Map<String, Any>): Boolean {
+        if (racing.lastRaceGrade != null && racing.trackblazerRetryGrades.contains(racing.lastRaceGrade) && racing.raceRetries >= 0) {
+            if (racing.lastRaceIsRival && !racing.bRetriedCurrentRace) {
+                MessageLog.i(TAG, "[TRACKBLAZER] ${racing.lastRaceGrade} Rival Race retry button is available. Retrying once.")
+                racing.bRetriedCurrentRace = true
+            } else {
+                MessageLog.i(TAG, "[TRACKBLAZER] ${racing.lastRaceGrade} race retry button is available. Retrying.")
+            }
+
+            racing.raceRetries--
+            if (dialog.ok(game.imageUtils)) {
+                game.wait(1.0)
+            }
+            return true
+        }
+
+        MessageLog.w(TAG, "[WARN] shouldRetryRace:: No retries remaining or G1/G2/G3/Rival race conditions not met.")
+        return false
+    }
+
+    override fun shouldRecoverMoodFromItems(sourceBitmap: Bitmap): Boolean? {
+        val hasMoodItems =
+            currentInventory.any { (name, count) ->
+                count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") && !disabledItems.contains(name)
+            }
+
+        if (trainee.energy >= 70) {
+            // If energy is high, we prefer to rest/recover mood naturally to save items.
+            MessageLog.i(TAG, "[TRACKBLAZER] Mood is ${trainee.mood} and energy is ${trainee.energy}% (>= 70%). Attempting to recover mood via rest/recreation (saving items).")
+            return true
+        } else if (!hasMoodItems) {
+            // If energy is low, we prefer to use items. If no items are available, we must rest/recover mood manually as a fallback.
+            MessageLog.i(TAG, "[TRACKBLAZER] Mood is ${trainee.mood} and energy is ${trainee.energy}% (< 70%). No mood items are available. Attempting to recover mood via rest/recreation...")
+            return true
+        }
+
+        // Has mood items and energy is low — skip recovery, items will handle mood in useItems().
+        return false
+    }
+
     override fun handleRaceEvents(isScheduledRace: Boolean): Boolean {
         counterUpdatedByOCR = false
 
