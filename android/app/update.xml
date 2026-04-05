@@ -1,25 +1,19 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.4.2</latestVersion>
+    <latestVersion>5.4.3</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.4.2 - Changelog
+v5.4.3 - Changelog
 
 > Trackblazer support is still fresh off the oven so expect some bugs. Regarding completion times on strong hardware, URA Finale averages 25 minutes, Unity Cup averages 35 minutes and Trackblazer averages 50 minutes.
 
 Adjustments
 ---
-- Have the Shop Evaluation Summary differentiate whether no items were detected or items were detected but no names were able to be read.
-- Adjust mood item usage during Trackblazer to be conditional on energy level.
-- Adjust delay before updating the current Shop coin amount.
+- Some code refactoring involving consecutive race and mood recovery logic.
 
 Fixes
 ---
-- Fix edge case for skill name OCR where "Savvy" is read as "SavvyO".
-- Fix edge case where zero was read as "O" for training failure chance.
-- Fix the `Remote Log Viewer` layout to be more mobile-friendly.
-- Fix rare bug where Wit training was attempted on the Main screen in preparation for Summer.
-- Fix bug where `Irregular Training` check was done twice in a turn.
+- Fix edge cases for skill name OCR with similar looking characters like "I".
 
     </releaseNotes>
   </update>
