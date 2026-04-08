@@ -2063,7 +2063,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
         // Offset from button to header text (relative to 1080x2340 baseline).
         val offsetX = -830
         val offsetY = -190
-        val cropWidth = relWidth(135)
+        val cropWidth = relWidth(250)
         val cropHeight = relHeight(35)
 
         for ((index, buttonLocation) in loadListButtonLocations.withIndex()) {

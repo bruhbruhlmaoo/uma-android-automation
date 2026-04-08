@@ -128,6 +128,12 @@ class Racing(private val game: Game, private val campaign: Campaign) {
     /** The specific in-game race agenda selected by the user. */
     private val selectedUserAgenda = SettingsHelper.getStringSetting("racing", "selectedUserAgenda")
 
+    /** Optional custom agenda title that overrides the selected agenda name for OCR matching. */
+    private val customAgendaTitle = SettingsHelper.getStringSetting("racing", "customAgendaTitle")
+
+    /** The effective agenda name used for OCR matching — custom title if provided, otherwise the selected agenda. */
+    private val effectiveAgendaName = if (customAgendaTitle.isNotBlank()) customAgendaTitle else selectedUserAgenda
+
     /** Whether to skip Summer training to do races from the in-game agenda. */
     val skipSummerTrainingForAgenda = SettingsHelper.getBooleanSetting("racing", "skipSummerTrainingForAgenda")
 
@@ -515,7 +521,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
         game.waitForLoading()
 
-        MessageLog.i(TAG, "[RACE] Loading user's in-game race agenda: $selectedUserAgenda")
+        MessageLog.i(TAG, "[RACE] Loading user's in-game race agenda: $effectiveAgendaName")
 
         // It is assumed that the user is already at the screen with the list of selectable races.
         // Taps on the Agenda button.
@@ -580,8 +586,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
             // Search for the target agenda.
             for ((buttonLocation, agendaText) in agendaMappings) {
-                if (agendaText == selectedUserAgenda) {
-                    MessageLog.i(TAG, "[RACE] ✓ Found $selectedUserAgenda. Tapping the Load List button...")
+                if (agendaText == effectiveAgendaName) {
+                    MessageLog.i(TAG, "[RACE] ✓ Found $effectiveAgendaName. Tapping the Load List button...")
 
                     // Clicking this button triggers connection to server.
                     // Or it could result in three other states:
@@ -653,7 +659,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
                 // Check if we've reached "Agenda 8" (end of list).
                 if (agendaText == "Agenda 8") {
-                    MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Reached Agenda 8 but target $selectedUserAgenda not found.")
+                    MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Reached Agenda 8 but target $effectiveAgendaName not found.")
                     break
                 }
             }
@@ -685,7 +691,7 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         }
 
         if (!foundAgenda) {
-            MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Could not find $selectedUserAgenda after $swipeCount swipe(s). Closing agenda selection.")
+            MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Could not find $effectiveAgendaName after $swipeCount swipe(s). Closing agenda selection.")
         }
 
         // Mark as loaded so we don't try again this run and close the popup.
