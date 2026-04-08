@@ -319,6 +319,13 @@ const searchConfig: SearchOption[] = [
         parentId: "enable-user-in-game-race-agenda",
     },
     {
+        id: "custom-agenda-title",
+        title: "Custom Agenda Title",
+        description: "If you renamed your agenda in-game, enter the custom title here. Leave blank to use the selected agenda name above.",
+        page: "RacingSettings",
+        parentId: "enable-user-in-game-race-agenda",
+    },
+    {
         id: "limit-races-to-in-game-agenda",
         title: "Limit Extra Races to Agenda",
         description:

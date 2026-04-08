@@ -51,6 +51,7 @@ export interface Settings {
         limitRacesToInGameAgenda: boolean
         skipSummerTrainingForAgenda: boolean
         selectedUserAgenda: string
+        customAgendaTitle: string
         enableRacingPlan: boolean
         enableMandatoryRacingPlan: boolean
         racingPlan: string
@@ -222,6 +223,7 @@ export const defaultSettings: Settings = {
         limitRacesToInGameAgenda: true,
         skipSummerTrainingForAgenda: false,
         selectedUserAgenda: "Agenda 1",
+        customAgendaTitle: "",
         enableRacingPlan: false,
         enableMandatoryRacingPlan: false,
         racingPlan: JSON.stringify(

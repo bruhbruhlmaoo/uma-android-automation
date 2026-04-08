@@ -318,6 +318,7 @@ ${longTargetsString}
 🏁 Limit Extra Races to Agenda: ${settings.racing.limitRacesToInGameAgenda ? "✅" : "❌"}
 🏁 Skip Summer Training for Agenda: ${settings.racing.skipSummerTrainingForAgenda ? "✅" : "❌"}
 🏁 Selected User In-Game Race Agenda: ${settings.racing.selectedUserAgenda}
+🏁 Custom Agenda Title: ${settings.racing.customAgendaTitle || "(none)"}
 🏁 Enable Racing Plan: ${settings.racing.enableRacingPlan ? "✅" : "❌"}
 🏁 Racing Plan is Mandatory: ${settings.racing.enableMandatoryRacingPlan ? "✅" : "❌"}
 🏁 Racing Plan: ${racingPlanString}

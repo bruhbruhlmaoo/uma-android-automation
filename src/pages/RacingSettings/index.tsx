@@ -1,5 +1,5 @@
 import { useMemo, useContext, useRef } from "react"
-import { View, Text, ScrollView, StyleSheet } from "react-native"
+import { View, Text, TextInput, ScrollView, StyleSheet } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { useTheme } from "../../context/ThemeContext"
 import { BotStateContext, defaultSettings } from "../../context/BotStateContext"
@@ -43,6 +43,7 @@ const RacingSettings = () => {
         enableUserInGameRaceAgenda,
         limitRacesToInGameAgenda,
         skipSummerTrainingForAgenda,
+        customAgendaTitle,
     } = racingSettings
 
     /**
@@ -293,6 +294,28 @@ const RacingSettings = () => {
                             onValueChange={(value) => updateRacingSetting("selectedUserAgenda", value)}
                             style={{ marginBottom: 16 }}
                         />
+
+                        <SearchableItem
+                            id="custom-agenda-title"
+                            title="Custom Agenda Title"
+                            description="If you renamed your agenda in-game, enter the custom title here. Leave blank to use the selected agenda name above."
+                            condition={enableUserInGameRaceAgenda}
+                            parentId="enable-user-in-game-race-agenda"
+                            style={{ marginBottom: 16 }}
+                        >
+                            <Text style={styles.inputLabel}>Custom Agenda Title (Optional)</Text>
+                            <Text style={styles.inputDescription}>If you renamed your agenda in-game, enter the custom title here. Leave blank to use the selected agenda name above.</Text>
+                            <TextInput
+                                style={[styles.input, !enableUserInGameRaceAgenda && { opacity: 0.5 }]}
+                                value={customAgendaTitle}
+                                onChangeText={(text) => updateRacingSetting("customAgendaTitle", text)}
+                                placeholder="Leave blank to use selected agenda name"
+                                placeholderTextColor={"gray"}
+                                editable={enableUserInGameRaceAgenda}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                        </SearchableItem>
 
                         <CustomCheckbox
                             searchId="limit-races-to-in-game-agenda"
