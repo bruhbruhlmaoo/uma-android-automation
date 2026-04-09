@@ -1,21 +1,19 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.4.4</latestVersion>
+    <latestVersion>5.4.5</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.4.4 - Changelog
+v5.4.5 - Changelog
 
 > Trackblazer support is still fresh off the oven so expect some bugs. Regarding completion times on strong hardware, URA Finale averages 25 minutes, Unity Cup averages 35 minutes and Trackblazer averages 50 minutes.
 
-New
----
-- Add a new option to the `Racing Settings` page to set a custom ingame racing agenda name.
-
 Adjustments
 ---
-- Update game data up to `Seiun Sky (Ballroom) 2026-04-04`.
-- Skip usage of energy items when `Good-Luck Charm` item is to be used.
-- A stat at cap will not trigger manual corrections to avoid accidental training because the main stat gain would have been boosted to correct possible OCR misread.
+- Adjust the option in the `Settings` page to stop at a specific date to handle multiple dates instead.
+
+Fixes
+---
+- Fix bug where Home page was using the wrong display metrics.
 
     </releaseNotes>
   </update>
