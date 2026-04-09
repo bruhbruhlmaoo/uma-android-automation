@@ -524,6 +524,8 @@ class Racing(private val game: Game, private val campaign: Campaign) {
         MessageLog.i(TAG, "[RACE] Loading user's in-game race agenda: $effectiveAgendaName")
 
         // It is assumed that the user is already at the screen with the list of selectable races.
+        game.wait(game.dialogWaitDelay)
+
         // Taps on the Agenda button.
         if (!ButtonAgenda.click(game.imageUtils)) {
             MessageLog.w(TAG, "[WARN] loadUserRaceAgenda:: Could not find the Agenda button. Backing out and skipping agenda loading.")
