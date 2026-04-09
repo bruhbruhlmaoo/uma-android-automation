@@ -145,8 +145,18 @@ abstract class Campaign(game: Game) : Task(game) {
     /** The number of skill points required to trigger a check. */
     protected val skillPointsRequired: Int = SettingsHelper.getIntSetting("skills", "skillPointCheck")
 
-    /** The specific date string at which the bot should stop. */
-    protected val stopAtDate: String = SettingsHelper.getStringSetting("general", "stopAtDate")
+    /** The list of date strings at which the bot should stop. */
+    protected val stopAtDates: List<String> =
+        run {
+            val json = SettingsHelper.getStringSetting("general", "stopAtDates", "[]")
+            try {
+                org.json.JSONArray(json).let { arr ->
+                    (0 until arr.length()).map { arr.getString(it) }
+                }
+            } catch (_: Exception) {
+                listOf()
+            }
+        }
 
     /** Whether a recreation date event has been completed today. */
     protected var recreationDateCompleted: Boolean = false
@@ -932,7 +942,7 @@ abstract class Campaign(game: Game) : Task(game) {
     }
 
     /**
-     * Checks if the bot should stop at the user-specified date.
+     * Checks if the bot should stop at any of the user-specified dates.
      *
      * @return True if the bot should stop, false otherwise.
      */
@@ -942,49 +952,51 @@ abstract class Campaign(game: Game) : Task(game) {
             return false
         }
 
-        MessageLog.i(TAG, "\n[DATE] Checking if bot should stop at the specified date: $stopAtDate with current date $date.")
-
-        val parts = stopAtDate.split(" ")
-        if (parts.size != 3) {
-            MessageLog.e(TAG, "[ERROR] checkStopAtDate:: Invalid Stop at Date format. Expected 'YEAR MONTH PHASE'")
-            return false
-        }
-
-        val targetYear =
-            try {
-                DateYear.valueOf(parts[0].uppercase())
-            } catch (_: IllegalArgumentException) {
-                null
-            }
-        val targetMonth =
-            try {
-                DateMonth.valueOf(parts[1].uppercase())
-            } catch (_: IllegalArgumentException) {
-                null
-            }
-        val targetPhase =
-            try {
-                DatePhase.valueOf(parts[2].uppercase())
-            } catch (_: IllegalArgumentException) {
-                null
-            }
-
-        if (targetYear == null || targetMonth == null || targetPhase == null) {
-            MessageLog.e(TAG, "[ERROR] checkStopAtDate:: Invalid Stop at Date components.")
-            return false
-        }
-
-        val targetDay = GameDate.toDay(targetYear, targetMonth, targetPhase)
+        MessageLog.i(TAG, "\n[DATE] Checking if bot should stop at any specified date. Current date: $date.")
 
         // Track initial turn number on first check to avoid stopping immediately if bot starts after the target date
         if (stopAtDateInitialTurnNumber == -1) {
             stopAtDateInitialTurnNumber = date.day
         }
 
-        if (date.day >= targetDay && stopAtDateInitialTurnNumber <= targetDay) {
-            MessageLog.v(TAG, "\n[END] Reached target date: $stopAtDate (Turn $targetDay). Stopping bot.")
-            game.notificationMessage = "Stopping bot at the specified date: $stopAtDate (Turn $targetDay)"
-            return true
+        for (stopAtDate in stopAtDates) {
+            val parts = stopAtDate.split(" ")
+            if (parts.size != 3) {
+                MessageLog.e(TAG, "[ERROR] checkStopAtDate:: Invalid Stop at Date format for '$stopAtDate'. Expected 'YEAR MONTH PHASE'")
+                continue
+            }
+
+            val targetYear =
+                try {
+                    DateYear.valueOf(parts[0].uppercase())
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
+            val targetMonth =
+                try {
+                    DateMonth.valueOf(parts[1].uppercase())
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
+            val targetPhase =
+                try {
+                    DatePhase.valueOf(parts[2].uppercase())
+                } catch (_: IllegalArgumentException) {
+                    null
+                }
+
+            if (targetYear == null || targetMonth == null || targetPhase == null) {
+                MessageLog.e(TAG, "[ERROR] checkStopAtDate:: Invalid Stop at Date components for '$stopAtDate'.")
+                continue
+            }
+
+            val targetDay = GameDate.toDay(targetYear, targetMonth, targetPhase)
+
+            if (date.day >= targetDay && stopAtDateInitialTurnNumber <= targetDay) {
+                MessageLog.v(TAG, "\n[END] Reached target date: $stopAtDate (Turn $targetDay). Stopping bot.")
+                game.notificationMessage = "Stopping bot at the specified date: $stopAtDate (Turn $targetDay)"
+                return true
+            }
         }
 
         return false
