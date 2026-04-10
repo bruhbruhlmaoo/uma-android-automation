@@ -1098,23 +1098,30 @@ class Trackblazer(game: Game) : Campaign(game) {
                 entry.bitmap
             } ?: return false
 
-        if (ButtonSkillUp.checkDisabled(game.imageUtils, bitmapToUse) == true) return false
+        try {
+            if (ButtonSkillUp.checkDisabled(game.imageUtils, bitmapToUse) == true) return false
 
-        val plusPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmapToUse)
-        if (plusPoint != null) {
-            MessageLog.i(TAG, logMessage)
-            game.tap(entry.bbox.x + plusPoint.x, entry.bbox.y + plusPoint.y)
+            val plusPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmapToUse)
+            if (plusPoint != null) {
+                MessageLog.i(TAG, logMessage)
+                game.tap(entry.bbox.x + plusPoint.x, entry.bbox.y + plusPoint.y)
 
-            // Update the provided inventory map.
-            val count = nextInventory[itemName] ?: 0
-            if (count > 0) {
-                nextInventory[itemName] = count - 1
-                MessageLog.i(TAG, "[TRACKBLAZER] Decremented $itemName. Remaining: ${nextInventory[itemName]}.")
+                // Update the provided inventory map.
+                val count = nextInventory[itemName] ?: 0
+                if (count > 0) {
+                    nextInventory[itemName] = count - 1
+                    MessageLog.i(TAG, "[TRACKBLAZER] Decremented $itemName. Remaining: ${nextInventory[itemName]}.")
+                }
+
+                return true
             }
-
-            return true
+            return false
+        } finally {
+            // Only recycle if we created a new bitmap for rechecking.
+            if (recheck && !bitmapToUse.isRecycled) {
+                bitmapToUse.recycle()
+            }
         }
-        return false
     }
 
     /**
@@ -1539,6 +1546,9 @@ class Trackblazer(game: Game) : Campaign(game) {
                 game.wait(game.dialogWaitDelay)
             }
         }
+
+        // Terminal Cleanup: Recycle all bitmaps from the scanned entries to free native memory.
+        scannedItemsList.forEach { it.entry.recycle() }
     }
 
     /**

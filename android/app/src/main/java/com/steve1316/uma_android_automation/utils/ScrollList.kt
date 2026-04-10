@@ -36,7 +36,14 @@ fun interface OnEntryDetectedCallback {
  * @property refX The reference X-coordinate for the entry.
  * @property refY The reference Y-coordinate for the entry.
  */
-data class ScrollListEntry(val index: Int, val bitmap: Bitmap, val bbox: BoundingBox, val refX: Int? = null, val refY: Int? = null)
+data class ScrollListEntry(val index: Int, val bitmap: Bitmap, val bbox: BoundingBox, val refX: Int? = null, val refY: Int? = null) {
+    /** Recycles the internal bitmap of this entry to free up memory. */
+    fun recycle() {
+        if (!bitmap.isRecycled) {
+            bitmap.recycle()
+        }
+    }
+}
 
 /**
  * Stores configuration for entry image detection.

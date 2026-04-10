@@ -152,7 +152,7 @@ abstract class Task(game: Game) : DialogHandler(game) {
      * @param maxRuntimeMinutes The maximum time (in minutes) allowed for the task before timing out.
      * @return The final [TaskResult] of the task's execution.
      */
-    open fun start(maxRuntimeMinutes: Int = 90): TaskResult {
+    open fun start(maxRuntimeMinutes: Int = 120): TaskResult {
         var result: TaskResult =
             TaskResult.Error(
                 TaskResultCode.TASK_RESULT_TIMED_OUT,

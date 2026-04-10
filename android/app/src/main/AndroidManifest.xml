@@ -77,7 +77,12 @@
             android:foregroundServiceType="mediaProjection" />
 
         <!--Bot Service that will automate the specified workflow.-->
-        <service android:name="com.steve1316.automation_library.utils.BotService" />
+        <service
+            android:name="com.steve1316.automation_library.utils.BotService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:label="Bot Service" />
 
         <!--Receiver that will send the "STOP" Intent to MediaProjection Service when the action button on the Notification is tapped.-->
         <receiver
