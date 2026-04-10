@@ -962,7 +962,9 @@ class Trackblazer(game: Game) : Campaign(game) {
         priorityList.add("Artisan Cleat Hammer")
         priorityList.add("Glow Sticks")
         priorityList.add("Royal Kale Juice")
-        priorityList.add("Grilled Carrots")
+        if (date.day <= 64) {
+            priorityList.add("Grilled Carrots")
+        }
         priorityList.add("Rich Hand Cream")
         priorityList.add("Miracle Cure")
 
