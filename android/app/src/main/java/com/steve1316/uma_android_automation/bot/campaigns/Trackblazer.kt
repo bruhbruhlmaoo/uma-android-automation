@@ -1608,15 +1608,23 @@ class Trackblazer(game: Game) : Campaign(game) {
             val isDanger = failureChance >= 30
             val isMedDanger = failureChance >= 15 && failureChance < 30
             
-            val shouldForceCharm = isDanger || (isHighPriorityTrain && isMedDanger && !bUsedEnergyItemThisTurn)
-            val shouldUseBaseCharm = !isHighPriorityTrain && failureChance >= 20 && !bUsedEnergyItemThisTurn
+            // Check if we have energy items in inventory that haven't been scanned/used yet in this pass.
+            val hasUsableEnergyItems = nextInventory.any { (name, count) -> 
+                count > 0 && (shopList.energyItemNames.contains(name) || name == "Royal Kale Juice") && !disabledItems.contains(name)
+            }
+            
+            // Refinement: In the 15-29% bracket, only use the charm if we've already used an energy item OR if we don't have any energy items available to try first.
+            val shouldForceCharm = isDanger || (isHighPriorityTrain && isMedDanger && (bUsedEnergyItemThisTurn || !hasUsableEnergyItems))
+            val shouldUseBaseCharm = !isHighPriorityTrain && failureChance >= 20 && (bUsedEnergyItemThisTurn || !hasUsableEnergyItems)
             
             if (shouldForceCharm || shouldUseBaseCharm) {
-                val reason = "Setting training failure chance to 0% (High Priority: $isHighPriorityTrain)."
+                val reason = "Setting training failure chance to 0% (High Priority: $isHighPriorityTrain, Energy Used: $bUsedEnergyItemThisTurn)."
                 if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing Good-Luck Charm via inline pass.", nextInventory, reason = reason)) {
                     bUsedCharmToday = true
                     return reason
                 }
+            } else if (isHighPriorityTrain && isMedDanger) {
+                MessageLog.i(TAG, "[TRACKBLAZER] Deferring Good-Luck Charm usage in 15-29% bracket to prioritize energy items first.")
             }
         }
 
