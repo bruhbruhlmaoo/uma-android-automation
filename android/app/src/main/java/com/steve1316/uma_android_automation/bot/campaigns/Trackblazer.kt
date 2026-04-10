@@ -1354,6 +1354,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         val isEnergy = shopList.energyItemNames.contains(name) || name == "Royal Kale Juice"
                         val isMood = name == "Berry Sweet Cupcake" || name == "Plain Cupcake"
                         val isMegaphone = name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone"
+                        val isHoarded = name == "Empowering Megaphone" && isEmpoweringMegaphoneHoarded(currentInventory)
                         val isAnkleWeight = name == neededWeight
                         val isCharm = name == "Good-Luck Charm" && failureChance >= 20
 
@@ -1365,7 +1366,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                                 (isEnergy && trainee != null && trainee.energy <= 100) ||
                                 // We might want any energy item if not full.
                                 (isMood && trainee != null && trainee.mood < Mood.GREAT) ||
-                                (isMegaphone && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0) ||
+                                (isMegaphone && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0 && !isHoarded) ||
                                 (isAnkleWeight && trainee != null && trainingSelected != null) ||
                                 (isCharm && trainee != null && trainingSelected != null)
 
@@ -1654,7 +1655,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Megaphone Check.
         val megaphoneNames = listOf("Empowering Megaphone", "Motivating Megaphone", "Coaching Megaphone")
-        if (trainee.megaphoneTurnCounter == 0 && trainingSelected != null && megaphoneNames.contains(itemName)) {
+        val isCurrentHoarded = itemName == "Empowering Megaphone" && isEmpoweringMegaphoneHoarded(nextInventory)
+
+        if (trainee.megaphoneTurnCounter == 0 && trainingSelected != null && megaphoneNames.contains(itemName) && !isCurrentHoarded) {
             // Check if there is a better megaphone in inventory that we haven't seen yet OR that we know is disabled.
             val betterMegaphones =
                 when (itemName) {
@@ -1665,7 +1668,8 @@ class Trackblazer(game: Game) : Campaign(game) {
 
             val hasBetterAvailable =
                 betterMegaphones.any { better ->
-                    (nextInventory[better] ?: 0) > 0
+                    val isBetterHoarded = better == "Empowering Megaphone" && isEmpoweringMegaphoneHoarded(nextInventory)
+                    (nextInventory[better] ?: 0) > 0 && (!disabledItems.contains(better) || remainingItemsOfInterest.contains(better)) && !isBetterHoarded
                 }
 
             if (!hasBetterAvailable) {
@@ -1707,7 +1711,8 @@ class Trackblazer(game: Game) : Campaign(game) {
             trainingSelected != null &&
                 trainee.megaphoneTurnCounter == 0 &&
                 currentInventory.any { (name, count) ->
-                    count > 0 && (name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone")
+                    val isHoarded = name == "Empowering Megaphone" && isEmpoweringMegaphoneHoarded(currentInventory)
+                    count > 0 && (name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone") && !disabledItems.contains(name) && !isHoarded
                 }
         val hasAnkleWeights =
             trainingSelected != null &&
@@ -1873,4 +1878,22 @@ class Trackblazer(game: Game) : Campaign(game) {
         // If currentGain was one of the picked items, use it.
         return pickedEnergyItems.contains(currentGain)
     }
+
+    /**
+     * Determines if Empowering Megaphones should be hoarded for upcoming Summer training camps.
+     */
+    private fun isEmpoweringMegaphoneHoarded(inventory: Map<String, Int>): Boolean {
+        // If we are currently in Summer, we want to use them, not hoard them.
+        if (date.isSummer()) return false
+
+        // Summer camps are in July/August of Classic (Turns 37-40) and Senior (Turns 61-64) years.
+        // If we are before Senior Summer (day < 61), we actively hoard up to 2 copies.
+        if (date.day < 61) {
+            val count = inventory["Empowering Megaphone"] ?: 0
+            return count <= 2
+        }
+
+        return false
+    }
 }
+
