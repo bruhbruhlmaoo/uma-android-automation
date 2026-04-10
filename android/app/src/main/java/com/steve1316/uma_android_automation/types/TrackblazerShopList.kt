@@ -33,7 +33,7 @@ import org.opencv.core.Point
  * @property itemName The name of the item.
  * @property isDisabled Whether the item is disabled in the UI.
  */
-data class ScannedItem(val entry: ScrollListEntry, val itemName: String, val isDisabled: Boolean)
+data class ScannedItem(val entry: ScrollListEntry, val itemName: String, val isDisabled: Boolean, val expiryTurns: Int? = null)
 
 /**
  * Store information about a single item in the Trackblazer scenario.
@@ -307,6 +307,35 @@ class TrackblazerShopList(private val game: Game) {
         } catch (e: NumberFormatException) {
             1
         }
+    }
+
+    /**
+     * Extract the number of turns remaining for a shop item via OCR.
+     *
+     * @param bitmap The bitmap of the item entry.
+     * @param refPoint The reference point (checkbox) of the item.
+     * @return The number of turns remaining, or null if not detected.
+     */
+    fun getShopItemExpiryTurns(bitmap: Bitmap, refPoint: Point?): Int? {
+        if (refPoint == null) return null
+
+        // The turn counter is usually a small number on the top-left of the item icon.
+        val turnText =
+            game.imageUtils.performOCROnRegion(
+                bitmap,
+                game.imageUtils.relX(refPoint.x, -965),
+                game.imageUtils.relY(refPoint.y, -75),
+                game.imageUtils.relWidth(85),
+                game.imageUtils.relHeight(55),
+                useThreshold = true,
+                useGrayscale = true,
+                scale = 2.0,
+                ocrEngine = "mlkit",
+                debugName = "ShopItemExpiryOCR",
+            )
+
+        val cleaned = turnText.replace(Regex("[^0-9]"), "")
+        return cleaned.toIntOrNull()
     }
 
     /**
@@ -692,7 +721,7 @@ class TrackblazerShopList(private val game: Game) {
         // Step 1: Pre-scan Phase.
         // Scan the entire shop to log each item and its price, and to identify what is available.
         MessageLog.i(TAG, "[INFO] Beginning process of scanning shop items...")
-        val availableInShop = mutableListOf<Triple<String, Int, ScrollListEntry>>()
+        val availableInShop = mutableListOf<ShopItemProposal>()
         val itemNameMap = mutableMapOf<Int, String>()
         var totalEntriesDetected = 0
         processItemsWithFallback(
@@ -708,8 +737,12 @@ class TrackblazerShopList(private val game: Game) {
             val itemName = itemNameMap[entry.index] ?: getShopItemName(entry, isDisabled)
             if (itemName != null) {
                 val price = getShopItemPrice(itemName, entry.bitmap)
-                MessageLog.i(TAG, "\t$itemName: $price coins at index ${entry.index}")
-                availableInShop.add(Triple(itemName, price, entry))
+                val checkboxPoint = CheckboxShopItem.findImageWithBitmap(game.imageUtils, entry.bitmap)
+                val expiryTurns = getShopItemExpiryTurns(entry.bitmap, checkboxPoint)
+
+                val expiryLog = if (expiryTurns != null) " (Expires in $expiryTurns turns)" else ""
+                MessageLog.i(TAG, "\t$itemName: $price coins at index ${entry.index}$expiryLog")
+                availableInShop.add(ShopItemProposal(itemName, price, entry, expiryTurns))
             }
             false
         }
@@ -744,29 +777,31 @@ class TrackblazerShopList(private val game: Game) {
         var remainingCoinsAfterProposed = effectiveCoins
 
         val tempAvailable = filteredAvailableInShop.toMutableList()
-        for (item in priorityList) {
-            val limit = inventoryLimits[item] ?: 0
+        
+        // Group items by expiration turns to prioritize shorter turn items first overall.
+        // 1. Group items that are actually in the priority list.
+        val buyableItems = tempAvailable.filter { priorityList.contains(it.name) }
+        
+        // 2. Sort available items: lowest turns first, then by priority index as a tie-breaker.
+        val sortedToBuy = buyableItems.sortedWith(
+            compareBy<ShopItemProposal> { it.expiryTurns ?: 99 }
+                .thenBy { priorityList.indexOf(it.name) }
+        )
+
+        for (itemProposal in sortedToBuy) {
+            val itemName = itemProposal.name
+            val limit = inventoryLimits[itemName] ?: 0
             if (limit <= 0) continue
 
-            var boughtCount = 0
-            while (boughtCount < limit) {
-                val availableIndex = tempAvailable.indexOfFirst { it.first == item }
-                if (availableIndex != -1) {
-                    // Check if we can afford the item.
-                    val foundItem = tempAvailable[availableIndex]
-                    val price = foundItem.second
-                    if (remainingCoinsAfterProposed >= price) {
-                        itemsToBuy.add(foundItem)
-                        remainingCoinsAfterProposed -= price
-                        // Remove from temp list so we don't buy the same slot twice for one priority entry.
-                        tempAvailable.removeAt(availableIndex)
-                        boughtCount++
-                    } else {
-                        break
-                    }
-                } else {
-                    break
-                }
+            // Check if we can afford the item.
+            val price = itemProposal.price
+            if (remainingCoinsAfterProposed >= price) {
+                val expiryReason = if (itemProposal.expiryTurns != null) " (Expiring in ${itemProposal.expiryTurns} turns)" else ""
+                MessageLog.i(TAG, "[TRACKBLAZER] Proposing purchase of $itemName for $price coins$expiryReason.")
+                itemsToBuy.add(Triple(itemName, price, itemProposal.entry))
+                remainingCoinsAfterProposed -= price
+                // Internal limit check is handled by the loop structure above if we buy multiple in one turn, 
+                // but since shop slots are unique in MANT, we don't need a while loop for the same proposal.
             }
         }
 
@@ -897,4 +932,9 @@ class TrackblazerShopList(private val game: Game) {
 
         return emptyList()
     }
+
+    /**
+     * Data class to store a proposed shop item purchase.
+     */
+    data class ShopItemProposal(val name: String, val price: Int, val entry: ScrollListEntry, val expiryTurns: Int?)
 }

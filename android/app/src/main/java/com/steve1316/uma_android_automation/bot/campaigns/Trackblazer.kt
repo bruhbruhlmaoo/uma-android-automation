@@ -1405,7 +1405,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 
             if (itemName != null) {
                 Log.d(TAG, "[DEBUG] buyItems:: Detected item \"$itemName\" (Disabled: $isDisabled) at index ${entry.index}.")
-                scannedItemsList.add(ScannedItem(entry, itemName, isDisabled))
+                val checkboxPoint = CheckboxShopItem.findImageWithBitmap(game.imageUtils, entry.bitmap)
+                val expiryTurns = shopList.getShopItemExpiryTurns(entry.bitmap, checkboxPoint)
+                scannedItemsList.add(ScannedItem(entry, itemName, isDisabled, expiryTurns))
 
                 // Sync Inventory.
                 val amount = shopList.getItemAmount(entry, isDisabled)
