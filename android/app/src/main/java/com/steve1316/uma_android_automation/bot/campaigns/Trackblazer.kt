@@ -903,6 +903,19 @@ class Trackblazer(game: Game) : Campaign(game) {
                                 }
                             }
                         }
+                    } else if (itemName == "Master Cleat Hammer") {
+                        // Reservation strategy: Only buy up to 2 before the Climax series begins (Turn 73).
+                        // At the start of the Climax series (Turn 73), attempt to buy a 3rd one.
+                        if (date.day >= 72) 3 else 2
+                    } else if (itemName == "Artisan Cleat Hammer") {
+                        // If we are heading into or are in the Climax series and have less than 3 masters, 
+                        // allow buying Artisans to fulfill the 3-hammer requirement for the finale.
+                        val masterCount = currentInventory["Master Cleat Hammer"] ?: 0
+                        if (date.day >= 72) {
+                            (3 - masterCount).coerceAtLeast(0).coerceAtMost(5)
+                        } else {
+                            5
+                        }
                     } else {
                         5
                     }
@@ -1236,20 +1249,23 @@ class Trackblazer(game: Game) : Campaign(game) {
         val artisanHammerCount = currentInventory["Artisan Cleat Hammer"] ?: 0
         val glowSticksCount = currentInventory["Glow Sticks"] ?: 0
 
+        val isInFinaleSeries = date.day >= 73
         val hasMasterHammer =
-            if (date.day == 73) {
-                // Save the last Master Cleat Hammer for the Semi-Final and Final (turns 74-75).
-                masterHammerCount >= 2
-            } else {
+            if (isInFinaleSeries) {
                 masterHammerCount > 0
-            }
-        val hasArtisanHammer =
-            if (date.day == 73) {
-                // Save the last Artisan Cleat Hammer for the Semi-Final and Final (turns 74-75).
-                artisanHammerCount >= 2
             } else {
+                // Reservation strategy: Save exactly 2 Master Cleats for the final 3 races (turns 73-75).
+                masterHammerCount > 2
+            }
+
+        val hasArtisanHammer =
+            if (isInFinaleSeries) {
+                artisanHammerCount > 0
+            } else {
+                // Priority: Use Artisan Hammers on G1s/G2s/G3s before Climax to save Master Hammers.
                 artisanHammerCount > 0
             }
+
         val hasGlowSticks =
             if (date.day in 73..74) {
                 // Save the last Glow Stick for the Finals (turn 75).
