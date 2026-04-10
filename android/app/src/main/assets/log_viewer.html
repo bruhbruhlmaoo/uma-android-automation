@@ -716,6 +716,15 @@
                 }
             }
 
+            @keyframes textUpdateFade {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            .log-text-update {
+                animation: textUpdateFade 0.3s ease-out;
+            }
+
             .log-entry .level-tag {
                 font-weight: 600;
                 font-size: 11px;
@@ -1665,6 +1674,10 @@
             let reconnectInterval = null
             const maxReconnectDelay = 30000
 
+            // Condensation state.
+            const condensationLimit = 13
+            let condensationBuffer = []
+
             // Granular breakdowns state.
             let trainingBreakdown = { Speed: 0, Stamina: 0, Power: 0, Guts: 0, Wit: 0 }
             let raceBreakdown = { Finale: 0, G1: 0, G2: 0, G3: 0, OP: 0, "Pre-OP": 0, Maiden: 0, Mandatory: 0, Standalone: 0 }
@@ -1843,6 +1856,29 @@
             // ==============================================
 
             /**
+             * Updates an existing log entry with a new timestamp and repetition count.
+             * @param {HTMLElement} entry - The log entry element to update.
+             * @param {object} parsed - The new parsed log object.
+             * @param {number} count - The current repetition count.
+             */
+            function updateCondensedEntry(entry, parsed, count) {
+                const timestampEl = entry.querySelector(".log-timestamp")
+                if (timestampEl && parsed.timestamp) {
+                    timestampEl.textContent = parsed.timestamp
+                }
+
+                const textEl = entry.querySelector(".log-text")
+                if (textEl) {
+                    textEl.innerHTML = escapeHtml(parsed.message) + " (x" + count + ")"
+
+                    // Trigger fade animation to signal an update.
+                    textEl.classList.remove("log-text-update")
+                    void textEl.offsetWidth // Trigger reflow.
+                    textEl.classList.add("log-text-update")
+                }
+            }
+
+            /**
              * Processes and appends a single log message to the log container.
              * @param {object} parsed - The pre-parsed log object from the server.
              */
@@ -1860,19 +1896,41 @@
                 // Handle special messages for dashboard updates immediately for individual messages.
                 processSpecialLogs(parsed)
 
-                var entry = createLogEntry(parsed)
-                
-                // Add to message cache for fast filtering.
-                messageCache.push({
-                    el: entry,
-                    text: parsed.message.toLowerCase(),
-                    level: parsed.level
-                })
+                let match = condensationBuffer.find(item =>
+                    item.parsed.level === parsed.level &&
+                    item.parsed.message === parsed.message
+                )
 
-                if (!entry.classList.contains("hidden")) {
-                    visibleMessageCount++
+                if (match) {
+                    match.count++
+                    match.parsed.timestamp = parsed.timestamp
+                    updateCondensedEntry(match.el, parsed, match.count)
+                } else {
+                    var entry = createLogEntry(parsed)
+
+                    // Add to message cache for fast filtering.
+                    messageCache.push({
+                        el: entry,
+                        text: parsed.message.toLowerCase(),
+                        level: parsed.level
+                    })
+
+                    if (!entry.classList.contains("hidden")) {
+                        visibleMessageCount++
+                    }
+                    logContainer.appendChild(entry)
+
+                    condensationBuffer.push({
+                        el: entry,
+                        parsed: parsed,
+                        count: 1
+                    })
+
+                    if (condensationBuffer.length > condensationLimit) {
+                        condensationBuffer.shift()
+                    }
                 }
-                logContainer.appendChild(entry)
+
                 updateMessageCountDisplay()
 
                 // Auto-scroll to bottom.
@@ -1925,20 +1983,40 @@
                         
                         // Collect updates into the batch state object.
                         processSpecialLogs(parsed, batchState)
-                        
-                        var entry = createLogEntry(parsed)
-                        
-                        // Add to message cache for fast filtering.
-                        messageCache.push({
-                            el: entry,
-                            text: parsed.message.toLowerCase(),
-                            level: parsed.level
-                        })
 
-                        if (!entry.classList.contains("hidden")) {
-                            visibleMessageCount++
+                        let match = condensationBuffer.find(item =>
+                            item.parsed.level === parsed.level &&
+                            item.parsed.message === parsed.message
+                        )
+
+                        if (match) {
+                            match.count++
+                            match.parsed.timestamp = parsed.timestamp
+                            updateCondensedEntry(match.el, parsed, match.count)
+                        } else {
+                            var entry = createLogEntry(parsed)
+
+                            // Add to message cache for fast filtering.
+                            messageCache.push({
+                                el: entry,
+                                text: parsed.message.toLowerCase(),
+                                level: parsed.level
+                            })
+
+                            if (!entry.classList.contains("hidden")) {
+                                visibleMessageCount++
+                            }
+                            fragment.appendChild(entry)
+
+                            condensationBuffer.push({
+                                el: entry,
+                                parsed: parsed,
+                                count: 1
+                            })
+                            if (condensationBuffer.length > condensationLimit) {
+                                condensationBuffer.shift()
+                            }
                         }
-                        fragment.appendChild(entry)
                     } catch (e) {
                         console.error("Error processing log in batch:", e, parsed)
                     }
@@ -2170,6 +2248,7 @@
                 messageCache = []
                 messageCount = 0
                 visibleMessageCount = 0
+                condensationBuffer = []
                 updateMessageCountDisplay()
 
                 // Clear images too.
