@@ -1203,22 +1203,22 @@ class Trackblazer(game: Game) : Campaign(game) {
         val glowSticksCount = currentInventory["Glow Sticks"] ?: 0
 
         val hasMasterHammer =
-            if (date.day == 73 || date.day == 74) {
-                // Save the last Master Cleat Hammer for the Finale race (turn 75).
+            if (date.day == 73) {
+                // Save the last Master Cleat Hammer for the Semi-Final and Final (turns 74-75).
                 masterHammerCount >= 2
             } else {
                 masterHammerCount > 0
             }
         val hasArtisanHammer =
-            if (date.day == 73 || date.day == 74) {
-                // Save the last Artisan Cleat Hammer for the Finale race (turn 75).
+            if (date.day == 73) {
+                // Save the last Artisan Cleat Hammer for the Semi-Final and Final (turns 74-75).
                 artisanHammerCount >= 2
             } else {
                 artisanHammerCount > 0
             }
         val hasGlowSticks =
-            if (date.day == 73 || date.day == 74) {
-                // Save the last Glow Stick for the Finale race (turn 75).
+            if (date.day in 73..74) {
+                // Save the last Glow Stick for the Finals (turn 75).
                 glowSticksCount >= 2
             } else {
                 glowSticksCount > 0
@@ -1240,8 +1240,8 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
 
         val useGlowSticks =
-            if (date.day == 73 || date.day == 74) {
-                // During Finale Qualifier/Semi-Finals, ignore the standard 20k fan requirement if we have enough copies.
+            if (date.day >= 73) {
+                // During Finale races (turns 73-75), ignore the standard 20k fan requirement.
                 grade == RaceGrade.G1 && hasGlowSticks
             } else {
                 grade == RaceGrade.G1 && fans >= 20000 && hasGlowSticks
@@ -1271,7 +1271,12 @@ class Trackblazer(game: Game) : Campaign(game) {
                 }
             }
         } else {
-            MessageLog.i(TAG, "[TRACKBLAZER] No relevant race items in cached inventory for $grade.")
+            if (date.day == 73 && (masterHammerCount > 0 || artisanHammerCount > 0 || glowSticksCount > 0)) {
+                MessageLog.i(TAG, "[TRACKBLAZER] Conserving race items for Semi-Final/Final (turns 74-75). " +
+                    "Hammer: ${masterHammerCount + artisanHammerCount}, Glow Sticks: $glowSticksCount.")
+            } else {
+                MessageLog.i(TAG, "[TRACKBLAZER] No relevant race items in cached inventory for $grade.")
+            }
         }
     }
 
