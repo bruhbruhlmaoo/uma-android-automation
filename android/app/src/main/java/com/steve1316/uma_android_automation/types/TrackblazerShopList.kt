@@ -180,6 +180,7 @@ class TrackblazerShopList(private val game: Game) {
      * @return The detected item name if found, or null otherwise.
      */
     fun getShopItemName(entry: ScrollListEntry, isDisabled: Boolean = false): String? {
+        if (entry.bitmap.isRecycled) return null
         val bitmap = entry.bitmap
         // Find the item's checkbox to use as a reference point.
         var refPoint = CheckboxShopItem.findImageWithBitmap(game.imageUtils, bitmap)
@@ -281,6 +282,7 @@ class TrackblazerShopList(private val game: Game) {
      * @return The detected amount of the item on-hand.
      */
     fun getItemAmount(entry: ScrollListEntry, isDisabled: Boolean): Int {
+        if (entry.bitmap.isRecycled) return 1
         val bitmap = entry.bitmap
         // Use the plus button as a reference point for the amount detection.
         val refPoint = ButtonSkillUp.findImageWithBitmap(game.imageUtils, bitmap) ?: return 1
@@ -703,6 +705,7 @@ class TrackblazerShopList(private val game: Game) {
      * @return True if the entry is disabled, false otherwise.
      */
     private fun isEntryDisabled(entryBitmap: Bitmap): Boolean {
+        if (entryBitmap.isRecycled) return false
         return CheckboxShopItem.checkDisabled(game.imageUtils, entryBitmap) == true ||
             ButtonSkillUp.checkDisabled(game.imageUtils, entryBitmap) == true
     }
@@ -838,10 +841,10 @@ class TrackblazerShopList(private val game: Game) {
                     } else {
                         // This entry wasn't matched for purchase in this pass, so we can recycle its bitmap early to save memory.
                         // The loop will continue and create a new one if it's seen again in the next frame.
-                        entry.recycle()
+//                        entry.recycle()
                     }
                 } else {
-                    entry.recycle()
+//                    entry.recycle()
                 }
                 itemsRemainingToClick.isEmpty()
             }
@@ -867,7 +870,7 @@ class TrackblazerShopList(private val game: Game) {
             return emptyList()
         } finally {
             // Terminal Cleanup: Recycle all bitmaps from the shop scan list.
-            availableInShop.forEach { it.entry.recycle() }
+//            availableInShop.forEach { it.entry.recycle() }
         }
     }
 
