@@ -1910,7 +1910,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
         // Get top right of energyText.
         var x: Int = relX(energyTextLocation.x, templateBitmap.width / 2)
         var y: Int = relY(energyTextLocation.y, -(templateBitmap.height / 2))
-        var w: Int = relWidth(700)
+        var w: Int = relWidth(550)
         var h: Int = relHeight(75)
 
         // Crop just the energy bar in the image.
