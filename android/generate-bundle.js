@@ -23,13 +23,13 @@ try {
     // This command bundles all JavaScript code into a single file that can be loaded by the Android app.
     // 
     // Command breakdown:
-    // - npx react-native bundle: Uses the React Native CLI to create a bundle
+    // - yarn react-native bundle: Uses the React Native CLI to create a bundle
     // - --platform android: Specifies the target platform
     // - --dev false: Disables development mode for production-ready bundle
     // - --entry-file index.js: Specifies the main entry point of the React Native app
     // - --bundle-output: Sets the output path for the JavaScript bundle
     // - --assets-dest: Sets the destination for images, fonts, and other assets
-    const bundleCommand = `npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output "${path.join(assetsDir, "index.android.bundle")}" --assets-dest "${path.join(assetsDir, "..")}"`
+    const bundleCommand = `yarn react-native bundle --platform android --dev false --entry-file index.js --bundle-output "${path.join(assetsDir, "index.android.bundle")}" --assets-dest "${path.join(assetsDir, "..")}"`
 
     console.log("Running command:", bundleCommand)
     
