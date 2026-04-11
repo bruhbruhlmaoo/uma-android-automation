@@ -1800,7 +1800,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         }
                 }
         val failureChance = if (trainingSelected != null) training.trainingMap[trainingSelected]?.failureChance ?: 0 else 0
-        val mainStatGainHasCharm = if (trainingSelected != null) training.trainingMap[trainingSelected]?.statGains?.get(trainingSelected.name) ?: 0 else 0
+        val mainStatGainHasCharm = if (trainingSelected != null) training.trainingMap[trainingSelected]?.statGains?.get(trainingSelected) ?: 0 else 0
         val isHighPriorityTrainHasCharm = date.isSummer() || mainStatGainHasCharm >= 35
         val isDangerHasCharm = failureChance >= 30
         val isMedDangerHasCharm = failureChance >= 15 && failureChance < 30
