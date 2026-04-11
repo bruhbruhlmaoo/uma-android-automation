@@ -51,6 +51,61 @@ data class TrackblazerItemInfo(val price: Int, val effect: String, val isQuickUs
  * @property game Reference to the bot's [Game] instance.
  */
 class TrackblazerShopList(private val game: Game) {
+    companion object {
+        private val TAG: String = "[${MainActivity.loggerTag}]TrackblazerShopList"
+
+        /**
+         * Pure calculation function that determines which items to purchase given a budget.
+         *
+         * This implements a greedy algorithm that iterates through a priority-ordered list,
+         * purchasing items (up to inventory limits) in order of priority while respecting
+         * the coin budget.
+         *
+         * @param priorityList Ordered list of item names to buy (highest priority first).
+         * @param availableItems Items available in the shop as (name, price) pairs.
+         * @param inventoryLimits Maximum quantity to buy for each item.
+         * @param coins Available coins to spend.
+         * @param excludedItems Items to skip even if in the priority list.
+         * @return List of (name, price) pairs representing items that should be purchased.
+         */
+        fun calculatePurchases(
+            priorityList: List<String>,
+            availableItems: List<Pair<String, Int>>,
+            inventoryLimits: Map<String, Int>,
+            coins: Int,
+            excludedItems: List<String> = emptyList(),
+        ): List<Pair<String, Int>> {
+            if (priorityList.isEmpty() || availableItems.isEmpty()) return emptyList()
+
+            val filteredAvailable = availableItems.filter { (name, _) -> name !in excludedItems }.toMutableList()
+            val result = mutableListOf<Pair<String, Int>>()
+            var remainingCoins = coins
+
+            for (item in priorityList) {
+                val limit = inventoryLimits[item] ?: 0
+                if (limit <= 0) continue
+
+                var boughtCount = 0
+                while (boughtCount < limit) {
+                    val availableIndex = filteredAvailable.indexOfFirst { it.first == item }
+                    if (availableIndex == -1) break
+
+                    val price = filteredAvailable[availableIndex].second
+                    if (remainingCoins >= price) {
+                        result.add(Pair(item, price))
+                        remainingCoins -= price
+                        filteredAvailable.removeAt(availableIndex)
+                        boughtCount++
+                    } else {
+                        break
+                    }
+                }
+            }
+
+            return result
+        }
+    }
+
     /** Callback provider to retrieve the current inventory summary. */
     var getInventorySummaryCallback: (() -> String)? = null
 
@@ -138,10 +193,6 @@ class TrackblazerShopList(private val game: Game) {
 
     /** Whether the "Do not show again" checkbox has been clicked during the purchase flow. */
     private var hasClickedDoNotShowAgain: Boolean = false
-
-    companion object {
-        private val TAG: String = "[${MainActivity.loggerTag}]TrackblazerShopList"
-    }
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////
     // //////////////////////////////////////////////////////////////////////////////////////////////////
