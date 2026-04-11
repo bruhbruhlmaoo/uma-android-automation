@@ -49,10 +49,29 @@ jobs:
           cd android
           gradle wrapper --gradle-version 8.14.3
 
+      - name: Generate React Native Bundle
+        run: node android/generate-bundle.js
+
       - name: Build Android Release APK
         run: |
           cd android
-          ./gradlew assembleRelease --stacktrace
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee build_output.log
+        continue-on-error: true
+
+      - name: Show build errors if failed
+        if: failure()
+        run: |
+          echo "=== Last 200 lines of build output ==="
+          tail -200 android/build_output.log || true
+          echo "=== Searching for errors ==="
+          grep -i "error\|FAILED\|Exception" android/build_output.log | tail -50 || true
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: android/build_output.log
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
