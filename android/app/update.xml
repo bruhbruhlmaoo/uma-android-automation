@@ -1,19 +1,30 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.4.5</latestVersion>
+    <latestVersion>5.4.6</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.4.5 - Changelog
+v5.4.6 - Changelog
 
-> Trackblazer support is still fresh off the oven so expect some bugs. Regarding completion times on strong hardware, URA Finale averages 25 minutes, Unity Cup averages 35 minutes and Trackblazer averages 50 minutes.
+New
+---
+- Add the option to condense repeated log messages in the `Remote Log Viewer` (default on).
+- Created `HOW_IT_WORKS.md` to explain the inner workings of the bot viewable from the GitHub repo.
 
 Adjustments
 ---
-- Adjust the option in the `Settings` page to stop at a specific date to handle multiple dates instead.
+- Optimize OCR accuracy of training failure.
+- Add delay before starting to load the ingame racing agenda.
+- Remove usage of `disabledItems` cache that would prevent usage of certain items when it is needed.
+- Use training items when falling back from consecutive race aborts.
+- Add delay before consecutive race warning check in `loadUserRaceAgenda()`.
+- Improve trainee condition detection.
+- Reject OCR stat values that exceed the stat cap instead of clamping.
 
 Fixes
 ---
-- Fix bug where Home page was using the wrong display metrics.
+- Fix bug where the bot was getting zero stat OCR results.
+- Fix not using race items before mandatory races in `Trackblazer`.
+- Fix inaccurate energy bar level readings due to being overtuned.
 
     </releaseNotes>
   </update>
