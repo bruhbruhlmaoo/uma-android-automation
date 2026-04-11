@@ -9,6 +9,7 @@ import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.uma_android_automation.bot.MainScreenAction
 import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ButtonCancel
 import com.steve1316.uma_android_automation.components.ButtonClose
 import com.steve1316.uma_android_automation.components.ButtonConfirmUse
 import com.steve1316.uma_android_automation.components.ButtonOk
@@ -128,9 +129,6 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /** Tracks whether the inventory has been synced at least once during this session. */
     private var bInventorySynced: Boolean = false
-
-    /** Tracks items that were found to be disabled during the last inventory management pass. */
-    private var disabledItems: Set<String> = setOf()
 
     /** Flag to track when a shop check should be performed after a race. */
     private var bShouldCheckShop: Boolean = false
@@ -489,7 +487,7 @@ class Trackblazer(game: Game) : Campaign(game) {
     override fun shouldRecoverMoodFromItems(sourceBitmap: Bitmap): Boolean? {
         val hasMoodItems =
             currentInventory.any { (name, count) ->
-                count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") && !disabledItems.contains(name)
+                count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake")
             }
 
         if (trainee.energy >= 70) {
@@ -503,6 +501,18 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
 
         // Has mood items and energy is low — skip recovery, items will handle mood in useItems().
+        return false
+    }
+
+    override fun handleRaceEventFallback(): Boolean {
+        if (racing.detectedMandatoryRaceCheck) {
+            return super.handleRaceEventFallback()
+        }
+        ButtonBack.click(game.imageUtils)
+        ButtonCancel.click(game.imageUtils)
+        ButtonClose.click(game.imageUtils)
+        game.wait(1.0)
+        handleTrackblazerTraining()
         return false
     }
 
@@ -1109,7 +1119,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         // We define "poor" as no training being selected or certain other conditions.
         // Block whistling during irregular training evaluations.
         if (date.day >= 13 && !bUsedWhistleToday && trainingSelected == null && !bIsIrregularTraining) {
-            val hasWhistle = (currentInventory["Reset Whistle"] ?: 0) > 0 && !disabledItems.contains("Reset Whistle")
+            val hasWhistle = (currentInventory["Reset Whistle"] ?: 0) > 0
             if (hasWhistle) {
                 MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Using Reset Whistle.")
                 if (shopList.openTrainingItemsDialog()) {
@@ -1188,9 +1198,9 @@ class Trackblazer(game: Game) : Campaign(game) {
             return
         }
 
-        val masterHammerCount = if (disabledItems.contains("Master Cleat Hammer")) 0 else (currentInventory["Master Cleat Hammer"] ?: 0)
-        val artisanHammerCount = if (disabledItems.contains("Artisan Cleat Hammer")) 0 else (currentInventory["Artisan Cleat Hammer"] ?: 0)
-        val glowSticksCount = if (disabledItems.contains("Glow Sticks")) 0 else (currentInventory["Glow Sticks"] ?: 0)
+        val masterHammerCount = currentInventory["Master Cleat Hammer"] ?: 0
+        val artisanHammerCount = currentInventory["Artisan Cleat Hammer"] ?: 0
+        val glowSticksCount = currentInventory["Glow Sticks"] ?: 0
 
         val hasMasterHammer =
             if (date.day == 73 || date.day == 74) {
@@ -1282,7 +1292,6 @@ class Trackblazer(game: Game) : Campaign(game) {
         val initialMood = trainee?.mood ?: Mood.NORMAL
         val initialMegaphoneTurnCounter = trainee?.megaphoneTurnCounter ?: 0
         val nextInventory = currentInventory.toMutableMap()
-        val currentDisabledItems = mutableSetOf<String>()
         val scannedItemsList = mutableListOf<ScannedItem>()
         var itemsUsedCount = 0
         var wasEarlyExit = false
@@ -1355,11 +1364,6 @@ class Trackblazer(game: Game) : Campaign(game) {
             if (itemName != null) {
                 Log.d(TAG, "[DEBUG] buyItems:: Detected item \"$itemName\" (Disabled: $isDisabled) at index ${entry.index}.")
                 scannedItemsList.add(ScannedItem(entry, itemName, isDisabled))
-
-                // Track disabled items.
-                if (isDisabled) {
-                    currentDisabledItems.add(itemName)
-                }
 
                 // Sync Inventory.
                 val amount = shopList.getItemAmount(entry, isDisabled)
@@ -1460,7 +1464,6 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
         }
         currentInventory = nextInventory.toMap()
-        disabledItems = currentDisabledItems.toSet()
         bInventorySynced = true
 
         // Log reasoning for item usage decisions made during this pass, incorporating the inventory summary.
@@ -1563,7 +1566,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         // is subtracted after training — so using energy items would waste them.
         val charmBeingUsedThisTurn =
             bUsedCharmToday ||
-                (date.day >= 13 && failureChance >= 20 && (nextInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm"))
+                (date.day >= 13 && failureChance >= 20 && (nextInventory["Good-Luck Charm"] ?: 0) > 0)
 
         // Energy Items Check.
         if (!charmBeingUsedThisTurn && trainee.energy <= energyThresholdToUseEnergyItems && shopList.energyItemNames.contains(itemName)) {
@@ -1627,11 +1630,9 @@ class Trackblazer(game: Game) : Campaign(game) {
                     else -> emptyList()
                 }
 
-            // We check both the updated scan result (nextInventory) AND the persistent disabledItems cache.
-            // An item is considered available if it's already scanned as enabled OR if it's still in the interest set (meaning we haven't seen its current state yet).
             val hasBetterAvailable =
                 betterMegaphones.any { better ->
-                    (nextInventory[better] ?: 0) > 0 && (!disabledItems.contains(better) || remainingItemsOfInterest.contains(better))
+                    (nextInventory[better] ?: 0) > 0
                 }
 
             if (!hasBetterAvailable) {
@@ -1663,23 +1664,17 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         val needSync = !bInventorySynced
         val hasEnergyItems =
-            currentInventory.any { (name, count) -> count > 0 && shopList.energyItemNames.contains(name) && !disabledItems.contains(name) } ||
-                (
-                    (
-                        currentInventory["Royal Kale Juice"]
-                            ?: 0
-                    ) > 0 &&
-                        !disabledItems.contains("Royal Kale Juice")
-                )
-        val hasMoodItems = currentInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") && !disabledItems.contains(name) }
-        val hasBadConditionItems = currentInventory.any { (name, count) -> count > 0 && shopList.badConditionHealItemNames.contains(name) && !disabledItems.contains(name) }
-        val hasStatItems = currentInventory.any { (name, count) -> count > 0 && shopList.statItemNames.contains(name) && !disabledItems.contains(name) }
+            currentInventory.any { (name, count) -> count > 0 && shopList.energyItemNames.contains(name) } ||
+                ((currentInventory["Royal Kale Juice"] ?: 0) > 0)
+        val hasMoodItems = currentInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
+        val hasBadConditionItems = currentInventory.any { (name, count) -> count > 0 && shopList.badConditionHealItemNames.contains(name) }
+        val hasStatItems = currentInventory.any { (name, count) -> count > 0 && shopList.statItemNames.contains(name) }
 
         val hasMegaphones =
             trainingSelected != null &&
                 trainee.megaphoneTurnCounter == 0 &&
                 currentInventory.any { (name, count) ->
-                    count > 0 && (name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone") && !disabledItems.contains(name)
+                    count > 0 && (name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone")
                 }
         val hasAnkleWeights =
             trainingSelected != null &&
@@ -1692,11 +1687,10 @@ class Trackblazer(game: Game) : Campaign(game) {
                             StatName.POWER -> "Power Ankle Weights"
                             StatName.GUTS -> "Guts Ankle Weights"
                             else -> ""
-                        } &&
-                        !disabledItems.contains(name)
+                        }
                 }
         val failureChance = if (trainingSelected != null) training.trainingMap[trainingSelected]?.failureChance ?: 0 else 0
-        val hasCharm = trainingSelected != null && !bUsedCharmToday && failureChance >= 20 && (currentInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm")
+        val hasCharm = trainingSelected != null && !bUsedCharmToday && failureChance >= 20 && (currentInventory["Good-Luck Charm"] ?: 0) > 0
 
         val potentialUse =
             (trainee.energy <= energyThresholdToUseEnergyItems && hasEnergyItems) ||
@@ -1723,7 +1717,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                 manageInventoryItems(trainee, trainingSelected)
             }
         } else {
-            MessageLog.i(TAG, "[TRACKBLAZER] Skipping Training Items dialog as no relevant items are in the cached inventory or all relevant items are disabled.")
+            MessageLog.i(TAG, "[TRACKBLAZER] Skipping Training Items dialog as no relevant items are in the cached inventory.")
         }
     }
 
@@ -1808,7 +1802,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             val hasKaleJuice =
                 (itemName == "Royal Kale Juice") ||
                     (nextInventory["Royal Kale Juice"] ?: 0) > 0 ||
-                    (remainingItemsOfInterest.contains("Royal Kale Juice") && !disabledItems.contains("Royal Kale Juice"))
+                    remainingItemsOfInterest.contains("Royal Kale Juice")
             if (hasKaleJuice) {
                 return itemName == "Royal Kale Juice"
             }

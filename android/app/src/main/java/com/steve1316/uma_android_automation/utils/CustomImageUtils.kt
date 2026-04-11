@@ -929,24 +929,25 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                     result[statName] = if (manualStatCap > 0) manualStatCap else 1200
                 } else {
                     try {
-                    // Extract all numbers from the text
-                    val numbers = Regex("\\d+").findAll(text).map { it.value.toInt() }.toList()
+                        // Extract all numbers from the text
+                        val numbers = Regex("\\d+").findAll(text).map { it.value.toInt() }.toList()
 
-                    if (numbers.isEmpty()) {
-                        MessageLog.w(TAG, "[WARN] determineStatValues:: No numbers found in '$text' for $statName")
-                        result[statName] = -1
-                    } else {
-                        val validNumbers = numbers.filter { it in 0..1200 }
-                        val value = if (validNumbers.isNotEmpty()) {
-                            validNumbers.max()
+                        if (numbers.isEmpty()) {
+                            MessageLog.w(TAG, "[WARN] determineStatValues:: No numbers found in '$text' for $statName")
+                            result[statName] = -1
                         } else {
-                            numbers.max()
+                            val validNumbers = numbers.filter { it in 0..1200 }
+                            val value =
+                                if (validNumbers.isNotEmpty()) {
+                                    validNumbers.max()
+                                } else {
+                                    numbers.max()
+                                }
+                            result[statName] = if (manualStatCap > 0) value.coerceIn(0, manualStatCap) else value.coerceAtLeast(0)
                         }
-                        result[statName] = if (manualStatCap > 0) value.coerceIn(0, manualStatCap) else value.coerceAtLeast(0)
-                    }
-                } catch (e: Exception) {
-                    MessageLog.e(TAG, "[ERROR] determineStatValues:: Failed to parse '$text' for $statName: ${e.message}")
-                    result[statName] = -1
+                    } catch (e: Exception) {
+                        MessageLog.e(TAG, "[ERROR] determineStatValues:: Failed to parse '$text' for $statName: ${e.message}")
+                        result[statName] = -1
                     }
                 }
             }

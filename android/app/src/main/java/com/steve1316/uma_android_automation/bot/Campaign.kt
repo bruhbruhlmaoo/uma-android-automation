@@ -393,6 +393,7 @@ abstract class Campaign(game: Game) : Task(game) {
             "scheduled_race_available" -> {
                 MessageLog.i(TAG, "[INFO] There is a scheduled race today. Closing to perform turn-start updates...")
                 result.dialog.close(game.imageUtils)
+                game.waitForLoading()
             }
 
             "strategy" -> {

@@ -516,6 +516,9 @@ class Racing(private val game: Game, private val campaign: Campaign) {
 
         game.waitForLoading()
 
+        // Wait for any dialog (e.g. consecutive race warning) to appear before checking.
+        game.wait(game.dialogWaitDelay)
+
         // We are forced to race, so we need to ignore this warning dialog.
         campaign.handleDialogs(args = mapOf("overrideIgnoreConsecutiveRaceWarning" to true))
 
@@ -2365,6 +2368,9 @@ class Racing(private val game: Game, private val campaign: Campaign) {
             lastRaceGrade = RaceGrade.FINALE
             lastRaceFans = if (campaign.date.day == 75) 30000 else 10000
         }
+
+        // Let the campaign handle any pre-race logic (e.g. using race items in Trackblazer).
+        campaign.onScheduledRacePrepScreen()
 
         // If there is a popup warning about racing too many times, confirm the popup to continue as this is a mandatory race.
         if (ButtonOk.click(game.imageUtils, region = game.imageUtils.regionMiddle)) {
