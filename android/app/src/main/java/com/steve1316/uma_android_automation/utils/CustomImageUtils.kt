@@ -838,14 +838,22 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
         if (text.lowercase().contains("max") || text.lowercase().contains("ax")) {
             Log.d(TAG, "[DEBUG] determineSingleStatValue:: $statName seems to be maxed out. Setting it to $manualStatCap.")
             val cleanedText = text.replace(Regex("[^0-9]"), "")
-            val parsed = cleanedText.toInt()
-            return if (manualStatCap > 0) parsed.coerceIn(0, manualStatCap) else parsed.coerceAtLeast(0)
+            return try {
+                val parsed = cleanedText.toInt()
+                if (manualStatCap > 0) parsed.coerceIn(0, manualStatCap) else parsed.coerceAtLeast(0)
+            } catch (_: NumberFormatException) {
+                if (manualStatCap > 0) manualStatCap else 1200
+            }
         } else {
             try {
                 Log.d(TAG, "[DEBUG] determineSingleStatValue:: Converting $text to integer for $statName stat value")
                 val cleanedText = text.replace(Regex("[^0-9]"), "")
                 val parsed = cleanedText.toInt()
-                return if (manualStatCap > 0) parsed.coerceIn(0, manualStatCap) else parsed.coerceAtLeast(0)
+                if (manualStatCap > 0 && parsed > manualStatCap) {
+                    Log.d(TAG, "[DEBUG] determineSingleStatValue:: Parsed value $parsed for $statName exceeds stat cap $manualStatCap, likely an OCR misread. Rejecting.")
+                    return -1
+                }
+                return parsed.coerceAtLeast(0)
             } catch (_: NumberFormatException) {
                 return -1
             }
@@ -931,19 +939,20 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                     try {
                         // Extract all numbers from the text
                         val numbers = Regex("\\d+").findAll(text).map { it.value.toInt() }.toList()
+                        val cap = if (manualStatCap > 0) manualStatCap else 1200
 
                         if (numbers.isEmpty()) {
                             MessageLog.w(TAG, "[WARN] determineStatValues:: No numbers found in '$text' for $statName")
                             result[statName] = -1
                         } else {
-                            val validNumbers = numbers.filter { it in 0..1200 }
-                            val value =
-                                if (validNumbers.isNotEmpty()) {
-                                    validNumbers.max()
-                                } else {
-                                    numbers.max()
-                                }
-                            result[statName] = if (manualStatCap > 0) value.coerceIn(0, manualStatCap) else value.coerceAtLeast(0)
+                            // Filter to values within the valid stat range. Values exceeding the cap are OCR misreads.
+                            val validNumbers = numbers.filter { it in 0..cap }
+                            if (validNumbers.isNotEmpty()) {
+                                result[statName] = validNumbers.max()
+                            } else {
+                                Log.d(TAG, "[DEBUG] determineStatValues:: All parsed numbers $numbers for $statName exceed stat cap $cap, likely an OCR misread. Rejecting.")
+                                result[statName] = -1
+                            }
                         }
                     } catch (e: Exception) {
                         MessageLog.e(TAG, "[ERROR] determineStatValues:: Failed to parse '$text' for $statName: ${e.message}")
