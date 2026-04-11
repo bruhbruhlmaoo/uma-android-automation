@@ -9,6 +9,7 @@ import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.uma_android_automation.bot.MainScreenAction
 import com.steve1316.uma_android_automation.components.ButtonBack
+import com.steve1316.uma_android_automation.components.ButtonCancel
 import com.steve1316.uma_android_automation.components.ButtonClose
 import com.steve1316.uma_android_automation.components.ButtonConfirmUse
 import com.steve1316.uma_android_automation.components.ButtonOk
@@ -500,6 +501,18 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
 
         // Has mood items and energy is low — skip recovery, items will handle mood in useItems().
+        return false
+    }
+
+    override fun handleRaceEventFallback(): Boolean {
+        if (racing.detectedMandatoryRaceCheck) {
+            return super.handleRaceEventFallback()
+        }
+        ButtonBack.click(game.imageUtils)
+        ButtonCancel.click(game.imageUtils)
+        ButtonClose.click(game.imageUtils)
+        game.wait(1.0)
+        handleTrackblazerTraining()
         return false
     }
 
