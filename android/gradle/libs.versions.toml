@@ -1,8 +1,8 @@
 [versions]
 # The Android Studio warning about these not being used in any build scripts is wrong and can be ignored.
 # https://issuetracker.google.com/issues/343889864
-app-compileSdk = "35"
-app-buildToolsVersion = "35.0.0"
+app-compileSdk = "36"
+app-buildToolsVersion = "36.0.0"
 app-minSdk = "24"
 #noinspection ExpiredTargetSdkVersion
 app-targetSdk = "30"
