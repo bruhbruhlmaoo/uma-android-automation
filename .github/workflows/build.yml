@@ -39,13 +39,15 @@ jobs:
       - name: Install Yarn dependencies
         run: yarn install
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.14.3'
+
       - name: Build Android Release APK
         run: |
-          cd android && gradle wrapper
-          cd ..
-          chmod +x android/gradlew
-          # Use yarn build to trigger the release build from package.json
-          yarn build
+          cd android
+          gradle assembleRelease
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
