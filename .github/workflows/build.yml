@@ -41,6 +41,7 @@ jobs:
 
       - name: Build Android Release APK
         run: |
+          chmod +x android/gradlew
           # Use yarn build to trigger the release build from package.json
           yarn build
 
