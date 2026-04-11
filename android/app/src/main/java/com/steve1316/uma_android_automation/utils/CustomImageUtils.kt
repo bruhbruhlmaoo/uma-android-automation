@@ -2456,9 +2456,15 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
         ocrEngine: String = "tesseract",
         debugName: String = "",
     ): String {
+        // Clamp coordinates to bitmap bounds to prevent IllegalArgumentException: x must be >= 0
+        val safeX = x.coerceIn(0, (sourceBitmap.width - 1).coerceAtLeast(0))
+        val safeY = y.coerceIn(0, (sourceBitmap.height - 1).coerceAtLeast(0))
+        val safeWidth = width.coerceIn(1, (sourceBitmap.width - safeX).coerceAtLeast(1))
+        val safeHeight = height.coerceIn(1, (sourceBitmap.height - safeY).coerceAtLeast(1))
+
         // Perform OCR using findText() from ImageUtils.
         return findText(
-            cropRegion = intArrayOf(x, y, width, height),
+            cropRegion = intArrayOf(safeX, safeY, safeWidth, safeHeight),
             grayscale = useGrayscale,
             thresh = useThreshold,
             threshold = threshold.toDouble(),
@@ -2469,6 +2475,7 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
             debugName = debugName,
         )
     }
+
 
     /**
      * Performs OCR on a custom region using a reference point.

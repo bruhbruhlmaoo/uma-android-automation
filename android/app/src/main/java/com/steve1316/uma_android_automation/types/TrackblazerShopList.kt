@@ -289,8 +289,8 @@ class TrackblazerShopList(private val game: Game) {
         val amountText =
             game.imageUtils.performOCROnRegion(
                 bitmap,
-                game.imageUtils.relX(refPoint.x, -585),
-                game.imageUtils.relY(refPoint.y, -15),
+                game.imageUtils.relX(refPoint.x, -585).coerceAtLeast(0),
+                game.imageUtils.relY(refPoint.y, -15).coerceAtLeast(0),
                 game.imageUtils.relWidth(55),
                 game.imageUtils.relHeight(50),
                 useThreshold = false,
@@ -327,8 +327,8 @@ class TrackblazerShopList(private val game: Game) {
         val turnText =
             game.imageUtils.performOCROnRegion(
                 bitmap,
-                game.imageUtils.relX(refPoint.x, -965),
-                game.imageUtils.relY(refPoint.y, -75),
+                game.imageUtils.relX(refPoint.x, -965).coerceAtLeast(0),
+                game.imageUtils.relY(refPoint.y, -75).coerceAtLeast(0),
                 game.imageUtils.relWidth(85),
                 game.imageUtils.relHeight(55),
                 useThreshold = true,
@@ -363,8 +363,8 @@ class TrackblazerShopList(private val game: Game) {
         // Calculate the price bounding box relative to the checkbox.
         val priceBBox =
             BoundingBox(
-                x = game.imageUtils.relX(checkboxPoint.x, -405),
-                y = game.imageUtils.relY(checkboxPoint.y, -15),
+                x = game.imageUtils.relX(checkboxPoint.x, -405).coerceAtLeast(0),
+                y = game.imageUtils.relY(checkboxPoint.y, -15).coerceAtLeast(0),
                 w = game.imageUtils.relWidth(100),
                 h = game.imageUtils.relHeight(60),
             )
