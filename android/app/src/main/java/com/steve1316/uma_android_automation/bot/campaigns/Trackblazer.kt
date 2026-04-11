@@ -28,6 +28,7 @@ import com.steve1316.uma_android_automation.components.DialogUtils
 import com.steve1316.uma_android_automation.components.IconGoalRibbon
 import com.steve1316.uma_android_automation.components.IconRaceDayRibbon
 import com.steve1316.uma_android_automation.components.IconTrainingEventHorseshoe
+import com.steve1316.uma_android_automation.components.CheckboxShopItem
 import com.steve1316.uma_android_automation.components.IconUnityCupTutorialHeader
 import com.steve1316.uma_android_automation.components.LabelScheduledRace
 import com.steve1316.uma_android_automation.types.DateMonth
@@ -66,6 +67,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /** Map representing the current inventory of items. */
     var currentInventory: Map<String, Int> = mapOf()
+
+    /** Set of items that were detected as disabled (greyed out) during the last inventory scan. */
+    private var disabledItems: Set<String> = setOf()
 
     /** Map representing the mapping of bad condition items to their enums. */
     val badConditionMap =
@@ -1350,6 +1354,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         val initialMood = trainee?.mood ?: Mood.NORMAL
         val initialMegaphoneTurnCounter = trainee?.megaphoneTurnCounter ?: 0
         val nextInventory = currentInventory.toMutableMap()
+        val currentDisabledItems = mutableSetOf<String>()
         val scannedItemsList = mutableListOf<ScannedItem>()
         var itemsUsedCount = 0
         var wasEarlyExit = false
@@ -1431,6 +1436,11 @@ class Trackblazer(game: Game) : Campaign(game) {
                 val checkboxPoint = CheckboxShopItem.findImageWithBitmap(game.imageUtils, entry.bitmap)
                 val expiryTurns = shopList.getShopItemExpiryTurns(entry.bitmap, checkboxPoint)
                 scannedItemsList.add(ScannedItem(entry, itemName, isDisabled, expiryTurns))
+
+                // Track disabled items.
+                if (isDisabled) {
+                    currentDisabledItems.add(itemName)
+                }
 
                 // Sync Inventory.
                 val amount = shopList.getItemAmount(entry, isDisabled)
@@ -1534,6 +1544,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
         }
         currentInventory = nextInventory.toMap()
+        disabledItems = currentDisabledItems.toSet()
         bInventorySynced = true
 
         // Log reasoning for item usage decisions made during this pass, incorporating the inventory summary.
