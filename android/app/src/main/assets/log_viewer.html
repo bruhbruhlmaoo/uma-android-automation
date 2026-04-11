@@ -1410,6 +1410,9 @@
 
                     <!-- Log action buttons. -->
                     <button id="autoScrollBtn" class="toolbar-btn active" onclick="toggleAutoScroll()">⬇ Auto-scroll</button>
+                    <button id="compactBtn" class="toolbar-btn active" onclick="toggleCondensing()" title="Toggle Log Condensation">➞ Compact</button>
+
+                    <div class="toolbar-separator"></div>
 
                     <div class="font-size-container">
                         <button class="size-btn" onclick="adjustFontSize(-0.5)" title="Decrease font size">-</button>
@@ -1675,6 +1678,7 @@
             const maxReconnectDelay = 30000
 
             // Condensation state.
+            let isCondensing = true
             const condensationLimit = 13
             const condensationExclusions = new Set(["VERBOSE"])
             let condensationBuffer = []
@@ -1897,7 +1901,7 @@
                 // Handle special messages for dashboard updates immediately for individual messages.
                 processSpecialLogs(parsed)
 
-                const canCondense = !condensationExclusions.has(parsed.level)
+                const canCondense = isCondensing && !condensationExclusions.has(parsed.level)
                 let match = canCondense ? condensationBuffer.find(item =>
                     item.parsed.level === parsed.level &&
                     item.parsed.message === parsed.message
@@ -1988,7 +1992,7 @@
                         // Collect updates into the batch state object.
                         processSpecialLogs(parsed, batchState)
 
-                        const canCondense = !condensationExclusions.has(parsed.level)
+                        const canCondense = isCondensing && !condensationExclusions.has(parsed.level)
                         let match = canCondense ? condensationBuffer.find(item =>
                             item.parsed.level === parsed.level &&
                             item.parsed.message === parsed.message
@@ -2143,6 +2147,21 @@
             // ==============================================
 
             /**
+             * Toggles the log condensation feature on or off.
+             */
+            function toggleCondensing() {
+                isCondensing = !isCondensing
+                const btn = document.getElementById("compactBtn")
+                if (isCondensing) {
+                    btn.classList.add("active")
+                } else {
+                    btn.classList.remove("active")
+                    // Clear buffer when turning off so it doesn't resume from old state
+                    condensationBuffer = []
+                }
+            }
+
+            /**
              * Toggles a specific log level filter on or off.
              * @param {string} level - The log level to toggle.
              * @param {HTMLElement} btn - The button element that was clicked.
@@ -2203,7 +2222,8 @@
              */
             function toggleAutoScroll() {
                 autoScroll = !autoScroll
-                autoScrollBtn.classList.toggle("active", autoScroll)
+                const btn = document.getElementById("autoScrollBtn")
+                btn.classList.toggle("active", autoScroll)
                 if (autoScroll) {
                     scrollToBottom()
                 }
