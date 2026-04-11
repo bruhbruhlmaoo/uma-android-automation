@@ -559,7 +559,6 @@ class Trainee {
     private fun updateConditions(imageUtils: CustomImageUtils) {
         val sourceBitmap = imageUtils.getSourceBitmap()
         val refPoint = ButtonConditions.findImageWithBitmap(imageUtils = imageUtils, sourceBitmap = sourceBitmap) ?: Point(285.0, 1210.0)
-
         currentPositiveStatuses.clear()
         currentNegativeStatuses.clear()
 
@@ -574,13 +573,14 @@ class Trainee {
             val croppedBitmap = imageUtils.createSafeBitmap(sourceBitmap, cropX, cropY, cropWidth, cropHeight, "updateConditions crop $i") ?: continue
 
             // Identify the status type by sampling the background color of the status label.
-            val sampleX = croppedBitmap.width / 2
-            val sampleY = croppedBitmap.height / 2
+            // Adjusted samping positions to avoid accidental text overlap causing incorrect color matches.
+            val sampleX = croppedBitmap.width - 20
+            val sampleY = croppedBitmap.height - 20
             val pixel = croppedBitmap.getPixel(sampleX, sampleY)
             val r = android.graphics.Color.red(pixel)
             val g = android.graphics.Color.green(pixel)
             val b = android.graphics.Color.blue(pixel)
-
+            MessageLog.d(TAG, "[DEBUG] updateConditions:: Checking condition colors [$r, $g, $b] at ($cropX, $cropY)")
             // Bad color: #519FFB. Good color: #FF9741.
             val isBad = (r in 70..95 && g in 145..175 && b in 240..255)
             val isGood = (r in 240..255 && g in 140..165 && b in 50..80)
@@ -596,10 +596,9 @@ class Trainee {
                         useThreshold = false,
                         useGrayscale = true,
                         scale = 2.0,
-                        ocrEngine = "tesseract",
+                        ocrEngine = "mlkit",
                         debugName = "updateConditions_status_$i",
                     ).trim()
-
                 if (statusTitle.isNotEmpty()) {
                     val expectedList = if (isBad) NegativeStatus.names else PositiveStatus.names
                     val match = findClosestMatch(statusTitle, expectedList)
@@ -625,12 +624,12 @@ class Trainee {
                 break
             }
         }
-
+        // Remote log output consistency
         if (currentPositiveStatuses.isNotEmpty()) {
-            MessageLog.i(TAG, "[TRAINEE] Positive Statuses: ${currentPositiveStatuses.joinToString(", ")}")
+            MessageLog.v(TAG, "[TRAINEE] Positive Statuses: ${currentPositiveStatuses.joinToString(", ")}")
         }
         if (currentNegativeStatuses.isNotEmpty()) {
-            MessageLog.i(TAG, "[TRAINEE] Negative Statuses: ${currentNegativeStatuses.joinToString(", ")}")
+            MessageLog.v(TAG, "[TRAINEE] Negative Statuses: ${currentNegativeStatuses.joinToString(", ")}")
         }
     }
 
@@ -771,7 +770,11 @@ class Trainee {
             }
         } else {
             // Sequential processing (fallback).
-            val statMapping: Map<StatName, Int> = imageUtils.determineStatValues(isAptitudeDialog = isAptitudeDialog)
+            val statMapping: Map<StatName, Int> = imageUtils.determineStatValues(
+                sourceBitmap = null,
+                skillPointsLocation = skillPointsLocation,
+                isAptitudeDialog = isAptitudeDialog
+            )
 
             for ((statName, newValue) in statMapping) {
                 val oldValue = getStat(statName)
