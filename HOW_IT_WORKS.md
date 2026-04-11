@@ -1,6 +1,6 @@
 # How It Works
 
-*Last updated: 2026-04-10*
+*Last updated: 2026-04-11*
 
 A comprehensive guide to the inner workings of the app. This document explains what the bot does at each step of a campaign, how it makes decisions, and how each scenario differs.
 
@@ -572,7 +572,9 @@ flowchart TD
     Summer -->|Yes| TRAIN["→ TRAIN\n(Summer training)"]
     Summer -->|No| Finale{"Finale turns\n73-75?"}
     Finale -->|Yes| TRAIN2["→ TRAIN\n(Finale training)"]
-    Finale -->|No| Irregular{"Irregular Training\nenabled + not checked?"}
+    Finale -->|No| EnergyGuard{"Energy ≤ 10% AND\n3+ consecutive races\nAND no Charm?"}
+    EnergyGuard -->|Yes| REST["→ REST\n(avoid -30 stat penalty)"]
+    EnergyGuard -->|No| Irregular{"Irregular Training\nenabled + not checked?"}
     Irregular -->|Yes| EvalTraining["Open training screen\nAnalyze all 5 trainings"]
     EvalTraining --> ValidFound{"High-value training\nfound?"}
     ValidFound -->|Yes| TRAIN3["→ TRAIN\n(irregular training)"]
@@ -766,8 +768,7 @@ The first cupcake encountered during the scan is used. Berry Sweet Cupcake raise
 - Mood is Good or Great.
 - Energy is ≥ 70% (high energy means training will succeed well enough despite mood).
 
-> [!NOTE]
-> **Interaction with Royal Kale Juice:** Cupcakes serve as a "safety net" for Kale Juice usage. The bot checks for cupcake availability before using Kale Juice at moderate energy levels (21–40%) because the Kale Juice would drop mood by 1. If cupcakes are available to compensate, Kale Juice is considered safe to use.
+**Note — Interaction with Royal Kale Juice:** Cupcakes serve as a "safety net" for Kale Juice usage. The bot checks for cupcake availability before using Kale Juice at moderate energy levels (21–40%) because the Kale Juice would drop mood by 1. If cupcakes are available to compensate, Kale Juice is considered safe to use.
 
 </details>
 
@@ -890,8 +891,7 @@ The first cupcake encountered during the scan is used. Berry Sweet Cupcake raise
 - The Ankle Weights are for a different stat than the selected training.
 - Wit Ankle Weights: technically exist in the shop but are **never purchased** by the default priority list (only Speed/Stamina/Power/Guts weights for the top 3 prioritized stats are bought).
 
-> [!WARNING]
-> Ankle Weights increase energy consumption by 20% for that turn. The bot does not factor this into the energy threshold check — if the trainee is at low energy and Ankle Weights are used, the training may consume more energy than expected.
+> **Warning:** Ankle Weights increase energy consumption by 20% for that turn. The bot does not factor this into the energy threshold check — if the trainee is at low energy and Ankle Weights are used, the training may consume more energy than expected.
 
 **Shop priority:** Tier 4. Only purchased for the top 3 stats in the user's stat prioritization order. For example, if stat priority is Speed > Power > Stamina > Guts > Wit, the bot buys Speed, Power, and Stamina Ankle Weights but not Guts or Wit.
 
@@ -916,8 +916,7 @@ The first cupcake encountered during the scan is used. Berry Sweet Cupcake raise
 
 <h4 id="good-luck-charm--energy-item-interaction">Good-Luck Charm / Energy Item Interaction</h4>
 
-> [!CAUTION]
-> This is a critical interaction: **when a Good-Luck Charm is being used (or will be used) this turn, all energy items (Vita 20/40/65 and Royal Kale Juice) are skipped.**
+> **Caution:** This is a critical interaction: **when a Good-Luck Charm is being used (or will be used) this turn, all energy items (Vita 20/40/65 and Royal Kale Juice) are skipped.**
 
 **Why:** The Charm sets training failure to 0%, making the trainee's energy level irrelevant for training success. Energy is deducted *after* training completes, so restoring it beforehand provides no benefit. Using energy items would waste them.
 
@@ -955,6 +954,7 @@ The bot checks for this interaction before evaluating any energy item. It consid
 - A suitable training was already found (the whistle is only for "rescuing" bad turns).
 - A Whistle was already used this turn.
 - This is an irregular training evaluation (the whistle is too valuable to use on a speculative check).
+- Energy recovery is needed (`needsEnergyRecovery` is true) — the problem is low energy, not bad training options, so reshuffling won't help.
 
 **Shop priority:** Tier 4 (training effects). Relatively cheap at 20 coins and very useful as a safety net.
 
@@ -989,8 +989,7 @@ The bot checks for this interaction before evaluating any energy item. It consid
 | **Artisan Cleat Hammer** | 25 coins | Race bonus +20% (one turn) |
 | **Glow Sticks** | 15 coins | Race fan gain +50% (one turn) |
 
-> [!IMPORTANT]
-> These items are **not** used during the normal training item pass. They have their own dedicated usage flow that triggers on the **Race Prep screen** before a race begins. This includes mandatory races (Finale turns 73–75) and scheduled races via the `onScheduledRacePrepScreen()` hook.
+> **Important:** These items are **not** used during the normal training item pass. They have their own dedicated usage flow that triggers on the **Race Prep screen** before a race begins. This includes mandatory races (Finale turns 73–75) and scheduled races via the `onScheduledRacePrepScreen()` hook.
 
 **Master Cleat Hammer — when used:**
 - The upcoming race is **G1 grade**.
@@ -1007,8 +1006,8 @@ The bot checks for this interaction before evaluating any energy item. It consid
 - The upcoming race is **G1 grade**.
 - The race awards **≥ 20,000 fans**.
 - The item is available in inventory.
-- **Finale exception:** During turns 73 and 74, the 20,000 fan requirement is **waived** — Glow Sticks are used for any G1 race if copies are available (with the same 2-copy conservation rule).
-- On turn 75, all copies are used freely with no fan threshold.
+- **Finale exception:** During all Finale turns (73–75), the 20,000 fan requirement is **waived** — Glow Sticks are used for any G1 race.
+- **Finale conservation:** During turns 73 and 74, the bot only uses Glow Sticks if it has **2 or more copies**, saving the last one for turn 75 (Finals). On turn 75, all remaining copies are used freely.
 
 **When NONE of these are used:**
 - The race is OP or Pre-OP grade (no items for low-grade races).
@@ -1026,6 +1025,7 @@ Trackblazer tracks how many races the trainee has performed consecutively:
 
 - **Counter:** Incremented after each race. Reset to 0 when the bot rests or recovers mood.
 - **Warning at 3+:** After 3 consecutive races, the game shows a warning about potential stat penalties.
+- **Energy guard at 3+:** When the counter is ≥ 3 and energy is critically low (0–1%), racing is **blocked** regardless of the configured limit to avoid compounding the -30 stat penalty at zero energy.
 - **Grade filtering at 3+:** When the counter is ≥ 3, the bot only accepts **G1, G2, or G3** races. Lower-grade races (OP, Pre-OP) are skipped to avoid wasting the consecutive race penalty on low-value races.
 - **Hard limit (default 5):** The bot stops racing entirely when the consecutive count reaches the configured limit (plus 1), unless it's the final turn.
 - **OCR tracking:** The bot reads the consecutive race count from the warning dialog via OCR to stay synchronized with the game.
@@ -1037,7 +1037,7 @@ Trackblazer tracks how many races the trainee has performed consecutively:
 
 Irregular Training is an optional feature that evaluates whether a high-value training opportunity is worth skipping a race for:
 
-1. **When checked:** On non-mandatory, non-scheduled race days during Classic and Senior years.
+1. **When checked:** On non-mandatory, non-scheduled race days during Classic and Senior years. **Skipped entirely** when energy is ≤ 10% with 3+ consecutive races and no Good-Luck Charm available — the bot rests instead to avoid the -30 stat penalty (see [11.1 flowchart](#111-overview-and-flow-differences)).
 2. **Process:**
    - The bot opens the training screen and runs a full analysis of all 5 training options.
    - If a Good-Luck Charm is available, failure chance is ignored during evaluation.
