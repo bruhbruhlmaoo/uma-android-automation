@@ -770,11 +770,12 @@ class Trainee {
             }
         } else {
             // Sequential processing (fallback).
-            val statMapping: Map<StatName, Int> = imageUtils.determineStatValues(
-                sourceBitmap = null,
-                skillPointsLocation = skillPointsLocation,
-                isAptitudeDialog = isAptitudeDialog
-            )
+            val statMapping: Map<StatName, Int> =
+                imageUtils.determineStatValues(
+                    sourceBitmap = null,
+                    skillPointsLocation = skillPointsLocation,
+                    isAptitudeDialog = isAptitudeDialog,
+                )
 
             for ((statName, newValue) in statMapping) {
                 val oldValue = getStat(statName)
