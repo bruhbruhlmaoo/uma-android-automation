@@ -11,10 +11,9 @@ import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
-import com.github.javiersantos.appupdater.AppUpdater
-import com.github.javiersantos.appupdater.enums.UpdateFrom
 import com.steve1316.automation_library.data.SharedData
 import com.steve1316.automation_library.utils.ScreenStateReceiver
+import com.steve1316.uma_android_automation.utils.AppUpdateChecker
 import expo.modules.ReactActivityDelegateWrapper
 import org.opencv.android.OpenCVLoader
 import java.util.Locale
@@ -40,11 +39,8 @@ class MainActivity : ReactActivity() {
         Locale.setDefault(locale)
         this.getResources().updateConfiguration(config, this.getResources().displayMetrics)
 
-        // Set up the app updater to check for the latest update from GitHub.
-        AppUpdater(this)
-            .setUpdateFrom(UpdateFrom.XML)
-            .setUpdateXML("https://raw.githubusercontent.com/steve1316/uma-android-automation/refs/heads/master/android/app/update.xml")
-            .start()
+        // Check for app updates from GitHub.
+        AppUpdateChecker(this).checkForUpdate(forceShow = false)
 
         // Load OpenCV native library. This will throw a "E/OpenCV/StaticHelper: OpenCV error: Cannot load info library for OpenCV". It is safe to
         // ignore this error. OpenCV functionality is not impacted by this error.
