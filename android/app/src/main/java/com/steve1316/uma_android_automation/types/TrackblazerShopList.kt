@@ -1,6 +1,7 @@
 package com.steve1316.uma_android_automation.types
 
 import android.graphics.Bitmap
+import android.util.Log
 import com.steve1316.automation_library.data.SharedData
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.SettingsHelper
@@ -323,9 +324,9 @@ class TrackblazerShopList(private val game: Game) {
      * @return The number of turns remaining, or null if not detected.
      */
     fun getShopItemExpiryTurns(bitmap: Bitmap, refPoint: Point?): Int? {
-        if (refPoint == null) return null
+        if (refPoint == null || bitmap.isRecycled) return null
 
-        // The turn counter is usually a small number on the top-left of the item icon.
+        // The turn counter is usually a small white number on a red background at the top-left of the item icon.
         val turnText =
             game.imageUtils.performOCROnRegion(
                 bitmap,
@@ -341,7 +342,11 @@ class TrackblazerShopList(private val game: Game) {
             )
 
         val cleaned = turnText.replace(Regex("[^0-9]"), "")
-        return cleaned.toIntOrNull()
+        val result = cleaned.toIntOrNull()
+        if (result != null) {
+            Log.d(TAG, "[DEBUG] getShopItemExpiryTurns:: Detected $result turn(s) remaining for item at $refPoint.")
+        }
+        return result
     }
 
     /**
@@ -796,9 +801,16 @@ class TrackblazerShopList(private val game: Game) {
                 val itemName = itemProposal.name
                 val itemPrice = itemProposal.price
                 val itemEntry = itemProposal.entry
-                val maxLimit = inventoryLimits[itemName] ?: 0
+                val expiryTurns = itemProposal.expiryTurns ?: 99
+                
+                // Normal limit from strategy.
+                val strategyLimit = inventoryLimits[itemName] ?: 0
+                
+                // Bypass logic: If the item is about to expire (2 or fewer turns), allow buying it even if strategy limit is 0,
+                // as long as we don't exceed the game's hard cap (assumed 5).
+                val effectiveLimit = if (expiryTurns <= 2) 5 else strategyLimit
 
-                if (maxLimit > 0 && remainingCoinsAfterProposed >= itemPrice) {
+                if (effectiveLimit > 0 && remainingCoinsAfterProposed >= itemPrice) {
                     itemsToBuy.add(Triple(itemName, itemPrice, itemEntry))
                     remainingCoinsAfterProposed -= itemPrice
                 }

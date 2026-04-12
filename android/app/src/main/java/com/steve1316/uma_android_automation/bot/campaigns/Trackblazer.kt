@@ -908,18 +908,11 @@ class Trackblazer(game: Game) : Campaign(game) {
                             }
                         }
                     } else if (itemName == "Master Cleat Hammer") {
-                        // Reservation strategy: Only buy up to 2 before the Climax series begins (Turn 73).
-                        // At the start of the Climax series (Turn 73), attempt to buy a 3rd one.
-                        if (date.day >= 72) 3 else 2
+                        // User wants to buy as many as possible to hoard them.
+                        5
                     } else if (itemName == "Artisan Cleat Hammer") {
-                        // If we are heading into or are in the Climax series and have less than 3 masters, 
-                        // allow buying Artisans to fulfill the 3-hammer requirement for the finale.
-                        val masterCount = currentInventory["Master Cleat Hammer"] ?: 0
-                        if (date.day >= 72) {
-                            (3 - masterCount).coerceAtLeast(0).coerceAtMost(5)
-                        } else {
-                            5
-                        }
+                        // User wants to buy as many as possible to hoard them.
+                        5
                     } else {
                         5
                     }
@@ -927,16 +920,14 @@ class Trackblazer(game: Game) : Campaign(game) {
                 (maxLimit - itemCount).coerceAtLeast(0)
             }
 
-        val filteredPriorityList = finalPriorityList.filter { (inventoryLimits[it] ?: 0) > 0 }
-
-        if (filteredPriorityList.isEmpty()) {
+        if (finalPriorityList.isEmpty()) {
             MessageLog.v(TAG, getInventorySummary(withDividers = true))
         } else if (bDryRun) {
-            shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bDryRun = true, bForcePurchase = bForcePurchase)
+            shopList.buyItems(finalPriorityList, shopCoins, inventoryLimits, bDryRun = true, bForcePurchase = bForcePurchase)
             return
         }
 
-        val itemsBought = shopList.buyItems(filteredPriorityList, shopCoins, inventoryLimits, bForcePurchase = bForcePurchase)
+        val itemsBought = shopList.buyItems(finalPriorityList, shopCoins, inventoryLimits, bForcePurchase = bForcePurchase)
         if (itemsBought.isNotEmpty()) {
             // Update internal inventory.
             val nextInventory = currentInventory.toMutableMap()
