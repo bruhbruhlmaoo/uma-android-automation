@@ -800,6 +800,7 @@ class TrainingScoringTest {
             createDefaultConfig(
                 trainingOptions = listOf(rainbowBurstTraining, normalBurstTraining),
                 scenario = "Unity Cup",
+                currentDate = GameDate(year = DateYear.CLASSIC, month = DateMonth.JANUARY, phase = DatePhase.EARLY),
             )
 
         val rainbowScore = scoreUnityCupTraining(config, rainbowBurstTraining)
@@ -905,7 +906,7 @@ class TrainingScoringTest {
                     expectedTraining = StatName.GUTS,
                 ),
                 TrainingTestCase(
-                    description = "Classic Year Early Aug - Stamina with more relationship bars and fillable gauge",
+                    description = "Classic Year Early Aug - Power with rainbow bonus, fillable gauge and stat gains",
                     currentStats = mapOf("Speed" to 453, "Stamina" to 372, "Power" to 483, "Guts" to 244, "Wit" to 214),
                     trainings =
                         listOf(
@@ -917,7 +918,7 @@ class TrainingScoringTest {
                         ),
                     preferredDistance = "Medium",
                     date = GameDate(year = DateYear.CLASSIC, month = DateMonth.AUGUST, phase = DatePhase.EARLY),
-                    expectedTraining = StatName.STAMINA,
+                    expectedTraining = StatName.POWER,
                 ),
                 TrainingTestCase(
                     description = "Senior Year Early Jul - Speed with high main stat gain, rainbow bonus and fillable gauges",

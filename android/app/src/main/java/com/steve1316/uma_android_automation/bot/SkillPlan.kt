@@ -117,6 +117,184 @@ class SkillPlan(private val game: Game, private val campaign: Campaign) {
 
     companion object {
         private val TAG: String = "[${MainActivity.loggerTag}]SkillPlan"
+
+        /**
+         * Represents a skill available for purchase in a pure calculation context.
+         *
+         * @property name The skill name.
+         * @property price The skill's price in skill points.
+         * @property evaluationPoints The rank points gained upon purchase.
+         * @property isNegative Whether this is a negative (purple) skill.
+         * @property isInheritedUnique Whether this is an inherited unique skill.
+         * @property isUserPlanned Whether this skill is in the user's plan.
+         * @property communityTier The community tier ranking (lower is better, null = unranked).
+         */
+        data class SkillCandidate(
+            val name: String,
+            val price: Int,
+            val evaluationPoints: Int,
+            val isNegative: Boolean = false,
+            val isInheritedUnique: Boolean = false,
+            val isUserPlanned: Boolean = false,
+            val communityTier: Int? = null,
+        ) {
+            /** The ratio of rank gained to price. Higher is better. */
+            val evaluationPointRatio: Double
+                get() = if (price > 0) evaluationPoints.toDouble() / price.toDouble() else 0.0
+        }
+
+        /**
+         * Pure calculation function that determines which skills to buy using the Optimize Rank strategy.
+         *
+         * Greedily selects skills with the highest evaluation-point-to-price ratio within
+         * the available budget.
+         *
+         * @param candidates List of available skills for purchase.
+         * @param budget Available skill points to spend.
+         * @param alreadyPlanned Skills already planned for purchase (to avoid duplicates).
+         * @return Ordered list of (name, price) pairs representing skills to buy.
+         */
+        fun calculateOptimizeRankPurchases(
+            candidates: List<SkillCandidate>,
+            budget: Int,
+            alreadyPlanned: List<String> = emptyList(),
+        ): List<Pair<String, Int>> {
+            val result = mutableListOf<Pair<String, Int>>()
+            var remaining = budget
+
+            val sorted =
+                candidates
+                    .filter { it.name !in alreadyPlanned && it.price > 0 }
+                    .sortedByDescending { it.evaluationPointRatio }
+
+            for (skill in sorted) {
+                if (skill.price <= remaining) {
+                    result.add(skill.name to skill.price)
+                    remaining -= skill.price
+                }
+            }
+
+            return result
+        }
+
+        /**
+         * Pure calculation function that determines which skills to buy using the common strategy.
+         *
+         * Buys in order: negative skills, inherited unique skills, then user-planned skills,
+         * respecting the budget and enabled flags.
+         *
+         * @param candidates All available skill candidates.
+         * @param budget Available skill points to spend.
+         * @param settings Configuration for which skill types to buy.
+         * @return Ordered list of (name, price) pairs representing skills to buy.
+         */
+        fun calculateCommonPurchases(
+            candidates: List<SkillCandidate>,
+            budget: Int,
+            settings: SkillPlanSettings,
+        ): List<Pair<String, Int>> {
+            val result = mutableListOf<Pair<String, Int>>()
+            var remaining = budget
+            val bought = mutableSetOf<String>()
+
+            // Phase 1: Negative skills
+            if (settings.bEnableBuyNegativeSkills) {
+                for (skill in candidates.filter { it.isNegative }) {
+                    if (skill.name in bought) continue
+                    if (skill.price <= remaining) {
+                        result.add(skill.name to skill.price)
+                        remaining -= skill.price
+                        bought.add(skill.name)
+                    }
+                }
+            }
+
+            // Phase 2: Inherited unique skills
+            if (settings.bEnableBuyInheritedUniqueSkills) {
+                for (skill in candidates.filter { it.isInheritedUnique }) {
+                    if (skill.name in bought) continue
+                    if (skill.price <= remaining) {
+                        result.add(skill.name to skill.price)
+                        remaining -= skill.price
+                        bought.add(skill.name)
+                    }
+                }
+            }
+
+            // Phase 3: User-planned skills (in the order specified by plan)
+            for (skill in candidates.filter { it.isUserPlanned }) {
+                if (skill.name in bought) continue
+                if (skill.price <= remaining) {
+                    result.add(skill.name to skill.price)
+                    remaining -= skill.price
+                    bought.add(skill.name)
+                }
+            }
+
+            return result
+        }
+
+        /**
+         * Pure calculation function that combines common and strategy-specific purchases.
+         *
+         * @param candidates All available skill candidates.
+         * @param budget Available skill points to spend.
+         * @param settings Configuration for the skill plan.
+         * @return Ordered list of (name, price) pairs representing all skills to buy.
+         */
+        fun calculateSkillPurchases(
+            candidates: List<SkillCandidate>,
+            budget: Int,
+            settings: SkillPlanSettings,
+        ): List<Pair<String, Int>> {
+            if (!settings.bIsEnabled) return emptyList()
+
+            val result = mutableListOf<Pair<String, Int>>()
+
+            // Common purchases first
+            val common = calculateCommonPurchases(candidates, budget, settings)
+            result.addAll(common)
+            val spent = common.sumOf { it.second }
+            val alreadyBought = common.map { it.first }
+
+            // Strategy-specific purchases
+            val remainingCandidates = candidates.filter { it.name !in alreadyBought }
+            val strategyPurchases =
+                when (settings.strategy) {
+                    SpendingStrategy.DEFAULT, SpendingStrategy.OPTIMIZE_RANK -> {
+                        calculateOptimizeRankPurchases(remainingCandidates, budget - spent, alreadyBought)
+                    }
+                    SpendingStrategy.OPTIMIZE_SKILLS -> {
+                        // For OPTIMIZE_SKILLS, filter by community tier first, then fall back to rank
+                        val tiered =
+                            remainingCandidates
+                                .filter { it.communityTier != null }
+                                .sortedWith(compareBy<SkillCandidate> { it.communityTier }.thenByDescending { it.evaluationPointRatio })
+                        val tieredResult = mutableListOf<Pair<String, Int>>()
+                        var tieredRemaining = budget - spent
+                        val tieredBought = alreadyBought.toMutableList()
+                        for (skill in tiered) {
+                            if (skill.name in tieredBought) continue
+                            if (skill.price <= tieredRemaining) {
+                                tieredResult.add(skill.name to skill.price)
+                                tieredRemaining -= skill.price
+                                tieredBought.add(skill.name)
+                            }
+                        }
+                        // Fall back to optimize rank for remaining budget
+                        val rankFallback =
+                            calculateOptimizeRankPurchases(
+                                remainingCandidates.filter { it.name !in tieredBought },
+                                tieredRemaining,
+                                tieredBought,
+                            )
+                        tieredResult + rankFallback
+                    }
+                }
+            result.addAll(strategyPurchases)
+
+            return result
+        }
     }
 
     // //////////////////////////////////////////////////////////////////////////////////////////////////
