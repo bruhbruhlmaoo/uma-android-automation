@@ -322,6 +322,31 @@ class Training(private val game: Game, private val campaign: Campaign) {
             return getScenarioStatCap(config.scenario, statName)
         }
 
+        /** Stats gained per finale race win, per stat. Slightly above the actual +10 to account for misc event/card gains. */
+        private const val FINALE_RACE_STAT_BONUS = 15
+
+        /**
+         * Calculate the number of remaining finale races based on the current turn.
+         *
+         * Finale races occur on turns 73, 74, and 75. Before the finale (turn <= 72), all 3 races remain.
+         *
+         * @param currentDay The current turn number (1-75).
+         * @return The number of remaining finale races (0-3).
+         */
+        fun getRemainingFinaleRaces(currentDay: Int): Int {
+            return (75 - maxOf(currentDay, 72)).coerceAtLeast(0)
+        }
+
+        /**
+         * Calculate the expected total stat bonus from remaining finale race wins.
+         *
+         * @param currentDay The current turn number (1-75).
+         * @return The expected stat gain per stat from remaining finale races.
+         */
+        fun getFinaleStatBonus(currentDay: Int): Int {
+            return getRemainingFinaleRaces(currentDay) * FINALE_RACE_STAT_BONUS
+        }
+
         /**
          * Score the training option based on friendship bar progress.
          *
@@ -652,7 +677,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
             val currentStat: Int = config.currentStats.getOrDefault(training.name, 0)
             val potentialStat: Int = currentStat + training.statGains.getOrElse(training.name) { 0 }
             val statCap = getCurrentStatCap(training.name, config)
-            val effectiveStatCap = statCap - 100
+            val finaleBonus = getFinaleStatBonus(config.currentDate.day)
+            val effectiveStatCap = statCap - 100 - finaleBonus
 
             // Don't score for stats that are close to the absolute cap.
             if (currentStat >= statCap) {
@@ -2159,7 +2185,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
                 val currentStat = campaign.trainee.stats.asMap()[trainingSelected] ?: 0
                 val potentialStat = currentStat + (training.statGains[trainingSelected] ?: 0)
                 val statCap = getCurrentStatCap(trainingSelected)
-                val effectiveStatCap = statCap - 100
+                val finaleBonus = getFinaleStatBonus(campaign.date.day)
+                val effectiveStatCap = statCap - 100 - finaleBonus
 
                 if ((currentStat >= effectiveStatCap || potentialStat >= effectiveStatCap) && trainingSelected !in statsTrainedOverBuffer) {
                     MessageLog.v(TAG, "[TRAINING] [$trainingSelected] One-time stat cap buffer allowance used for this stat.")
