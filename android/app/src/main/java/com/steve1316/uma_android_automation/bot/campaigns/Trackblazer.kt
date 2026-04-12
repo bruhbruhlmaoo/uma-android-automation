@@ -698,9 +698,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                     val bestTraining = training.recommendTraining(isIrregularEvaluation = isIrregularEvaluation)
 
                     if (bestTraining != null) {
+                        // Stay on the training screen in order to perform the training.
                         MessageLog.i(TAG, "[TRACKBLAZER] Valid Irregular Training found ($bestTraining). Hijacking turn.")
-                        ButtonBack.click(game.imageUtils)
-                        game.wait(game.dialogWaitDelay)
 
                         bIsIrregularTraining = true
                         return MainScreenAction.TRAIN
@@ -1120,6 +1119,28 @@ class Trackblazer(game: Game) : Campaign(game) {
      */
     private fun handleTrackblazerTraining() {
         MessageLog.i(TAG, "[TRACKBLAZER] Starting specialized Training process.")
+
+        // Fast path: Already on the training screen from irregular training evaluation.
+        if (bIsIrregularTraining) {
+            MessageLog.i(TAG, "[TRACKBLAZER] Using existing irregular training analysis (already on Training screen).")
+            val trainingSelected: StatName? = training.recommendTraining(isIrregularEvaluation = true)
+
+            // Still use training items (megaphones, ankle weights, charms, energy, stat items, etc.)
+            if (date.day >= 13) {
+                useItems(trainee, trainingSelected)
+            }
+
+            if (trainingSelected != null) {
+                training.executeTraining(trainingSelected)
+            } else {
+                MessageLog.w(TAG, "[WARN] handleTrackblazerTraining:: Irregular training unexpectedly became null. Backing out.")
+                ButtonBack.click(game.imageUtils)
+                game.wait(game.dialogWaitDelay)
+            }
+
+            bIsIrregularTraining = false
+            return
+        }
 
         // Enter the Training screen.
         if (!ButtonTraining.click(game.imageUtils)) {
