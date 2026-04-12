@@ -686,9 +686,11 @@ class Trackblazer(game: Game) : Campaign(game) {
             val isMandatoryRace = IconRaceDayRibbon.check(game.imageUtils) || IconGoalRibbon.check(game.imageUtils)
 
             if (!isScheduledRace && !isMandatoryRace) {
-                MessageLog.i(TAG, "[TRACKBLAZER] Evaluating for Irregular Training...")
-
-                if (ButtonTraining.click(game.imageUtils)) {
+                // Skip irregular training evaluation when energy is depleted and no charm can offset the failure chance.
+                if (trainee.energy <= 0 && !hasCharmAvailable) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Skipping Irregular Training evaluation as energy is ${trainee.energy}% with no Good-Luck Charm available.")
+                    bHasCheckedIrregularTrainingThisTurn = true
+                } else if (ButtonTraining.click(game.imageUtils)) {
                     game.wait(game.dialogWaitDelay)
 
                     val isIrregularEvaluation = true

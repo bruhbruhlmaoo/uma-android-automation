@@ -830,6 +830,15 @@ class Training(private val game: Game, private val campaign: Campaign) {
         val ignoreFailureChance = args["ignoreFailureChance"] as? Boolean ?: false
         val isIrregularEvaluation = args["isIrregularEvaluation"] as? Boolean ?: false
 
+        // Skip training analysis entirely when energy is depleted and no charm is available to offset the failure chance.
+        if (!test && !ignoreFailureChance && !campaign.checkFinals() && campaign.trainee.energy <= 0) {
+            MessageLog.i(TAG, "[TRAINING] Skipping training analysis as energy is ${campaign.trainee.energy}% with no Good-Luck Charm to offset failure chance.")
+            needsEnergyRecovery = true
+            trainingMap.clear()
+            skippedTrainingMap.clear()
+            return
+        }
+
         if (test) {
             MessageLog.v(TAG, "\n[TRAINING] Now starting process to analyze all 5 Trainings for Testing.")
         } else if (singleTraining) {
