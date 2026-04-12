@@ -794,6 +794,7 @@ class TrackblazerShopList(private val game: Game) {
             val buyableItems = tempAvailable.filter { priorityList.contains(it.name) }
             val sortedToBuy = buyableItems.sortedWith(
                 compareBy<ShopItemProposal> { it.expiryTurns ?: 99 }
+                    .thenByDescending { it.entry.index }
                     .thenBy { priorityList.indexOf(it.name) }
             )
 

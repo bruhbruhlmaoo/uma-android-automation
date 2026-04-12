@@ -964,26 +964,37 @@ class Trackblazer(game: Game) : Campaign(game) {
         val topStats = training.statPrioritization.take(3)
         val priorityList = mutableListOf<String>()
 
-        // 1. Top Tier Priorities (Good-Luck Charms, Hammers, Glow Sticks, Priority heals, Priority Energy/Bond).
-        priorityList.add("Good-Luck Charm")
-        priorityList.add("Master Cleat Hammer")
-        priorityList.add("Artisan Cleat Hammer")
-        priorityList.add("Glow Sticks")
+        val statsOrdered = listOf("Scroll", "Manual", "Notepad")
+        val statNamesOrdered = listOf("Speed", "Stamina", "Power", "Guts", "Wit")
+        val statItemsToAdd = mutableListOf<String>()
+        statsOrdered.forEach { type ->
+            statNamesOrdered.forEach { name ->
+                statItemsToAdd.add("$name $type")
+            }
+        }
+
+        // 1. Finale Priority (Hammers over Stats in the end-game).
+        if (date.day >= 72) {
+            priorityList.add("Good-Luck Charm")
+            priorityList.add("Master Cleat Hammer")
+            priorityList.add("Artisan Cleat Hammer")
+            priorityList.add("Glow Sticks")
+            priorityList.addAll(statItemsToAdd)
+        } else {
+            priorityList.addAll(statItemsToAdd)
+            priorityList.add("Good-Luck Charm")
+            priorityList.add("Master Cleat Hammer")
+            priorityList.add("Artisan Cleat Hammer")
+            priorityList.add("Glow Sticks")
+        }
+
+        // 2. High Tier Heals and Energy.
         priorityList.add("Royal Kale Juice")
         if (date.day <= 64) {
             priorityList.add("Grilled Carrots")
         }
         priorityList.add("Rich Hand Cream")
         priorityList.add("Miracle Cure")
-
-        // 2. Stats (Excluding Notepads).
-        val statsOrdered = listOf("Scroll", "Manual")
-        val statNamesOrdered = listOf("Speed", "Stamina", "Power", "Guts", "Wit")
-        statsOrdered.forEach { type ->
-            statNamesOrdered.forEach { name ->
-                priorityList.add("$name $type")
-            }
-        }
 
         // 3. Energy + Mood.
         priorityList.add("Vita 65")
@@ -1156,14 +1167,22 @@ class Trackblazer(game: Game) : Campaign(game) {
         }
 
         // Reset Whistle Check: Use if recommendations are poor.
-        // We define "poor" as no training being selected or certain other conditions.
-        // Block whistling during irregular training evaluations.
-        if (date.day >= 13 && !bUsedWhistleToday && trainingSelected == null && !bIsIrregularTraining && !training.needsEnergyRecovery) {
+        // We define "poor" as no training being selected, OR no rainbows during critical turns.
+        val isCriticalTurn = date.isSummer() || date.day in 73..75
+        val hasRainbow = training.trainingMap.values.any { it.numRainbow > 0 }
+        val shouldWhistleForRainbow = isCriticalTurn && !hasRainbow
+
+        if (date.day >= 13 && !bUsedWhistleToday && !bIsIrregularTraining && !training.needsEnergyRecovery && (trainingSelected == null || shouldWhistleForRainbow)) {
             val hasWhistle = (currentInventory["Reset Whistle"] ?: 0) > 0
             if (hasWhistle) {
-                MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Using Reset Whistle.")
+                if (shouldWhistleForRainbow) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Critical turn detected with no Rainbows. Whistling for better luck!")
+                } else {
+                    MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Using Reset Whistle.")
+                }
+                
                 if (shopList.openTrainingItemsDialog()) {
-                    if (shopList.useSpecificItems(listOf("Reset Whistle"), reason = "No suitable training found.").isNotEmpty()) {
+                    if (shopList.useSpecificItems(listOf("Reset Whistle"), reason = "No suitable training or no rainbows.").isNotEmpty()) {
                         confirmAndCloseItemDialog(1)
 
                         useInventoryItem("Reset Whistle")
@@ -1182,7 +1201,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         game.wait(game.dialogWaitDelay, skipWaitingForLoading = true)
                     }
                 }
-            } else {
+            } else if (trainingSelected == null) {
                 MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found and no Reset Whistles in cached inventory or all are disabled.")
             }
         } else if (training.needsEnergyRecovery && trainingSelected == null) {
@@ -1193,11 +1212,38 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (trainingSelected != null) {
             training.executeTraining(trainingSelected)
         } else {
-            MessageLog.i(TAG, "[TRACKBLAZER] Still no suitable training found. Backing out to rest/recollect.")
-            ButtonBack.click(game.imageUtils)
-            game.wait(1.0)
-            if (checkMainScreen()) {
-                recoverEnergy()
+            // Before resting, check if we have any energy items that can let us train instead.
+            val energyItemNames = listOf("Vita 65", "Vita 40", "Vita 20", "Royal Kale Juice")
+            val hasEnergyItems = energyItemNames.any { (currentInventory[it] ?: 0) > 0 }
+            
+            if (hasEnergyItems) {
+                MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found, but energy items are available. Attempting to recover energy via items to avoid resting.")
+                if (shopList.openTrainingItemsDialog()) {
+                    useItems(trainee, trainingSelected) // This will trigger the energy item usage logic.
+                    
+                    // Re-analyze and re-pick after using energy items.
+                    training.analyzeTrainings(mapOf("ignoreFailureChance" to hasCharm))
+                    trainingSelected = training.recommendTraining()
+                    
+                    if (trainingSelected != null) {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Found a suitable training after using energy items.")
+                        training.executeTraining(trainingSelected)
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Still no suitable training found after using energy items. Backing out.")
+                        ButtonBack.click(game.imageUtils)
+                        game.wait(1.0)
+                        if (checkMainScreen()) {
+                            recoverEnergy()
+                        }
+                    }
+                }
+            } else {
+                MessageLog.i(TAG, "[TRACKBLAZER] Still no suitable training found. Backing out to rest/recollect.")
+                ButtonBack.click(game.imageUtils)
+                game.wait(1.0)
+                if (checkMainScreen()) {
+                    recoverEnergy()
+                }
             }
         }
 
@@ -1245,6 +1291,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         val glowSticksCount = currentInventory["Glow Sticks"] ?: 0
 
         val isInFinaleSeries = date.day >= 73
+        val isFinalTurn = date.day == 75
         val hasMasterHammer =
             if (isInFinaleSeries) {
                 masterHammerCount > 0
@@ -1278,8 +1325,15 @@ class Trackblazer(game: Game) : Campaign(game) {
                 } else {
                     null
                 }
-            } else if (grade == RaceGrade.G2 || grade == RaceGrade.G3) {
-                if (hasArtisanHammer) "Artisan Cleat Hammer" else null
+            } else if (grade == RaceGrade.G2 || grade == RaceGrade.G3 || isFinalTurn) {
+                // Force use any remaining hammers on the final race.
+                if (hasArtisanHammer) {
+                    "Artisan Cleat Hammer"
+                } else if (isFinalTurn && hasMasterHammer) {
+                    "Master Cleat Hammer"
+                } else {
+                    null
+                }
             } else {
                 null
             }
@@ -1379,8 +1433,9 @@ class Trackblazer(game: Game) : Campaign(game) {
                         val isHoarded = name == "Empowering Megaphone" && isEmpoweringMegaphoneHoarded(currentInventory)
                         val isAnkleWeight = name == neededWeight
                         
-                        val mainStatGainInfo = training.trainingMap[trainingSelected]?.statGains?.get(trainingSelected?.name ?: StatName.SPEED) ?: 0
-                        val isHighPriorityTrainInfo = date.isSummer() || mainStatGainInfo >= 35
+                        val trainingOption = training.trainingMap[trainingSelected]
+                        val totalStatGainInfo = trainingOption?.totalStatGain ?: 0
+                        val isHighPriorityTrainInfo = date.isSummer() || date.day >= 73 || totalStatGainInfo >= 35
                         val isDangerInfo = failureChance >= 30
                         val isMedDangerInfo = failureChance >= 15 && failureChance < 30
                         val isCharm = name == "Good-Luck Charm" && (isDangerInfo || (isMedDangerInfo && isHighPriorityTrainInfo) || (!isHighPriorityTrainInfo && failureChance >= 20))
@@ -1389,12 +1444,11 @@ class Trackblazer(game: Game) : Campaign(game) {
                         val isUseful =
                             isStat ||
                                 isBad ||
-                                isQuick ||
-                                (isEnergy && trainee != null && trainee.energy <= 100) ||
-                                // We might want any energy item if not full.
+                                (isQuick && !isMegaphone) || // Quick items are always scanned unless they are megaphones (which need turn checks).
+                                (isEnergy && trainee != null && (trainee.energy <= 100 || date.isSummer() || date.day >= 73)) ||
                                 (isMood && trainee != null && trainee.mood < Mood.GREAT) ||
-                                (isMegaphone && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0 && !isHoarded) ||
-                                (isAnkleWeight && trainee != null && trainingSelected != null) ||
+                                (isMegaphone && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0 && !isHoarded && isHighPriorityTrainInfo) ||
+                                (isAnkleWeight && trainee != null && trainingSelected != null && isHighPriorityTrainInfo) ||
                                 (isCharm && trainee != null && trainingSelected != null)
 
                         isUseful
@@ -1630,8 +1684,8 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Good-Luck Charm Check.
         val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
         if (date.day >= 13 && !bUsedCharmToday && itemName == "Good-Luck Charm") {
-            val mainStatGain = training.trainingMap[trainingSelected]?.statGains?.get(trainingSelected?.name ?: StatName.SPEED) ?: 0
-            val isHighPriorityTrain = date.isSummer() || mainStatGain >= 35
+            val totalStatGain = training.trainingMap[trainingSelected]?.totalStatGain ?: 0
+            val isHighPriorityTrain = date.isSummer() || date.day >= 73 || totalStatGain >= 35
             
             val isDanger = failureChance >= 30
             val isMedDanger = failureChance >= 15 && failureChance < 30
@@ -1646,7 +1700,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             val shouldUseBaseCharm = !isHighPriorityTrain && failureChance >= 20 && (bUsedEnergyItemThisTurn || !hasUsableEnergyItems)
             
             if (shouldForceCharm || shouldUseBaseCharm) {
-                val reason = "Setting training failure chance to 0% (High Priority: $isHighPriorityTrain, Energy Used: $bUsedEnergyItemThisTurn)."
+                val reason = "Setting training failure chance to 0% (High Priority: $isHighPriorityTrain [Goal: 35], Energy Used: $bUsedEnergyItemThisTurn)."
                 if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing Good-Luck Charm via inline pass.", nextInventory, reason = reason)) {
                     bUsedCharmToday = true
                     return reason
@@ -1659,8 +1713,9 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Determine if a Good-Luck Charm is being used this turn (either already queued or will be queued).
         // If so, skip energy items because the Charm sets failure to 0% regardless of energy, and the energy cost
         // is subtracted after training — so using energy items would waste them.
-        val mainStatGainInEnergy = training.trainingMap[trainingSelected]?.statGains?.get(trainingSelected?.name ?: StatName.SPEED) ?: 0
-        val isHighPriorityInEnergy = date.isSummer() || mainStatGainInEnergy >= 35
+        // Determine if a Good-Luck Charm is being used this turn.
+        val totalStatGainInEnergy = training.trainingMap[trainingSelected]?.totalStatGain ?: 0
+        val isHighPriorityInEnergy = date.isSummer() || date.day >= 73 || totalStatGainInEnergy >= 35
         val charmBeingUsedThisTurn =
             bUsedCharmToday ||
                 (date.day >= 13 && (failureChance >= 30 || (!isHighPriorityInEnergy && failureChance >= 20)) && (nextInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm"))

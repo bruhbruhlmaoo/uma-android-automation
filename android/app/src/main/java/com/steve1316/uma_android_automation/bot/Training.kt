@@ -173,6 +173,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
      * @property numSpiritGaugesCanFill Total number of fillable Spirit Gauges.
      * @property numSpiritGaugesReadyToBurst Total number of Spirit Gauges ready to burst.
      * @property numSkillHints Total number of detected skill hints.
+     * @property totalStatGain The total stat gain across all stats.
      * @property skipReason Optional reason if this training was skipped during recommendation.
      */
     data class TrainingOption(
@@ -185,6 +186,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
         val numSpiritGaugesCanFill: Int = 0,
         val numSpiritGaugesReadyToBurst: Int = 0,
         val numSkillHints: Int = 0,
+        val totalStatGain: Int = 0,
         val skipReason: String? = null,
     ) {
         override fun equals(other: Any?): Boolean {
@@ -1350,10 +1352,12 @@ class Training(private val game: Game, private val campaign: Campaign) {
 
         // Process results and output logs in training order.
         for (result in results) {
-            // Check if risky training logic should apply based on main stat gain.
-            val mainStatGain: Int = result.statGains[result.name] ?: 0
+            // Calculate the total stat gain across all stats.
+            val totalStatGain: Int = result.statGains.values.sum()
+
+            // Check if risky training logic should apply based on total stat gain.
             val effectiveFailureChance =
-                if (enableRiskyTraining && mainStatGain >= riskyTrainingMinStatGain) {
+                if (enableRiskyTraining && totalStatGain >= riskyTrainingMinStatGain) {
                     riskyTrainingMaxFailureChance
                 } else {
                     maximumFailureChance
@@ -1362,10 +1366,10 @@ class Training(private val game: Game, private val campaign: Campaign) {
             // Filter out trainings that exceed the effective failure chance threshold.
             if (!test && !ignoreFailureChance && result.failureChance > effectiveFailureChance) {
                 val skipReason =
-                    if (enableRiskyTraining && mainStatGain >= riskyTrainingMinStatGain) {
+                    if (enableRiskyTraining && totalStatGain >= riskyTrainingMinStatGain) {
                         MessageLog.i(
                             TAG,
-                            "[TRAINING] Skipping ${result.name} training due to failure chance (${result.failureChance}%) exceeding risky threshold ($riskyTrainingMaxFailureChance%) despite high main stat gain of $mainStatGain.",
+                            "[TRAINING] Skipping ${result.name} training due to failure chance (${result.failureChance}%) exceeding risky threshold ($riskyTrainingMaxFailureChance%) despite high total stat gain of $totalStatGain.",
                         )
                         "high failure chance (risky)"
                     } else {
@@ -1385,16 +1389,17 @@ class Training(private val game: Game, private val campaign: Campaign) {
                         numSpiritGaugesCanFill = result.numSpiritGaugesCanFill,
                         numSpiritGaugesReadyToBurst = result.numSpiritGaugesReadyToBurst,
                         numSkillHints = result.numSkillHints,
+                        totalStatGain = totalStatGain,
                         skipReason = skipReason,
                     )
                 skippedTrainingMap[result.name] = skippedTraining
                 continue
             }
 
-            if (!test && ignoreFailureChance && result.failureChance > effectiveFailureChance && mainStatGain < minStatGainForCharm) {
+            if (!test && ignoreFailureChance && result.failureChance > effectiveFailureChance && totalStatGain < minStatGainForCharm) {
                 MessageLog.i(
                     TAG,
-                    "[TRAINING] Skipping ${result.name} training with Good-Luck Charm because main stat gain ($mainStatGain) is less than $minStatGainForCharm and failure chance (${result.failureChance}%) is risky.",
+                    "[TRAINING] Skipping ${result.name} training with Good-Luck Charm because total stat gain ($totalStatGain) is less than $minStatGainForCharm and failure chance (${result.failureChance}%) is risky.",
                 )
 
                 // Store the skipped training for logging purposes.
@@ -1409,7 +1414,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
                         numSpiritGaugesCanFill = result.numSpiritGaugesCanFill,
                         numSpiritGaugesReadyToBurst = result.numSpiritGaugesReadyToBurst,
                         numSkillHints = result.numSkillHints,
-                        skipReason = "low gain with charm",
+                        totalStatGain = totalStatGain,
+                        skipReason = "low total gain with charm",
                     )
                 skippedTrainingMap[result.name] = skippedTraining
                 continue
@@ -1417,8 +1423,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
 
             if (!test && isIrregularEvaluation) {
                 val minIrregularGain = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerIrregularTrainingMinStatGain", 30)
-                if (mainStatGain < minIrregularGain) {
-                    MessageLog.i(TAG, "[TRAINING] Skipping ${result.name} training due to irregular training threshold ($mainStatGain < $minIrregularGain).")
+                if (totalStatGain < minIrregularGain) {
+                    MessageLog.i(TAG, "[TRAINING] Skipping ${result.name} training due to irregular training threshold ($totalStatGain < $minIrregularGain).")
 
                     // Store the skipped training for logging purposes.
                     val skippedTraining =
@@ -1432,6 +1438,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
                             numSpiritGaugesCanFill = result.numSpiritGaugesCanFill,
                             numSpiritGaugesReadyToBurst = result.numSpiritGaugesReadyToBurst,
                             numSkillHints = result.numSkillHints,
+                            totalStatGain = totalStatGain,
                             skipReason = "low irregular gain",
                         )
                     skippedTrainingMap[result.name] = skippedTraining
@@ -1450,6 +1457,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
                     numSpiritGaugesCanFill = result.numSpiritGaugesCanFill,
                     numSpiritGaugesReadyToBurst = result.numSpiritGaugesReadyToBurst,
                     numSkillHints = result.numSkillHints,
+                    totalStatGain = totalStatGain,
                 )
             trainingMap[result.name] = newTraining
         }
