@@ -1665,6 +1665,18 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Mood Items Check.
         val shouldUseMoodItem = trainee.mood <= Mood.NORMAL && trainee.energy < 70
         if (shouldUseMoodItem && (itemName == "Berry Sweet Cupcake" || itemName == "Plain Cupcake")) {
+            // Conservation: always keep at least 1 cupcake in case Royal Kale Juice is purchased later.
+            // Prefer conserving Plain Cupcake (+1 mood) since Kale Juice is -1 mood and we can avoid waste from Berry Sweet (+2).
+            val plainCount = nextInventory["Plain Cupcake"] ?: 0
+            val berryCount = nextInventory["Berry Sweet Cupcake"] ?: 0
+            val shouldConserve =
+                (itemName == "Plain Cupcake" && plainCount <= 1) ||
+                    (itemName == "Berry Sweet Cupcake" && berryCount <= 1 && plainCount == 0)
+            if (shouldConserve) {
+                MessageLog.i(TAG, "[TRACKBLAZER] Conserving last $itemName for potential Royal Kale Juice usage.")
+                return null
+            }
+
             // Very simple inline mood: use the first one seen if energy is low.
             val reason = "Recovering mood (current: ${trainee.mood}, energy: ${trainee.energy}% < 70%)."
             if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for mood recovery.", nextInventory, reason = reason)) {
