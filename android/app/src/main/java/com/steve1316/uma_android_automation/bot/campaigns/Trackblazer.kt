@@ -8,6 +8,7 @@ import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.uma_android_automation.bot.MainScreenAction
+import com.steve1316.uma_android_automation.bot.Training.TrainingOption
 import com.steve1316.uma_android_automation.components.ButtonBack
 import com.steve1316.uma_android_automation.components.ButtonCancel
 import com.steve1316.uma_android_automation.components.ButtonClose
@@ -161,6 +162,12 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /** Whether to enable Irregular Training in between races during Trackblazer. */
     private val enableIrregularTraining: Boolean = SettingsHelper.getBooleanSetting("scenarioOverrides", "trackblazerEnableIrregularTraining", false)
+
+    /** Stat gain threshold to consider a training High Priority. */
+    private val highStatThreshold: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerHighStatThreshold", 35)
+
+    /** Number of Empowering Megaphones to hoard for Summer. */
+    private val megaphoneHoardLimit: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerMegaphoneHoardLimit", 2)
 
     /** Ordered list of energy items from lowest to highest gain, used for conservation priority. */
     private val energyItemConservationOrder = listOf("Energy Drink MAX", "Vita 20", "Vita 40", "Vita 65")
@@ -2097,7 +2104,7 @@ class Trackblazer(game: Game) : Campaign(game) {
      */
     private fun isHighPriorityTrain(trainingOption: TrainingOption?): Boolean {
         val totalStatGain = trainingOption?.totalStatGain ?: 0
-        return date.isSummer() || date.day >= 73 || totalStatGain >= 35
+        return date.isSummer() || date.day >= 73 || totalStatGain >= highStatThreshold
     }
 
     /**
@@ -2108,10 +2115,10 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (date.isSummer()) return false
 
         // Summer camps are in July/August of Classic (Turns 37-40) and Senior (Turns 61-64) years.
-        // If we are before Senior Summer (day < 61), we actively hoard up to 2 copies.
+        // If we are before Senior Summer (day < 61), we actively hoard up to X copies.
         if (date.day < 61) {
             val count = inventory["Empowering Megaphone"] ?: 0
-            return count <= 2
+            return count <= megaphoneHoardLimit
         }
 
         return false
