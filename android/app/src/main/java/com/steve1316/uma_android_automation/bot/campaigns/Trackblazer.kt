@@ -8,6 +8,7 @@ import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.bot.DialogHandlerResult
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.uma_android_automation.bot.MainScreenAction
+import com.steve1316.uma_android_automation.bot.Training
 import com.steve1316.uma_android_automation.bot.Training.TrainingOption
 import com.steve1316.uma_android_automation.components.ButtonBack
 import com.steve1316.uma_android_automation.components.ButtonCancel
@@ -168,6 +169,9 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /** Number of Empowering Megaphones to hoard for Summer. */
     private val megaphoneHoardLimit: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerMegaphoneHoardLimit", 2)
+
+    /** Failure chance threshold for considering a training 'Low Danger'. */
+    private val lowFailureThreshold: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerLowFailureThreshold", 20)
 
     /** Ordered list of energy items from lowest to highest gain, used for conservation priority. */
     private val energyItemConservationOrder = listOf("Energy Drink MAX", "Vita 20", "Vita 40", "Vita 65")
@@ -1500,10 +1504,10 @@ class Trackblazer(game: Game) : Campaign(game) {
                         
                         val trainingOption = training.trainingMap[trainingSelected]
                         val totalStatGainInfo = trainingOption?.totalStatGain ?: 0
-                        val isHighPriorityTrainInfo = date.isSummer() || date.day >= 73 || totalStatGainInfo >= 35
+                        val isHighPriorityTrainInfo = date.isSummer() || date.day >= 73 || totalStatGainInfo >= highStatThreshold
                         val isDangerInfo = failureChance >= 30
                         val isMedDangerInfo = failureChance >= 15 && failureChance < 30
-                        val isCharm = name == "Good-Luck Charm" && (isDangerInfo || (isMedDangerInfo && isHighPriorityTrainInfo) || (!isHighPriorityTrainInfo && failureChance >= 20))
+                        val isCharm = name == "Good-Luck Charm" && (isDangerInfo || (isMedDangerInfo && isHighPriorityTrainInfo) || (!isHighPriorityTrainInfo && failureChance >= lowFailureThreshold))
 
                         val potentialItemUse =
                             (isMegaphone && trainee != null && trainingSelected != null && trainee.megaphoneTurnCounter == 0 && !isHoarded && isHighPriorityTrainInfo) ||
@@ -1755,7 +1759,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Good-Luck Charm Check.
         val failureChance = training.trainingMap[trainingSelected]?.failureChance ?: 0
         if (date.day >= 13 && !bUsedCharmToday && itemName == "Good-Luck Charm") {
-            val isHighPriorityTrain = isHighPriorityTrain(training.trainingMap[trainingSelected])
+            val isHighPriority = isHighPriorityTrain(training.trainingMap[trainingSelected])
             
             val isDanger = failureChance >= 30
             val isMedDanger = failureChance >= 15 && failureChance < 30
@@ -1766,11 +1770,11 @@ class Trackblazer(game: Game) : Campaign(game) {
             }
             
             // Refinement: In the 15-29% bracket, only use the charm if we've already used an energy item OR if we don't have any energy items available to try first.
-            val shouldForceCharm = isDanger || (isHighPriorityTrain && isMedDanger && (bUsedEnergyItemThisTurn || !hasUsableEnergyItems))
-            val shouldUseBaseCharm = !isHighPriorityTrain && failureChance >= 20 && (bUsedEnergyItemThisTurn || !hasUsableEnergyItems)
+            val shouldForceCharm = isDanger || (isHighPriority && isMedDanger && (bUsedEnergyItemThisTurn || !hasUsableEnergyItems))
+            val shouldUseBaseCharm = !isHighPriority && failureChance >= lowFailureThreshold && (bUsedEnergyItemThisTurn || !hasUsableEnergyItems)
             
             if (shouldForceCharm || shouldUseBaseCharm) {
-                val reason = "Setting training failure chance to 0% (High Priority: $isHighPriorityTrain [Goal: 35], Energy Used: $bUsedEnergyItemThisTurn)."
+                val reason = "Setting training failure chance to 0% (High Priority: $isHighPriority [Goal: $highStatThreshold], Energy Used: $bUsedEnergyItemThisTurn)."
                 if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing Good-Luck Charm via inline pass.", nextInventory, reason = reason)) {
                     bUsedCharmToday = true
                     return reason
@@ -1786,7 +1790,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Determine if a Good-Luck Charm is being used this turn.
         val charmBeingUsedThisTurn =
             bUsedCharmToday ||
-                (date.day >= 13 && (failureChance >= 30 || (!isHighPriorityInEnergy && failureChance >= 20)) && (nextInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm"))
+                (date.day >= 13 && (failureChance >= 30 || (!isHighPriorityInEnergy && failureChance >= lowFailureThreshold)) && (nextInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm"))
 
         val needsEnergyForTrain = isHighPriorityInEnergy && failureChance > training.maximumFailureChance
         if (!charmBeingUsedThisTurn && (trainee.energy <= energyThresholdToUseEnergyItems || needsEnergyForTrain) && shopList.energyItemNames.contains(itemName)) {

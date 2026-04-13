@@ -44,6 +44,7 @@ import com.steve1316.uma_android_automation.components.LabelTrainingFailureChanc
 import com.steve1316.uma_android_automation.components.Region
 import com.steve1316.uma_android_automation.types.BoundingBox
 import com.steve1316.uma_android_automation.types.StatName
+import com.steve1316.uma_android_automation.types.Trainee
 import org.opencv.android.Utils
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
