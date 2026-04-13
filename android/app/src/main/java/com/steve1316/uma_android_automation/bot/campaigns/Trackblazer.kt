@@ -150,6 +150,7 @@ class Trackblazer(game: Game) : Campaign(game) {
             "Vita 65" to 65,
             "Vita 40" to 40,
             "Vita 20" to 20,
+            "Energy Drink MAX" to 5,
         )
 
     /** Threshold for energy level to use energy items. */
@@ -160,6 +161,12 @@ class Trackblazer(game: Game) : Campaign(game) {
 
     /** Whether to enable Irregular Training in between races during Trackblazer. */
     private val enableIrregularTraining: Boolean = SettingsHelper.getBooleanSetting("scenarioOverrides", "trackblazerEnableIrregularTraining", false)
+
+    /** Ordered list of energy items from lowest to highest gain, used for conservation priority. */
+    private val energyItemConservationOrder = listOf("Energy Drink MAX", "Vita 20", "Vita 40", "Vita 65")
+
+    /** Flag to bypass conservation and force-use the reserved energy item. */
+    private var bForceUseReservedItem: Boolean = false
 
     /** The frequency to check the shop after a race. */
     private val shopCheckFrequency: Int = SettingsHelper.getIntSetting("scenarioOverrides", "trackblazerShopCheckFrequency", 3)
@@ -443,10 +450,18 @@ class Trackblazer(game: Game) : Campaign(game) {
     override fun shouldAllowConsecutiveRace(args: Map<String, Any>): Boolean {
         // Block racing at 0-1 energy with 3+ consecutive races to avoid -30 stat penalty.
         if (trainee.energy <= 1 && consecutiveRaceCount >= 3) {
-            MessageLog.w(
-                TAG,
-                "[WARN] shouldAllowConsecutiveRace:: Energy is critically low (${trainee.energy}%) with $consecutiveRaceCount consecutive races. Blocking to avoid possible -30 stat penalty.",
-            )
+            val conserveItem = energyItemConservationOrder.firstOrNull { (currentInventory[it] ?: 0) > 0 }
+            if (conserveItem != null) {
+                MessageLog.w(
+                    TAG,
+                    "[WARN] shouldAllowConsecutiveRace:: Energy critically low but $conserveItem exists in inventory. This should have been used in decideNextAction(). Blocking race as safety net.",
+                )
+            } else {
+                MessageLog.w(
+                    TAG,
+                    "[WARN] shouldAllowConsecutiveRace:: Energy is critically low (${trainee.energy}%) with $consecutiveRaceCount consecutive races. Blocking to avoid possible -30 stat penalty.",
+                )
+            }
             racing.encounteredRacingPopup = false
             return false
         }
@@ -461,8 +476,16 @@ class Trackblazer(game: Game) : Campaign(game) {
         val turnsRemaining = game.imageUtils.determineTurnsRemainingBeforeNextGoal()
         val onlyOneTurnLeft = turnsRemaining == 1
 
-        if (consecutiveRaceCount < (consecutiveRacesLimit + 1) || onlyOneTurnLeft) {
-            if (onlyOneTurnLeft && consecutiveRaceCount >= (consecutiveRacesLimit + 1)) {
+        // Late December is the last racing opportunity before a mandatory goal race, so ignore the limit.
+        val isLateDecember = date.month == DateMonth.DECEMBER && date.phase == DatePhase.LATE
+
+        if (consecutiveRaceCount < (consecutiveRacesLimit + 1) || onlyOneTurnLeft || isLateDecember) {
+            if (isLateDecember && consecutiveRaceCount >= (consecutiveRacesLimit + 1)) {
+                MessageLog.i(
+                    TAG,
+                    "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}, but it is Late December. Ignoring limit to maximize races before mandatory goal race.",
+                )
+            } else if (onlyOneTurnLeft && consecutiveRaceCount >= (consecutiveRacesLimit + 1)) {
                 MessageLog.i(
                     TAG,
                     "[TRACKBLAZER] Consecutive race count $consecutiveRaceCount >= ${consecutiveRacesLimit + 1}, but only 1 turn remains before mandatory race. Racing is safe. Continuing.",
@@ -678,11 +701,46 @@ class Trackblazer(game: Game) : Campaign(game) {
         // can bypass high failure chances that come with low energy.
         val hasCharmAvailable = !bUsedCharmToday && (currentInventory["Good-Luck Charm"] ?: 0) > 0
         if (trainee.energy <= 10 && consecutiveRaceCount >= 3 && !hasCharmAvailable) {
-            MessageLog.w(
-                TAG,
-                "[TRACKBLAZER] Energy is low (${trainee.energy}%) with $consecutiveRaceCount consecutive races and no Good-Luck Charm available. Resting to avoid -30 stat penalty.",
-            )
-            return MainScreenAction.REST
+            // Before resting, attempt to use a conserved energy item for emergency race recovery.
+            val conserveItem = energyItemConservationOrder.firstOrNull { (currentInventory[it] ?: 0) > 0 }
+            if (conserveItem != null) {
+                MessageLog.i(
+                    TAG,
+                    "[TRACKBLAZER] Energy is low (${trainee.energy}%) with $consecutiveRaceCount consecutive races. Using conserved $conserveItem for emergency recovery.",
+                )
+                if (shopList.openTrainingItemsDialog()) {
+                    bForceUseReservedItem = true
+                    val itemsUsed = shopList.useSpecificItems(listOf(conserveItem), reason = "Emergency race recovery to avoid -30 stat penalty.")
+                    bForceUseReservedItem = false
+                    itemsUsed.forEach { (name, _) ->
+                        val gain = energyGains[name] ?: 0
+                        val oldEnergy = trainee.energy
+                        trainee.energy = (trainee.energy + gain).coerceAtMost(100)
+                        useInventoryItem(name)
+                        MessageLog.i(TAG, "[TRACKBLAZER] Emergency recovery: $oldEnergy% -> ${trainee.energy}%.")
+                    }
+                    if (itemsUsed.isNotEmpty()) {
+                        confirmAndCloseItemDialog(itemsUsed.size)
+                    } else {
+                        ButtonClose.click(game.imageUtils)
+                        game.wait(game.dialogWaitDelay)
+                    }
+                }
+
+                if (trainee.energy > 10) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Energy recovered to ${trainee.energy}%. Resuming normal decision flow.")
+                    // Fall through to normal racing/training logic below.
+                } else {
+                    MessageLog.w(TAG, "[WARN] decideNextAction:: Energy still low (${trainee.energy}%) after emergency recovery. Resting.")
+                    return MainScreenAction.REST
+                }
+            } else {
+                MessageLog.w(
+                    TAG,
+                    "[WARN] decideNextAction:: Energy is low (${trainee.energy}%) with $consecutiveRaceCount consecutive races and no energy items available. Resting to avoid -30 stat penalty.",
+                )
+                return MainScreenAction.REST
+            }
         }
 
         if (enableIrregularTraining && date.year > DateYear.JUNIOR && !bHasCheckedIrregularTrainingThisTurn) {
@@ -690,9 +748,11 @@ class Trackblazer(game: Game) : Campaign(game) {
             val isMandatoryRace = IconRaceDayRibbon.check(game.imageUtils) || IconGoalRibbon.check(game.imageUtils)
 
             if (!isScheduledRace && !isMandatoryRace) {
-                MessageLog.i(TAG, "[TRACKBLAZER] Evaluating for Irregular Training...")
-
-                if (ButtonTraining.click(game.imageUtils)) {
+                // Skip irregular training evaluation when energy is depleted and no charm can offset the failure chance.
+                if (trainee.energy <= 0 && !hasCharmAvailable) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Skipping Irregular Training evaluation as energy is ${trainee.energy}% with no Good-Luck Charm available.")
+                    bHasCheckedIrregularTrainingThisTurn = true
+                } else if (ButtonTraining.click(game.imageUtils)) {
                     game.wait(game.dialogWaitDelay)
 
                     val isIrregularEvaluation = true
@@ -702,9 +762,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                     val bestTraining = training.recommendTraining(isIrregularEvaluation = isIrregularEvaluation)
 
                     if (bestTraining != null) {
+                        // Stay on the training screen in order to perform the training.
                         MessageLog.i(TAG, "[TRACKBLAZER] Valid Irregular Training found ($bestTraining). Hijacking turn.")
-                        ButtonBack.click(game.imageUtils)
-                        game.wait(game.dialogWaitDelay)
 
                         bIsIrregularTraining = true
                         return MainScreenAction.TRAIN
@@ -1148,6 +1207,28 @@ class Trackblazer(game: Game) : Campaign(game) {
      */
     private fun handleTrackblazerTraining() {
         MessageLog.i(TAG, "[TRACKBLAZER] Starting specialized Training process.")
+
+        // Fast path: Already on the training screen from irregular training evaluation.
+        if (bIsIrregularTraining) {
+            MessageLog.i(TAG, "[TRACKBLAZER] Using existing irregular training analysis (already on Training screen).")
+            val trainingSelected: StatName? = training.recommendTraining(isIrregularEvaluation = true)
+
+            // Still use training items (megaphones, ankle weights, charms, energy, stat items, etc.)
+            if (date.day >= 13) {
+                useItems(trainee, trainingSelected)
+            }
+
+            if (trainingSelected != null) {
+                training.executeTraining(trainingSelected)
+            } else {
+                MessageLog.w(TAG, "[WARN] handleTrackblazerTraining:: Irregular training unexpectedly became null. Backing out.")
+                ButtonBack.click(game.imageUtils)
+                game.wait(game.dialogWaitDelay)
+            }
+
+            bIsIrregularTraining = false
+            return
+        }
 
         // Enter the Training screen.
         if (!ButtonTraining.click(game.imageUtils)) {
@@ -1722,6 +1803,15 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Energy Items Check.
         if (!charmBeingUsedThisTurn && trainee.energy <= energyThresholdToUseEnergyItems && shopList.energyItemNames.contains(itemName)) {
+            // Conservation: skip the last unit of the lowest-level energy item for race recovery.
+            if (!bForceUseReservedItem && consecutiveRaceCount >= 2) {
+                val conserveItem = energyItemConservationOrder.firstOrNull { (nextInventory[it] ?: 0) > 0 }
+                if (conserveItem == itemName && (nextInventory[itemName] ?: 0) <= 1) {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Conserving last $itemName for emergency race recovery (consecutive races: $consecutiveRaceCount).")
+                    return null
+                }
+            }
+
             if (isBestEnergyItemToUse(trainee, itemName, nextInventory, remainingItemsOfInterest)) {
                 val gain = energyGains[itemName] ?: 0
                 val reason = "Restored energy (current: ${trainee.energy}%) because it fell below the $energyThresholdToUseEnergyItems% threshold."
@@ -1761,6 +1851,18 @@ class Trackblazer(game: Game) : Campaign(game) {
         // Mood Items Check.
         val shouldUseMoodItem = trainee.mood <= Mood.NORMAL && trainee.energy < 70
         if (shouldUseMoodItem && (itemName == "Berry Sweet Cupcake" || itemName == "Plain Cupcake")) {
+            // Conservation: always keep at least 1 cupcake in case Royal Kale Juice is purchased later.
+            // Prefer conserving Plain Cupcake (+1 mood) since Kale Juice is -1 mood and we can avoid waste from Berry Sweet (+2).
+            val plainCount = nextInventory["Plain Cupcake"] ?: 0
+            val berryCount = nextInventory["Berry Sweet Cupcake"] ?: 0
+            val shouldConserve =
+                (itemName == "Plain Cupcake" && plainCount <= 1) ||
+                    (itemName == "Berry Sweet Cupcake" && berryCount <= 1 && plainCount == 0)
+            if (shouldConserve) {
+                MessageLog.i(TAG, "[TRACKBLAZER] Conserving last $itemName for potential Royal Kale Juice usage.")
+                return null
+            }
+
             // Very simple inline mood: use the first one seen if energy is low.
             val reason = "Recovering mood (current: ${trainee.mood}, energy: ${trainee.energy}% < 70%)."
             if (clickItemPlusButton(itemName, entry, "[TRACKBLAZER] Queuing $itemName for mood recovery.", nextInventory, reason = reason)) {
@@ -1972,13 +2074,20 @@ class Trackblazer(game: Game) : Campaign(game) {
 
         // Collect all available energy items from this scan pass.
         val availableEnergyItems = mutableListOf<Int>()
+        val conserveItem = if (!bForceUseReservedItem && consecutiveRaceCount >= 2) energyItemConservationOrder.firstOrNull { (nextInventory[it] ?: 0) > 0 } else null
         remainingItemsOfInterest.forEach { name ->
             val gain = energyGains[name]
             if (gain != null) {
                 // If this is Kale Juice, only include it if it's usable.
                 if (name == "Royal Kale Juice" && !isKaleJuiceUsable) return@forEach
 
-                val count = (nextInventory[name] ?: 0)
+                var count = (nextInventory[name] ?: 0)
+
+                // Exclude one unit of the conserved item from the greedy pool.
+                if (name == conserveItem && count > 0) {
+                    count--
+                }
+
                 repeat(count) { availableEnergyItems.add(gain) }
             }
         }

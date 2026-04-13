@@ -1,21 +1,17 @@
 <AppUpdater>
   <update>
-    <latestVersion>5.4.7</latestVersion>
+    <latestVersion>5.4.8</latestVersion>
     <url>https://github.com/steve1316/uma-android-automation/releases</url>
     <releaseNotes>
-v5.4.7 - Changelog
-
-New
----
-- Replace the old `AppUpdater` library with a custom implementation with an updated UI. Will take effect in the next release.
+v5.4.8 - Changelog
 
 Adjustments
 ---
-- Parse energy level updates for the `Remote Log Viewer`.
-- Improve Hammer and Glow Stick conservation logic for the finals.
-- Skip Reset Whistle when energy recovery is needed.
-- Block consecutive racing at critical energy (~0-1%) to avoid -30 stat penalty.
-- Skip `Irregular Training` analysis and racing at critical energy (~0-1%) with 3+ consecutive races.
+- Rename `Enable Popup Check` setting to `Stop on Unexpected Popups` for clarity.
+- Skip redundant training screen exit/re-entry for `Irregular Training`.
+- Reduce effective stat cap by expected finale race gains to avoid wasting free stats.
+- Skip training analysis when energy is depleted and no charm is available.
+- Skip entering training screen for `Irregular Training` evaluation at zero energy without charm.
 
     </releaseNotes>
   </update>

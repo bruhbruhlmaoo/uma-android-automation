@@ -153,7 +153,7 @@ const TrainingEventSettings = () => {
      * @param field The field to update (`selectedOption` or `requiresConfirmation`).
      * @param value The new value for the field.
      */
-    const updateSpecialEventOverride = (eventName: string, field: "selectedOption" | "requiresConfirmation", value: any) => {
+    const updateSpecialEventOverride = (eventName: string, field: "selectedOption" | "requiresConfirmation" | "enableEnergyBasedSelection", value: any) => {
         setSettings({
             ...bsc.settings,
             trainingEvent: {
@@ -770,6 +770,14 @@ const TrainingEventSettings = () => {
                                                     onValueChange={(value) => updateSpecialEventOverride("Victory!", "selectedOption", value)}
                                                     placeholder="Select Option"
                                                     width="100%"
+                                                    disabled={specialEventOverrides["Victory!"]?.enableEnergyBasedSelection || false}
+                                                />
+                                                <CustomCheckbox
+                                                    style={{ marginTop: 12 }}
+                                                    checked={specialEventOverrides["Victory!"]?.enableEnergyBasedSelection || false}
+                                                    onCheckedChange={(checked) => updateSpecialEventOverride("Victory!", "enableEnergyBasedSelection", checked)}
+                                                    label="Energy-based selection"
+                                                    description="Pick Option 1 at 0-20% energy, otherwise Option 2."
                                                 />
                                             </View>
 
@@ -781,6 +789,14 @@ const TrainingEventSettings = () => {
                                                     onValueChange={(value) => updateSpecialEventOverride("Solid Showing", "selectedOption", value)}
                                                     placeholder="Select Option"
                                                     width="100%"
+                                                    disabled={specialEventOverrides["Solid Showing"]?.enableEnergyBasedSelection || false}
+                                                />
+                                                <CustomCheckbox
+                                                    style={{ marginTop: 12 }}
+                                                    checked={specialEventOverrides["Solid Showing"]?.enableEnergyBasedSelection || false}
+                                                    onCheckedChange={(checked) => updateSpecialEventOverride("Solid Showing", "enableEnergyBasedSelection", checked)}
+                                                    label="Energy-based selection"
+                                                    description="Pick Option 1 at 0-20% energy, otherwise Option 2."
                                                 />
                                             </View>
 
@@ -792,6 +808,14 @@ const TrainingEventSettings = () => {
                                                     onValueChange={(value) => updateSpecialEventOverride("Defeat", "selectedOption", value)}
                                                     placeholder="Select Option"
                                                     width="100%"
+                                                    disabled={specialEventOverrides["Defeat"]?.enableEnergyBasedSelection || false}
+                                                />
+                                                <CustomCheckbox
+                                                    style={{ marginTop: 12 }}
+                                                    checked={specialEventOverrides["Defeat"]?.enableEnergyBasedSelection || false}
+                                                    onCheckedChange={(checked) => updateSpecialEventOverride("Defeat", "enableEnergyBasedSelection", checked)}
+                                                    label="Energy-based selection"
+                                                    description="Pick Option 1 at 0-20% energy, otherwise Option 2."
                                                 />
                                             </View>
                                         </View>

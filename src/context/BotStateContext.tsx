@@ -85,7 +85,7 @@ export interface Settings {
         enableAutomaticOCRRetry: boolean
         ocrConfidence: number
         enableHideOCRComparisonResults: boolean
-        specialEventOverrides: Record<string, { selectedOption: string; requiresConfirmation: boolean }>
+        specialEventOverrides: Record<string, { selectedOption: string; requiresConfirmation: boolean; enableEnergyBasedSelection?: boolean }>
         characterEventOverrides: Record<string, number>
         supportEventOverrides: Record<string, number>
         scenarioEventOverrides: Record<string, number>
@@ -283,14 +283,17 @@ export const defaultSettings: Settings = {
             "Victory!": {
                 selectedOption: "Option 2: Energy -5 and random stat gain",
                 requiresConfirmation: false,
+                enableEnergyBasedSelection: false,
             },
             "Solid Showing": {
                 selectedOption: "Option 2: Energy -5/-20 and random stat gain",
                 requiresConfirmation: false,
+                enableEnergyBasedSelection: false,
             },
             Defeat: {
                 selectedOption: "Option 1: Energy -25 and random stat gain",
                 requiresConfirmation: false,
+                enableEnergyBasedSelection: false,
             },
             "Get Well Soon!": {
                 selectedOption: "Option 2: (Random) Mood -1 / Stat decrease / Get Practice Poor negative status",

@@ -185,7 +185,7 @@ class GameDate {
             }
 
             // Special case for Finale season (Turns 73-75) and for date strings that indicate it is the Finale season.
-            if (dayString.lowercase().contains("finale") || (scenario == "Trackblazer" && dayString.lowercase().contains("climax races underway"))) {
+            if (isFinaleString(dayString, scenario)) {
                 // Pass the cached day string to avoid redundant OCR operations.
                 val (finalsDay, _) = getFinalsDay(imageUtils = imageUtils, cachedDayString = dayString, scenario = scenario)
                 if (finalsDay == null) {
@@ -254,6 +254,39 @@ class GameDate {
         }
 
         /**
+         * Determines whether a day string indicates the game is in the Finale season.
+         *
+         * For most scenarios, the string contains "finale". For Trackblazer, it may instead contain "climax races underway".
+         *
+         * @param dayString The day string detected from the screen.
+         * @param scenario The current scenario name (e.g., "Trackblazer").
+         * @return True if the day string indicates the Finale season.
+         */
+        fun isFinaleString(dayString: String, scenario: String? = null): Boolean {
+            val lower = dayString.lowercase()
+            return lower.contains("finale") || (scenario == "Trackblazer" && lower.contains("climax races underway"))
+        }
+
+        /**
+         * Parses OCR text from the Trackblazer Finale screen to determine the turn number.
+         *
+         * Trackblazer displays "X / 3" on the Finale screen where X is 0, 1, or 2 representing
+         * the number of completed finals races (Qualifier, Semi-Final, Finals).
+         *
+         * @param detectedText The OCR text detected from the Trackblazer Finale indicator.
+         * @return The turn number (73, 74, or 75). Defaults to 73 if text is unrecognizable.
+         */
+        fun parseTrackblazerFinaleDay(detectedText: String): Int {
+            val text = detectedText.lowercase()
+            return when {
+                text.contains("0/3") -> 73
+                text.contains("1/3") -> 74
+                text.contains("2/3") -> 75
+                else -> 73 // Default to first finale turn.
+            }
+        }
+
+        /**
          * Determines whether a specific day number falls within the Summer training dates.
          *
          * Summer takes place during July and August in the Classic and Senior years. (Turns 37-40 and 61-64).
@@ -295,8 +328,7 @@ class GameDate {
             }
 
             // Early exit if the string doesn't indicate we are in the Finale season.
-            val isFinale = dayString.lowercase().contains("finale") || (scenario == "Trackblazer" && dayString.lowercase().contains("climax races underway"))
-            if (!isFinale) {
+            if (!isFinaleString(dayString, scenario)) {
                 return Pair(null, dayString)
             }
 
@@ -319,27 +351,13 @@ class GameDate {
                             debugName = "TrackblazerFinaleDay",
                         ).lowercase()
 
-                    return when {
-                        detectedText.contains("0/3") -> {
-                            MessageLog.i(TAG, "[DATE] Trackblazer Finale Qualifier (Turn 73).")
-                            Pair(73, dayString)
-                        }
-
-                        detectedText.contains("1/3") -> {
-                            MessageLog.i(TAG, "[DATE] Trackblazer Finale Semi-Final (Turn 74).")
-                            Pair(74, dayString)
-                        }
-
-                        detectedText.contains("2/3") -> {
-                            MessageLog.i(TAG, "[DATE] Trackblazer Finale Finals (Turn 75).")
-                            Pair(75, dayString)
-                        }
-
-                        else -> {
-                            MessageLog.w(TAG, "[WARN] getFinalsDay:: Could not determine Trackblazer Finale date from text: \"$detectedText\". Defaulting to turn 73.")
-                            Pair(73, dayString)
-                        }
+                    val finaleDay = parseTrackblazerFinaleDay(detectedText)
+                    when (finaleDay) {
+                        73 -> MessageLog.i(TAG, "[DATE] Trackblazer Finale Qualifier (Turn 73).")
+                        74 -> MessageLog.i(TAG, "[DATE] Trackblazer Finale Semi-Final (Turn 74).")
+                        75 -> MessageLog.i(TAG, "[DATE] Trackblazer Finale Finals (Turn 75).")
                     }
+                    return Pair(finaleDay, dayString)
                 } else {
                     MessageLog.w(TAG, "[WARN] getFinalsDay:: Could not find energy asset for Trackblazer finale detection. Defaulting to turn 73.")
                     return Pair(73, dayString)

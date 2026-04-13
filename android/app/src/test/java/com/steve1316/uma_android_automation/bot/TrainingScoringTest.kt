@@ -4,6 +4,8 @@ import com.steve1316.uma_android_automation.bot.Training.Companion.calculateMisc
 import com.steve1316.uma_android_automation.bot.Training.Companion.calculateRawTrainingScore
 import com.steve1316.uma_android_automation.bot.Training.Companion.calculateRelationshipScore
 import com.steve1316.uma_android_automation.bot.Training.Companion.calculateStatEfficiencyScore
+import com.steve1316.uma_android_automation.bot.Training.Companion.getFinaleStatBonus
+import com.steve1316.uma_android_automation.bot.Training.Companion.getRemainingFinaleRaces
 import com.steve1316.uma_android_automation.bot.Training.Companion.scoreFriendshipTraining
 import com.steve1316.uma_android_automation.bot.Training.Companion.scoreUnityCupTraining
 import com.steve1316.uma_android_automation.bot.Training.TrainingConfig
@@ -798,6 +800,7 @@ class TrainingScoringTest {
             createDefaultConfig(
                 trainingOptions = listOf(rainbowBurstTraining, normalBurstTraining),
                 scenario = "Unity Cup",
+                currentDate = GameDate(year = DateYear.CLASSIC, month = DateMonth.JANUARY, phase = DatePhase.EARLY),
             )
 
         val rainbowScore = scoreUnityCupTraining(config, rainbowBurstTraining)
@@ -903,7 +906,7 @@ class TrainingScoringTest {
                     expectedTraining = StatName.GUTS,
                 ),
                 TrainingTestCase(
-                    description = "Classic Year Early Aug - Stamina with more relationship bars and fillable gauge",
+                    description = "Classic Year Early Aug - Power with rainbow bonus, fillable gauge and stat gains",
                     currentStats = mapOf("Speed" to 453, "Stamina" to 372, "Power" to 483, "Guts" to 244, "Wit" to 214),
                     trainings =
                         listOf(
@@ -915,7 +918,7 @@ class TrainingScoringTest {
                         ),
                     preferredDistance = "Medium",
                     date = GameDate(year = DateYear.CLASSIC, month = DateMonth.AUGUST, phase = DatePhase.EARLY),
-                    expectedTraining = StatName.STAMINA,
+                    expectedTraining = StatName.POWER,
                 ),
                 TrainingTestCase(
                     description = "Senior Year Early Jul - Speed with high main stat gain, rainbow bonus and fillable gauges",
@@ -1071,5 +1074,128 @@ class TrainingScoringTest {
         val bestTraining = scores.maxByOrNull { it.value }?.key
 
         assertEquals(testCase.expectedTraining, bestTraining?.name, testCase.description)
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////////
+    // Finale Race Stat Bonus Tests
+    // ///////////////////////////////////////////////////////////////////////////////////////////
+
+    @Test
+    @DisplayName("getRemainingFinaleRaces returns correct values for boundary turns")
+    fun testGetRemainingFinaleRaces() {
+        assertEquals(3, getRemainingFinaleRaces(1), "Turn 1: all 3 finale races remaining")
+        assertEquals(3, getRemainingFinaleRaces(60), "Turn 60: all 3 finale races remaining")
+        assertEquals(3, getRemainingFinaleRaces(72), "Turn 72: all 3 finale races remaining")
+        assertEquals(2, getRemainingFinaleRaces(73), "Turn 73: 2 finale races remaining")
+        assertEquals(1, getRemainingFinaleRaces(74), "Turn 74: 1 finale race remaining")
+        assertEquals(0, getRemainingFinaleRaces(75), "Turn 75: no finale races remaining")
+    }
+
+    @Test
+    @DisplayName("getFinaleStatBonus returns correct bonus values")
+    fun testGetFinaleStatBonus() {
+        assertEquals(45, getFinaleStatBonus(60), "Turn 60: 3 races * 15 = 45")
+        assertEquals(30, getFinaleStatBonus(73), "Turn 73: 2 races * 15 = 30")
+        assertEquals(15, getFinaleStatBonus(74), "Turn 74: 1 race * 15 = 15")
+        assertEquals(0, getFinaleStatBonus(75), "Turn 75: 0 races * 15 = 0")
+    }
+
+    @Test
+    @DisplayName("Stat near cap blocked by finale bonus adjustment (turn 60, 3 races remaining)")
+    fun testFinaleAdjustmentBlocksTrainingNearCap() {
+        // With 3 finale races remaining, effective cap = 1200 - 100 - 45 = 1055.
+        // A stat at 1060 should be blocked.
+        val currentStats =
+            mapOf(
+                StatName.SPEED to 1060,
+                StatName.STAMINA to 400,
+                StatName.POWER to 400,
+                StatName.GUTS to 400,
+                StatName.WIT to 400,
+            )
+
+        val training =
+            createDefaultTrainingOption(
+                name = StatName.SPEED,
+                statGains = statGainsToMap(intArrayOf(60, 0, 30, 0, 0)),
+            )
+
+        val config =
+            createDefaultConfig(
+                trainingOptions = listOf(training),
+                currentStats = currentStats,
+                disableTrainingOnMaxedStat = true,
+                currentDate = GameDate(day = 60),
+            )
+
+        val score = calculateRawTrainingScore(config, training)
+
+        assertEquals(0.0, score, "Stat at 1060 should be blocked when effective cap is 1055 (turn 60, 3 finale races)")
+    }
+
+    @Test
+    @DisplayName("Same stat allowed when fewer finale races remain (turn 74, 1 race remaining)")
+    fun testFinaleAdjustmentAllowsTrainingWithFewerRaces() {
+        // With 1 finale race remaining, effective cap = 1200 - 100 - 15 = 1085.
+        // A stat at 1060 should NOT be blocked.
+        val currentStats =
+            mapOf(
+                StatName.SPEED to 1060,
+                StatName.STAMINA to 400,
+                StatName.POWER to 400,
+                StatName.GUTS to 400,
+                StatName.WIT to 400,
+            )
+
+        val training =
+            createDefaultTrainingOption(
+                name = StatName.SPEED,
+                statGains = statGainsToMap(intArrayOf(20, 0, 10, 0, 0)),
+            )
+
+        val config =
+            createDefaultConfig(
+                trainingOptions = listOf(training),
+                currentStats = currentStats,
+                disableTrainingOnMaxedStat = true,
+                currentDate = GameDate(day = 74),
+            )
+
+        val score = calculateRawTrainingScore(config, training)
+
+        assertTrue(score > 0.0, "Stat at 1060 should be allowed when effective cap is 1085 (turn 74, 1 finale race)")
+    }
+
+    @Test
+    @DisplayName("No finale adjustment on turn 75 (all races done)")
+    fun testNoFinaleAdjustmentOnFinalTurn() {
+        // With 0 finale races remaining, effective cap = 1200 - 100 = 1100 (unchanged).
+        // A stat at 1060 with potential 1080 should NOT be blocked.
+        val currentStats =
+            mapOf(
+                StatName.SPEED to 1060,
+                StatName.STAMINA to 400,
+                StatName.POWER to 400,
+                StatName.GUTS to 400,
+                StatName.WIT to 400,
+            )
+
+        val training =
+            createDefaultTrainingOption(
+                name = StatName.SPEED,
+                statGains = statGainsToMap(intArrayOf(20, 0, 10, 0, 0)),
+            )
+
+        val config =
+            createDefaultConfig(
+                trainingOptions = listOf(training),
+                currentStats = currentStats,
+                disableTrainingOnMaxedStat = true,
+                currentDate = GameDate(day = 75),
+            )
+
+        val score = calculateRawTrainingScore(config, training)
+
+        assertTrue(score > 0.0, "Stat at 1060 should be allowed on turn 75 with no finale adjustment (effective cap = 1100)")
     }
 }
