@@ -65,7 +65,7 @@ class Training(private val game: Game, private val campaign: Campaign) {
     internal val statPrioritization: List<StatName> = statPrioritizationRaw.ifEmpty { StatName.entries }
 
     /** The maximum allowed failure chance for training. */
-    private val maximumFailureChance: Int = SettingsHelper.getIntSetting("training", "maximumFailureChance")
+    internal val maximumFailureChance: Int = SettingsHelper.getIntSetting("training", "maximumFailureChance")
 
     /** Whether to skip training for stats at their cap. */
     private val disableTrainingOnMaxedStat: Boolean = SettingsHelper.getBooleanSetting("training", "disableTrainingOnMaxedStat")
