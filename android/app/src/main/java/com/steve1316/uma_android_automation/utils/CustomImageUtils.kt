@@ -14,6 +14,7 @@ import com.steve1316.automation_library.utils.ImageUtils
 import com.steve1316.automation_library.utils.MessageLog
 import com.steve1316.automation_library.utils.SettingsHelper
 import com.steve1316.uma_android_automation.MainActivity
+import com.steve1316.uma_android_automation.bot.Campaign
 import com.steve1316.uma_android_automation.bot.Game
 import com.steve1316.uma_android_automation.components.ButtonRaceListFullStats
 import com.steve1316.uma_android_automation.components.ComponentInterface
@@ -376,8 +377,9 @@ class CustomImageUtils(context: Context, private val game: Game) : ImageUtils(co
                 if (cleanedResult.isEmpty()) {
                     // If the trainee has high energy (>= 90%), it is extremely likely that the failure chance is actually 0%.
                     // This handles cases like "v/ TN" where OCR fails to read a small "0%".
-                    if (game.trainee.energy >= 90) {
-                        Log.i(TAG, "[INFO] findTrainingFailureChance:: OCR read a junk value \"$detectedText\" at high energy (${game.trainee.energy}%). Assuming 0% failure.")
+                    val energy = (game.task as Campaign).trainee.energy
+                    if (energy >= 90) {
+                        Log.i(TAG, "[INFO] findTrainingFailureChance:: OCR read a junk value \"$detectedText\" at high energy ($energy%). Assuming 0% failure.")
                         return 0
                     } else {
                         throw NumberFormatException("Empty result at low energy")
