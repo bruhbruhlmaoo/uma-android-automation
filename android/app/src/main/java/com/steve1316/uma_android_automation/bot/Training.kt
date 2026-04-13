@@ -1010,11 +1010,19 @@ class Training(private val game: Game, private val campaign: Campaign) {
 
         // Check if failure chance is acceptable: either within regular threshold or within risky threshold (if enabled).
         // This acts as an early exit from training analysis to speed up training.
-        val failureChance: Int = game.imageUtils.findTrainingFailureChance(tries = 3)
+        var failureChance: Int = game.imageUtils.findTrainingFailureChance(tries = 3)
         if (failureChance == -1) {
-            MessageLog.w(TAG, "[WARN] analyzeTrainings:: Skipping training due to not being able to confirm whether or not the bot is at the Training screen.")
-            return
+            // Turn 1 heuristic: failure chance is always 0% on Day 1.
+            // Also perform a secondary check for the Speed training button as a more reliable screen marker than OCR.
+            if (campaign.date.day == 1 || ButtonTrainingSpeed.check(game.imageUtils)) {
+                MessageLog.i(TAG, "[TRAINING] Failure chance OCR yielded junk, but confirmed Training screen via Day 1 or Speed Button check. Assuming 0% failure chance.")
+                failureChance = 0
+            } else {
+                MessageLog.w(TAG, "[WARN] analyzeTrainings:: Skipping training due to not being able to confirm whether or not the bot is at the Training screen.")
+                return
+            }
         }
+
         val isWithinRegularThreshold = failureChance <= maximumFailureChance
         val isWithinRiskyThreshold = enableRiskyTraining && failureChance <= riskyTrainingMaxFailureChance
         val isFinals = campaign.checkFinals()
@@ -1070,8 +1078,8 @@ class Training(private val game: Game, private val campaign: Campaign) {
 
                 // Only go to a different stat if we aren't doing single training.
                 if (!singleTraining && !goToStat(statName)) {
-                    MessageLog.e(TAG, "[ERROR] analyzeTrainings:: Failed to click training button for $statName. Aborting training...")
-                    return
+                    MessageLog.e(TAG, "[ERROR] analyzeTrainings:: Failed to click training button for $statName. Skipping this stat analysis.")
+                    continue
                 }
 
                 // Check if the currently selected training is restricted.
@@ -1991,9 +1999,9 @@ class Training(private val game: Game, private val campaign: Campaign) {
     private fun appendTrainingDetails(sb: StringBuilder, blacklist: List<StatName?> = emptyList(), selected: TrainingOption? = null) {
         if (trainingMap.isEmpty() && skippedTrainingMap.isEmpty()) {
             if (trainWitDuringFinale && campaign.date.day > 72) {
-                sb.appendLine("Energy recovery needed. No analysis performed. Bot will force Wit training during Finale.")
+                sb.appendLine("No trainings found or analyze failed. Bot will force Wit training during Finale.")
             } else {
-                sb.appendLine("Energy recovery needed. No analysis performed.")
+                sb.appendLine("No trainings found or analyze failed. Energy recovery may be needed.")
             }
             return
         }

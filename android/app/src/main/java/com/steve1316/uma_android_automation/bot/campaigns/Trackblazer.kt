@@ -1314,7 +1314,11 @@ class Trackblazer(game: Game) : Campaign(game) {
                         ButtonBack.click(game.imageUtils)
                         game.wait(1.0)
                         if (checkMainScreen()) {
-                            recoverEnergy()
+                            if (trainee.energy <= 50) {
+                                recoverEnergy()
+                            } else {
+                                MessageLog.i(TAG, "[TRACKBLAZER] Energy is still high (${trainee.energy}%). Skipping rest despite no training found.")
+                            }
                         }
                     }
                 }
@@ -1323,7 +1327,11 @@ class Trackblazer(game: Game) : Campaign(game) {
                 ButtonBack.click(game.imageUtils)
                 game.wait(1.0)
                 if (checkMainScreen()) {
-                    recoverEnergy()
+                    if (trainee.energy <= 50) {
+                        recoverEnergy()
+                    } else {
+                        MessageLog.i(TAG, "[TRACKBLAZER] Energy is high (${trainee.energy}%). Skipping rest despite no training found.")
+                    }
                 }
             }
         }
