@@ -1293,45 +1293,14 @@ class Trackblazer(game: Game) : Campaign(game) {
         if (trainingSelected != null) {
             training.executeTraining(trainingSelected)
         } else {
-            // Before resting, check if we have any energy items that can let us train instead.
-            val energyItemNames = listOf("Vita 65", "Vita 40", "Vita 20", "Royal Kale Juice")
-            val hasEnergyItems = energyItemNames.any { (currentInventory[it] ?: 0) > 0 }
-            
-            if (hasEnergyItems) {
-                MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found, but energy items are available. Attempting to recover energy via items to avoid resting.")
-                if (shopList.openTrainingItemsDialog()) {
-                    useItems(trainee, trainingSelected) // This will trigger the energy item usage logic.
-                    
-                    // Re-analyze and re-pick after using energy items.
-                    training.analyzeTrainings(mapOf("ignoreFailureChance" to hasCharm))
-                    trainingSelected = training.recommendTraining()
-                    
-                    if (trainingSelected != null) {
-                        MessageLog.i(TAG, "[TRACKBLAZER] Found a suitable training after using energy items.")
-                        training.executeTraining(trainingSelected)
-                    } else {
-                        MessageLog.i(TAG, "[TRACKBLAZER] Still no suitable training found after using energy items. Backing out.")
-                        ButtonBack.click(game.imageUtils)
-                        game.wait(1.0)
-                        if (checkMainScreen()) {
-                            if (trainee.energy <= 50) {
-                                recoverEnergy()
-                            } else {
-                                MessageLog.i(TAG, "[TRACKBLAZER] Energy is still high (${trainee.energy}%). Skipping rest despite no training found.")
-                            }
-                        }
-                    }
-                }
-            } else {
-                MessageLog.i(TAG, "[TRACKBLAZER] Still no suitable training found. Backing out to rest/recollect.")
-                ButtonBack.click(game.imageUtils)
-                game.wait(1.0)
-                if (checkMainScreen()) {
-                    if (trainee.energy <= 50) {
-                        recoverEnergy()
-                    } else {
-                        MessageLog.i(TAG, "[TRACKBLAZER] Energy is high (${trainee.energy}%). Skipping rest despite no training found.")
-                    }
+            MessageLog.i(TAG, "[TRACKBLAZER] No suitable training found. Backing out to main screen for rest/recollection.")
+            ButtonBack.click(game.imageUtils)
+            game.wait(1.0)
+            if (checkMainScreen()) {
+                if (trainee.energy <= 50) {
+                    recoverEnergy()
+                } else {
+                    MessageLog.i(TAG, "[TRACKBLAZER] Energy is high (${trainee.energy}%). Skipping rest despite no training found.")
                 }
             }
         }
@@ -1810,7 +1779,8 @@ class Trackblazer(game: Game) : Campaign(game) {
                 (date.day >= 13 && (failureChance >= 30 || (!isHighPriorityInEnergy && failureChance >= 20)) && (nextInventory["Good-Luck Charm"] ?: 0) > 0 && !disabledItems.contains("Good-Luck Charm"))
 
         // Energy Items Check.
-        if (!charmBeingUsedThisTurn && trainee.energy <= energyThresholdToUseEnergyItems && shopList.energyItemNames.contains(itemName)) {
+        val needsEnergyForTrain = isHighPriorityInEnergy && failureChance > maximumFailureChance
+        if (!charmBeingUsedThisTurn && (trainee.energy <= energyThresholdToUseEnergyItems || needsEnergyForTrain) && shopList.energyItemNames.contains(itemName)) {
             // Conservation: skip the last unit of the lowest-level energy item for race recovery.
             if (!bForceUseReservedItem && consecutiveRaceCount >= 2) {
                 val conserveItem = energyItemConservationOrder.firstOrNull { (nextInventory[it] ?: 0) > 0 }
