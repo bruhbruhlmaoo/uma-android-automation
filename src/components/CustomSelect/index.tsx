@@ -143,7 +143,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
             )}
             <Select onValueChange={handleValueChange} value={value as any} defaultValue={defaultValue as any} disabled={disabled}>
                 <View ref={triggerRef} style={[{ width: width as any }]} onLayout={onTriggerLayout}>
-                    <SelectTrigger style={{ backgroundColor: colors.background, borderColor: colors.border }}>
+                    <SelectTrigger disabled={disabled} style={{ backgroundColor: colors.background, borderColor: colors.border }}>
                         <SelectValue placeholder={value || defaultValue ? (currentLabel ?? "ERROR") : placeholder} style={{ color: colors.foreground }} />
                     </SelectTrigger>
                 </View>
