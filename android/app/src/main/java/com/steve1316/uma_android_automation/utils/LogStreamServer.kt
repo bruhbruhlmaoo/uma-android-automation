@@ -108,8 +108,8 @@ object LogStreamServer {
     /** Regex pattern to detect successful energy recovery. */
     private val actionEnergyPattern = Pattern.compile("\\[ENERGY] Successfully recovered energy via (.*)", Pattern.CASE_INSENSITIVE)
 
-    /** Regex pattern to detect energy level updates from item usage. */
-    private val actionEnergyUpdatePattern = Pattern.compile("Trainee energy updated: (\\d+)%\\s*->\\s*(\\d+)%", Pattern.CASE_INSENSITIVE)
+    /** Regex pattern to detect energy level updates from item usage or emergency recovery. */
+    private val actionEnergyUpdatePattern = Pattern.compile("(?:Trainee energy updated|Emergency recovery): (\\d+)%\\s*->\\s*(\\d+)%", Pattern.CASE_INSENSITIVE)
 
     /** Regex pattern to detect injury detection and healing attempts. */
     private val actionInjuryPattern = Pattern.compile("\\[INJURY] Injury detected and attempted to heal")

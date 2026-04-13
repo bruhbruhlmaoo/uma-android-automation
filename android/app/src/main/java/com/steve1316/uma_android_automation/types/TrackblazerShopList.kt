@@ -113,7 +113,7 @@ class TrackblazerShopList(private val game: Game) {
     val statItemNames get() = shopItems.filter { it.value.category == "Stats" }.keys.toList()
 
     /** List of names for items that restore energy. */
-    val energyItemNames get() = listOf("Vita 65", "Vita 40", "Vita 20")
+    val energyItemNames get() = listOf("Vita 65", "Vita 40", "Vita 20", "Energy Drink MAX")
 
     /** List of names for items that heal bad status conditions. */
     val badConditionHealItemNames get() = shopItems.filter { it.value.category == "Heal Bad Conditions" }.keys.toList()
@@ -142,8 +142,8 @@ class TrackblazerShopList(private val game: Game) {
             "Vita 40" to TrackblazerItemInfo(55, "Energy +40", false, "Energy and Motivation"),
             "Vita 65" to TrackblazerItemInfo(75, "Energy +65", false, "Energy and Motivation"),
             "Royal Kale Juice" to TrackblazerItemInfo(70, "Energy +100, Motivation -1", false, "Energy and Motivation"),
-            "Energy Drink MAX" to TrackblazerItemInfo(30, "Maximum energy +4, Energy +5", true, "Energy and Motivation"),
-            "Energy Drink MAX EX" to TrackblazerItemInfo(50, "Maximum energy +8", true, "Energy and Motivation"),
+            "Energy Drink MAX" to TrackblazerItemInfo(30, "Maximum energy +4, Energy +5", false, "Energy and Motivation"),
+            "Energy Drink MAX EX" to TrackblazerItemInfo(50, "Maximum energy +8", false, "Energy and Motivation"),
             "Plain Cupcake" to TrackblazerItemInfo(30, "Motivation +1", true, "Energy and Motivation"),
             "Berry Sweet Cupcake" to TrackblazerItemInfo(55, "Motivation +2", true, "Energy and Motivation"),
             // Bond
