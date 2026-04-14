@@ -62,10 +62,10 @@ class Training(private val game: Game, private val campaign: Campaign) {
     private val statPrioritizationRaw: List<StatName> = SettingsHelper.getStringArraySetting("training", "statPrioritization").map { StatName.fromName(it)!! }
 
     /** The final stat prioritization list. */
-    internal val statPrioritization: List<StatName> = statPrioritizationRaw.ifEmpty { StatName.entries }
+    val statPrioritization: List<StatName> = statPrioritizationRaw.ifEmpty { StatName.entries }
 
     /** The maximum allowed failure chance for training. */
-    internal val maximumFailureChance: Int = SettingsHelper.getIntSetting("training", "maximumFailureChance")
+    val maximumFailureChance: Int = SettingsHelper.getIntSetting("training", "maximumFailureChance")
 
     /** Whether to skip training for stats at their cap. */
     private val disableTrainingOnMaxedStat: Boolean = SettingsHelper.getBooleanSetting("training", "disableTrainingOnMaxedStat")

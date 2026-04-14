@@ -1779,7 +1779,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                     bUsedCharmToday = true
                     return reason
                 }
-            } else if (isHighPriorityTrain && isMedDanger) {
+            } else if (isHighPriority && isMedDanger) {
                 MessageLog.i(TAG, "[TRACKBLAZER] Deferring Good-Luck Charm usage in 15-29% bracket to prioritize energy items first.")
             }
         }
