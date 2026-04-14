@@ -1497,7 +1497,7 @@ class Trackblazer(game: Game) : Campaign(game) {
                         val isBad = info?.category == "Heal Bad Conditions"
                         val isQuick = info?.isQuickUsage == true
                         val isEnergy = shopList.energyItemNames.contains(name) || name == "Royal Kale Juice"
-                        val isMood = name == "Berry Sweet Cupcake" || name == "Plain Cupcake"
+                        val isMood = shopList.moodItemNames.contains(name)
                         val isMegaphone = name == "Empowering Megaphone" || name == "Motivating Megaphone" || name == "Coaching Megaphone"
                         val isHoarded = name == "Empowering Megaphone" && isEmpoweringMegaphoneHoarded(currentInventory)
                         val isAnkleWeight = name == neededWeight
@@ -1914,7 +1914,7 @@ class Trackblazer(game: Game) : Campaign(game) {
         val hasEnergyItems =
             currentInventory.any { (name, count) -> count > 0 && shopList.energyItemNames.contains(name) } ||
                 ((currentInventory["Royal Kale Juice"] ?: 0) > 0)
-        val hasMoodItems = currentInventory.any { (name, count) -> count > 0 && (name == "Berry Sweet Cupcake" || name == "Plain Cupcake") }
+        val hasMoodItems = currentInventory.any { (name, count) -> count > 0 && shopList.moodItemNames.contains(name) }
         val hasBadConditionItems = currentInventory.any { (name, count) -> count > 0 && shopList.badConditionHealItemNames.contains(name) }
         val hasStatItems = currentInventory.any { (name, count) -> count > 0 && shopList.statItemNames.contains(name) }
 

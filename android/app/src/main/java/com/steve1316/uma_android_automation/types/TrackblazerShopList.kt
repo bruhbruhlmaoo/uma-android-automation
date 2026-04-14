@@ -116,6 +116,9 @@ class TrackblazerShopList(private val game: Game) {
     /** List of names for items that restore energy. */
     val energyItemNames get() = listOf("Vita 65", "Vita 40", "Vita 20", "Energy Drink MAX")
 
+    /** List of names for items that restore motivation (mood). */
+    val moodItemNames get() = listOf("Berry Sweet Cupcake", "Plain Cupcake")
+
     /** List of names for items that heal bad status conditions. */
     val badConditionHealItemNames get() = shopItems.filter { it.value.category == "Heal Bad Conditions" }.keys.toList()
 
